@@ -1,0 +1,46 @@
+# Backend
+backend/bin/
+backend/uploads/
+backend/*.exe
+backend/*.test
+backend/*.out
+backend/coverage.out
+backend/.env
+backend/.idea/
+backend/.vscode/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+frontend/*.log
+frontend/coverage/
+frontend/.idea/
+frontend/.vscode/
+
+# Docker
+docker/postgres-data/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*.swo
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+dist/
+build/
+*.exe

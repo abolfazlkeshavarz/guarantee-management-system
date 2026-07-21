@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gms-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-guarantee_db}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - gms-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: gms-backend
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_PORT: ${APP_PORT:-8080}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Whoknowwho}
+      DB_NAME: ${DB_NAME:-guarantee_db}
+      DB_SSL_MODE: disable
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-24}
+      UPLOAD_PATH: /app/uploads
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:80}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+    restart: unless-stopped
+    networks:
+      - gms-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: gms-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - gms-network
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  gms-network:
+    driver: bridge
