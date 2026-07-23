@@ -43,7 +43,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	admin, token, err := h.service.Login(req.Username, req.Password)
+	// Capture all 4 return values: admin, token, expiresIn, err
+	admin, token, expiresIn, err := h.service.Login(req.Username, req.Password)
 	if err != nil {
 		if appErr, ok := err.(*errors.AppError); ok {
 			responses.Error(c, appErr.Code, appErr.Message)
@@ -56,7 +57,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	responses.Success(c, LoginResponse{
 		Token:     token,
 		TokenType: "Bearer",
-		ExpiresIn: int64(h.service.config.JWTExpiration.Seconds()),
+		ExpiresIn: expiresIn, // Use the actual expiration from the service
 		Admin:     *admin,
 	})
 }

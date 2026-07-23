@@ -1,11 +1,11 @@
 package auth
 
 import (
-	"time"
-
 	"guarantee-management-system/internal/config"
 	"guarantee-management-system/internal/shared/errors"
 	"guarantee-management-system/internal/shared/utils"
+	"log"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -22,38 +22,40 @@ func NewAuthService(repo *AuthRepository, cfg *config.Config) *AuthService {
 	}
 }
 
-func (s *AuthService) Login(username, password string) (*AdminDTO, string, error) {
+func (s *AuthService) Login(username, password string) (*AdminDTO, string, int64, error) {
 	// Find admin by username
 	admin, err := s.repo.FindAdminByUsername(username)
 	if err != nil {
-		return nil, "", errors.NewAppError(errors.ErrInternalServer, "Failed to find admin", 500)
+		return nil, "", 0, errors.NewAppError(errors.ErrInternalServer, "Failed to find admin", 500)
 	}
 
 	if admin == nil {
-		return nil, "", errors.NewAppError(errors.ErrInvalidCredentials, "Invalid username or password", 401)
+		return nil, "", 0, errors.NewAppError(errors.ErrInvalidCredentials, "Invalid username or password", 401)
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(admin.Password), []byte(password)); err != nil {
-		return nil, "", errors.NewAppError(errors.ErrInvalidCredentials, "Invalid username or password", 401)
+		return nil, "", 0, errors.NewAppError(errors.ErrInvalidCredentials, "Invalid username or password", 401)
 	}
 
-	// Update last login
+	// Update last login - log error but don't fail
 	if err := s.repo.UpdateLastLogin(admin.ID); err != nil {
 		// Log error but continue
+		log.Printf("Warning: Failed to update last login for admin %d: %v", admin.ID, err)
 	}
 
 	// Generate JWT token
-	token, _, err := utils.GenerateToken(admin.ID, admin.Username, s.config.JWTSecret, s.config.JWTExpiration)
+	token, expiresIn, err := utils.GenerateToken(admin.ID, admin.Username, s.config.JWTSecret, s.config.JWTExpiration)
 	if err != nil {
-		return nil, "", errors.NewAppError(errors.ErrInternalServer, "Failed to generate token", 500)
+		return nil, "", 0, errors.NewAppError(errors.ErrInternalServer, "Failed to generate token", 500)
 	}
 
 	// Map to DTO
 	adminDTO := s.mapToDTO(admin)
 
-	return adminDTO, token, nil
+	return adminDTO, token, expiresIn, nil
 }
+
 func (s *AuthService) ChangePassword(adminID uint, oldPassword, newPassword string) error {
 	admin, err := s.repo.FindAdminByID(adminID)
 	if err != nil {

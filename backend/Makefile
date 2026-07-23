@@ -275,14 +275,8 @@ db-status:
 	$(PSQL_CMD) "\dt"
 
 db-query:
-	@if [ -z "$(Q)" ]; then \
-		echo "Error: Q is required"; \
-		echo "Usage: make db-query Q='SELECT * FROM users;'"; \
-		exit 1; \
-	fi
 	@echo "Running query: $(Q)"
-	$(PSQL_CMD) "$(Q)"
-
+	powershell -Command "$$env:PGPASSWORD='$(DB_PASSWORD)'; psql -U $(DB_USER) -h $(DB_HOST) -d $(DB_NAME) -c '$(Q)'"
 # ============================================
 # Admin Management Commands
 # ============================================
@@ -372,9 +366,9 @@ docker-restart: docker-down docker-up
 
 clean:
 	@echo "Cleaning build artifacts..."
-	$(RMDIR) bin 2>/dev/null || true
-	$(RMDIR) uploads 2>/dev/null || true
-	$(RM_FILE) coverage.out coverage.html 2>/dev/null || true
+	-rmdir /s /q bin 2>nul || true
+	-rmdir /s /q uploads 2>nul || true
+	-del coverage.out coverage.html 2>nul || true
 	@echo "Cleaned"
 
 install-tools:

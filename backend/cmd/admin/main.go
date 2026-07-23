@@ -102,7 +102,9 @@ func createAdmin(db *gorm.DB) {
 	email := flag.String("email", "", "Email")
 
 	// Parse flags after the command
-	flag.CommandLine.Parse(os.Args[2:])
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		log.Fatal("Failed to parse flags:", err)
+	}
 
 	if *username == "" || *password == "" {
 		log.Fatal("Error: username and password are required")
@@ -160,7 +162,9 @@ func listAdmins(db *gorm.DB) {
 
 func deleteAdmin(db *gorm.DB) {
 	username := flag.String("username", "", "Username")
-	flag.CommandLine.Parse(os.Args[2:])
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		log.Fatal("Failed to parse flags:", err)
+	}
 
 	if *username == "" {
 		log.Fatal("Error: username is required")
@@ -184,7 +188,9 @@ func deleteAdmin(db *gorm.DB) {
 func resetAdminPassword(db *gorm.DB) {
 	username := flag.String("username", "", "Username")
 	password := flag.String("password", "", "New password")
-	flag.CommandLine.Parse(os.Args[2:])
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		log.Fatal("Failed to parse flags:", err)
+	}
 
 	if *username == "" || *password == "" {
 		log.Fatal("Error: username and password are required")
@@ -212,7 +218,9 @@ func createTechnician(db *gorm.DB) {
 	nationalid := flag.String("nationalid", "", "National ID")
 	address := flag.String("address", "", "Address")
 
-	flag.CommandLine.Parse(os.Args[2:])
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		log.Fatal("Failed to parse flags:", err)
+	}
 
 	if *username == "" || *password == "" {
 		log.Fatal("Error: username and password are required")
@@ -278,7 +286,9 @@ func listTechnicians(db *gorm.DB) {
 func toggleTechnician(db *gorm.DB) {
 	username := flag.String("username", "", "Username")
 	active := flag.String("active", "", "Active status (true/false)")
-	flag.CommandLine.Parse(os.Args[2:])
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		log.Fatal("Failed to parse flags:", err)
+	}
 
 	if *username == "" || *active == "" {
 		log.Fatal("Error: username and active status are required")
