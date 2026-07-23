@@ -1,0 +1,153 @@
+guarantee-management-system/
+├── backend/
+│   ├── cmd/
+│   │   ├── admin/
+│   │   │   └── main.go
+│   │   ├── api/
+│   │   │   └── main.go
+│   │   ├── migrate/
+│   │   │   └── main.go
+│   │   └── seed/
+│   │       └── main.go
+│   ├── internal/
+│   │   ├── app/
+│   │   ├── config/
+│   │   │   └── config.go
+│   │   ├── database/
+│   │   │   └── database.go
+│   │   ├── middleware/
+│   │   │   ├── auth.go
+│   │   │   ├── cors.go
+│   │   │   └── logger.go
+│   │   ├── modules/
+│   │   │   └── auth/
+│   │   │       ├── dto.go
+│   │   │       ├── handler.go
+│   │   │       ├── model.go
+│   │   │       ├── repository.go
+│   │   │       ├── routes.go
+│   │   │       ├── service.go
+│   │   │       └── validator.go
+│   │   └── shared/
+│   │       ├── constants/
+│   │       ├── errors/
+│   │       │   └── errors.go
+│   │       ├── pagination/
+│   │       ├── responses/
+│   │       │   └── responses.go
+│   │       ├── storage/
+│   │       │   └── storage.go
+│   │       ├── utils/
+│   │       │   └── jwt.go
+│   │       └── validator/
+│   │           └── validator.go
+│   ├── migrations/
+│   │   ├── 001_create_admins_table.up.sql
+│   │   ├── 002_create_technicians_table.up.sql
+│   │   ├── 003_create_customers_table.up.sql
+│   │   ├── 004_create_product_categories_table.up.sql
+│   │   ├── 005_create_products_table.up.sql
+│   │   ├── 006_create_guarantees_table.up.sql
+│   │   ├── 007_create_repairs_table.up.sql
+│   │   ├── 008_create_repair_reports_table.up.sql
+│   │   ├── 009_create_parts_table.up.sql
+│   │   ├── 010_create_part_requests_table.up.sql
+│   │   ├── 20260721085726_create_products_table.down.sql
+│   │   └── 20260721085726_create_products_table.up.sql
+│   ├── uploads/
+│   │   ├── guarantee_cards/
+│   │   ├── invoices/
+│   │   ├── repair_images/
+│   │   └── reports/
+│   ├── .env
+│   ├── .env.example
+│   ├── Dockerfile
+│   ├── go.mod
+│   ├── go.sum
+│   ├── health-check.ps1
+│   ├── Makefile
+│   └── test-makefile.ps1
+├── database/
+├── docker/
+│   ├── Dockerfile.backend
+│   ├── Dockerfile.frontend
+│   └── nginx.conf
+├── frontend/
+│   ├── public/
+│   │   ├── favicon.svg
+│   │   └── icons.svg
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── auth.ts
+│   │   │   ├── axios.ts
+│   │   │   └── dashboard.ts
+│   │   ├── assets/
+│   │   │   ├── hero.png
+│   │   │   ├── react.svg
+│   │   │   └── vite.svg
+│   │   ├── components/
+│   │   │   ├── common/
+│   │   │   │   ├── ProtectedRoute.tsx
+│   │   │   │   └── PublicRoute.tsx
+│   │   │   ├── layout/
+│   │   │   │   ├── Header.tsx
+│   │   │   │   └── Sidebar.tsx
+│   │   │   └── ui/
+│   │   │       ├── alert-dialog.tsx
+│   │   │       ├── alert.tsx
+│   │   │       ├── avatar.tsx
+│   │   │       ├── badge.tsx
+│   │   │       ├── button.tsx
+│   │   │       ├── card.tsx
+│   │   │       ├── dialog.tsx
+│   │   │       ├── dropdown-menu.tsx
+│   │   │       ├── input.tsx
+│   │   │       ├── label.tsx
+│   │   │       ├── progress.tsx
+│   │   │       ├── select.tsx
+│   │   │       ├── separator.tsx
+│   │   │       ├── skeleton.tsx
+│   │   │       ├── sonner.tsx
+│   │   │       └── table.tsx
+│   │   ├── features/
+│   │   │   └── auth/
+│   │   │       └── contexts/
+│   │   │           └── AuthContext.tsx
+│   │   ├── layouts/
+│   │   │   └── MainLayout.tsx
+│   │   ├── lib/
+│   │   │   └── utils.ts
+│   │   ├── pages/
+│   │   │   ├── DashboardPage.tsx
+│   │   │   ├── LoginPage.tsx
+│   │   │   └── NotFoundPage.tsx
+│   │   ├── routes/
+│   │   │   └── index.tsx
+│   │   ├── types/
+│   │   │   └── auth.ts
+│   │   ├── App.css
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   └── main.tsx
+│   ├── .env
+│   ├── .gitignore
+│   ├── .oxlintrc.json
+│   ├── code-summary.txt
+│   ├── components.json
+│   ├── generate-code-summary.ps1
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── README.md
+│   ├── tsconfig.app.json
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   └── vite.config.ts
+├── scripts/
+├── .env
+├── .gitignore
+├── code-summary.txt
+├── docker-compose.yml
+├── generate-code-summary.ps1
+├── generate_tree.py
+└── README.md
