@@ -29,15 +29,17 @@ export function Header() {
           Guarantee Management System
         </h2>
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center space-x-3 hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors cursor-pointer">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-primary text-white">
-                {admin?.fullName ? getInitials(admin.fullName) : 'A'}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium text-gray-700">
-              {admin?.fullName || 'Admin'}
-            </span>
+          <DropdownMenuTrigger asChild>
+            <div className="flex items-center space-x-3 hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors cursor-pointer">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary text-white">
+                  {admin?.fullName ? getInitials(admin.fullName) : 'A'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium text-gray-700">
+                {admin?.fullName || 'Admin'}
+              </span>
+            </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>

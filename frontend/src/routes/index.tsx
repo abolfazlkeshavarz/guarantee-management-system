@@ -7,6 +7,7 @@ import { PublicRoute } from '@/components/common/PublicRoute'
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { CustomersPage } from '@/features/customers/pages/CustomersPage' // Add this import
 
 // Layouts
 import { MainLayout } from '@/layouts/MainLayout'
@@ -35,6 +36,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="customers" element={<CustomersPage />} /> {/* Add this route */}
         {/* Add other protected routes here */}
       </Route>
 
