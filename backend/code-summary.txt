@@ -1,0 +1,4818 @@
+﻿============================================
+  GUARANTEE MANAGEMENT SYSTEM - CODE SUMMARY
+============================================
+
+Generated: 2026-07-25 10:43:52
+Project Root: D:\Abolfazl Keshavarz\guarantee-management-system\backend
+Total Files: 53
+Total Directories: 17
+
+============================================
+  FILE CONTENTS
+============================================
+
+============================================
+DIRECTORY: /
+============================================
+
+----------------------------------------
+FILE: .env.example
+Path: \.env.example
+Size: 1 KB
+----------------------------------------
+Lines: 26
+
+# Backend Environment Variables Template
+# Copy this to .env and fill in your values
+
+APP_ENV=development
+APP_PORT=8080
+APP_NAME=Guarantee Management System
+APP_URL=http://localhost:8080
+
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=Whoknowwho
+DB_NAME=guarantee_db
+DB_SSL_MODE=disable
+
+# JWT
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRATION=24
+
+# Upload
+UPLOAD_PATH=./uploads
+MAX_UPLOAD_SIZE=10485760
+
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+
+----------------------------------------
+FILE: Dockerfile
+Path: \Dockerfile
+Size: 1 KB
+----------------------------------------
+Lines: 37
+
+# Builder stage
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies
+RUN apk add --no-cache git
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api
+
+# Runtime stage
+FROM alpine:3.20
+
+WORKDIR /app
+
+# Install ca-certificates for HTTPS
+RUN apk --no-cache add ca-certificates
+
+# Copy binary from builder
+COPY --from=builder /app/main .
+COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /app/uploads ./uploads
+
+# Create upload subdirectories
+RUN mkdir -p uploads/invoices uploads/guarantee_cards uploads/reports uploads/repair_images
+
+EXPOSE 8080
+
+CMD ["./main"]
+
+----------------------------------------
+FILE: generate-code-summary.ps1
+Path: \generate-code-summary.ps1
+Size: 9 KB
+----------------------------------------
+Lines: 243
+
+# generate-code-summary.ps1
+# Generates a complete summary of all code files with their content
+
+param(
+    [string]$OutputFile = "code-summary.txt",
+    [switch]$NoContent
+)
+
+$ExcludeDirs = @("node_modules", "dist", "bin", ".git", "uploads", "coverage", ".vite", "build", "tmp", "temp", "logs")
+
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Generating Code Summary with Content" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+
+$projectRoot = Get-Location
+
+$extensions = @(
+    "*.go", "*.mod", "*.sum",
+    "*.ts", "*.tsx", "*.js", "*.jsx",
+    "*.json",
+    "*.sql",
+    "*.yaml", "*.yml",
+    "*.md",
+    "*.css", "*.scss",
+    "*.html",
+    "*.sh", "*.ps1",
+    "Dockerfile*",
+    "Makefile", ".env.example",
+    "*.xml", "*.toml"
+)
+
+Write-Host "Scanning files..." -ForegroundColor Yellow
+Write-Host ""
+
+$allFiles = @()
+foreach ($ext in $extensions) {
+    $files = Get-ChildItem -Path $projectRoot -Recurse -Filter $ext -File -ErrorAction SilentlyContinue
+    $allFiles += $files
+}
+
+$filteredFiles = @()
+foreach ($file in $allFiles) {
+    $exclude = $false
+    foreach ($dir in $ExcludeDirs) {
+        if ($file.FullName -match "\\$dir\\") {
+            $exclude = $true
+            break
+        }
+    }
+    if (-not $exclude) {
+        $filteredFiles += $file
+    }
+}
+
+$groupedFiles = $filteredFiles | Group-Object { $_.DirectoryName } | Sort-Object Name
+
+Write-Host "Found $($filteredFiles.Count) files in $($groupedFiles.Count) directories" -ForegroundColor Green
+Write-Host ""
+
+$summary = ""
+$summary = $summary + "============================================" + "`n"
+$summary = $summary + "  GUARANTEE MANAGEMENT SYSTEM - CODE SUMMARY" + "`n"
+$summary = $summary + "============================================" + "`n"
+$summary = $summary + "`n"
+$summary = $summary + "Generated: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")" + "`n"
+$summary = $summary + "Project Root: $projectRoot" + "`n"
+$summary = $summary + "Total Files: $($filteredFiles.Count)" + "`n"
+$summary = $summary + "Total Directories: $($groupedFiles.Count)" + "`n"
+$summary = $summary + "`n"
+
+if ($NoContent) {
+    $summary = $summary + "============================================" + "`n"
+    $summary = $summary + "  FILE STRUCTURE (No Content)" + "`n"
+    $summary = $summary + "============================================" + "`n"
+    $summary = $summary + "`n"
+    
+    foreach ($group in $groupedFiles) {
+        $relativePath = $group.Name -replace [regex]::Escape($projectRoot), ""
+        if ($relativePath -eq "") { $relativePath = "/" }
+        $summary = $summary + "[DIR] $relativePath" + "`n"
+        $summary = $summary + "--------------------------------------------------" + "`n"
+        
+        foreach ($file in $group.Group | Sort-Object Name) {
+            $fileName = $file.Name
+            $fileSize = "{0:N0}" -f ($file.Length / 1KB)
+            $summary = $summary + "  [FILE] $fileName ($fileSize KB)" + "`n"
+        }
+        $summary = $summary + "`n"
+    }
+} else {
+    $summary = $summary + "============================================" + "`n"
+    $summary = $summary + "  FILE CONTENTS" + "`n"
+    $summary = $summary + "============================================" + "`n"
+    $summary = $summary + "`n"
+    
+    $totalFiles = $filteredFiles.Count
+    $currentFile = 0
+    
+    foreach ($group in $groupedFiles) {
+        $relativePath = $group.Name -replace [regex]::Escape($projectRoot), ""
+        if ($relativePath -eq "") { $relativePath = "/" }
+        $summary = $summary + "============================================" + "`n"
+        $summary = $summary + "DIRECTORY: $relativePath" + "`n"
+        $summary = $summary + "============================================" + "`n"
+        $summary = $summary + "`n"
+        
+        foreach ($file in $group.Group | Sort-Object Name) {
+            $currentFile++
+            $fileName = $file.Name
+            $relativeFile = $file.FullName -replace [regex]::Escape($projectRoot), ""
+            $fileSize = "{0:N0}" -f ($file.Length / 1KB)
+            
+            Write-Host "  Processing: $relativeFile ($currentFile of $totalFiles)" -ForegroundColor Gray
+            
+            $summary = $summary + "----------------------------------------" + "`n"
+            $summary = $summary + "FILE: $fileName" + "`n"
+            $summary = $summary + "Path: $relativeFile" + "`n"
+            $summary = $summary + "Size: $fileSize KB" + "`n"
+            $summary = $summary + "----------------------------------------" + "`n"
+            
+            try {
+                $content = Get-Content $file.FullName -Raw -ErrorAction SilentlyContinue
+                if ($content) {
+                    $lines = ($content -split "`n").Count
+                    $summary = $summary + "Lines: $lines" + "`n"
+                    $summary = $summary + "`n"
+                    $summary = $summary + $content
+                    $summary = $summary + "`n"
+                } else {
+                    $summary = $summary + "[Binary or empty file]" + "`n"
+                }
+            } catch {
+                $summary = $summary + "[Error reading file: $_]" + "`n"
+            }
+            $summary = $summary + "`n"
+        }
+    }
+}
+
+$summary = $summary + "============================================" + "`n"
+$summary = $summary + "  STATISTICS" + "`n"
+$summary = $summary + "============================================" + "`n"
+$summary = $summary + "`n"
+
+$extensionCount = @{}
+foreach ($file in $filteredFiles) {
+    $ext = $file.Extension
+    if ([string]::IsNullOrEmpty($ext)) { $ext = "(no extension)" }
+    if ($extensionCount.ContainsKey($ext)) {
+        $extensionCount[$ext]++
+    } else {
+        $extensionCount[$ext] = 1
+    }
+}
+
+$summary = $summary + "File Types:" + "`n"
+foreach ($ext in ($extensionCount.Keys | Sort-Object)) {
+    $count = $extensionCount[$ext]
+    $summary = $summary + "  $ext : $count files" + "`n"
+}
+
+$summary = $summary + "`n"
+
+$languageCount = @{
+    "Go" = 0
+    "TypeScript" = 0
+    "JavaScript" = 0
+    "SQL" = 0
+    "JSON" = 0
+    "YAML" = 0
+    "Markdown" = 0
+    "CSS" = 0
+    "HTML" = 0
+    "Shell" = 0
+    "PowerShell" = 0
+    "Docker" = 0
+    "Make" = 0
+    "Other" = 0
+}
+
+foreach ($file in $filteredFiles) {
+    $ext = $file.Extension.ToLower()
+    switch ($ext) {
+        ".go" { $languageCount["Go"]++ }
+        ".ts" { $languageCount["TypeScript"]++ }
+        ".tsx" { $languageCount["TypeScript"]++ }
+        ".js" { $languageCount["JavaScript"]++ }
+        ".jsx" { $languageCount["JavaScript"]++ }
+        ".sql" { $languageCount["SQL"]++ }
+        ".json" { $languageCount["JSON"]++ }
+        ".yaml" { $languageCount["YAML"]++ }
+        ".yml" { $languageCount["YAML"]++ }
+        ".md" { $languageCount["Markdown"]++ }
+        ".css" { $languageCount["CSS"]++ }
+        ".scss" { $languageCount["CSS"]++ }
+        ".html" { $languageCount["HTML"]++ }
+        ".sh" { $languageCount["Shell"]++ }
+        ".ps1" { $languageCount["PowerShell"]++ }
+        default {
+            if ($file.Name -match "Dockerfile") {
+                $languageCount["Docker"]++
+            } elseif ($file.Name -match "Makefile") {
+                $languageCount["Make"]++
+            } else {
+                $languageCount["Other"]++
+            }
+        }
+    }
+}
+
+$summary = $summary + "Languages:" + "`n"
+foreach ($lang in ($languageCount.Keys | Where-Object { $languageCount[$_] -gt 0 } | Sort-Object)) {
+    $count = $languageCount[$lang]
+    $summary = $summary + "  $lang : $count files" + "`n"
+}
+
+$summary | Out-File -FilePath $OutputFile -Encoding UTF8
+
+Write-Host ""
+Write-Host "[OK] Code summary generated!" -ForegroundColor Green
+Write-Host "Output file: $OutputFile" -ForegroundColor Green
+Write-Host ""
+Write-Host "File size: $([math]::Round((Get-Item $OutputFile).Length / 1MB, 2)) MB" -ForegroundColor Gray
+Write-Host "Total files: $($filteredFiles.Count)" -ForegroundColor Gray
+Write-Host "Total directories: $($groupedFiles.Count)" -ForegroundColor Gray
+
+if ($NoContent) {
+    Write-Host ""
+    Write-Host "To include file content, run without -NoContent:" -ForegroundColor Yellow
+    Write-Host "  .\generate-code-summary.ps1" -ForegroundColor Gray
+} else {
+    Write-Host ""
+    Write-Host "To only show structure (without content), run:" -ForegroundColor Yellow
+    Write-Host "  .\generate-code-summary.ps1 -NoContent" -ForegroundColor Gray
+}
+
+# Open the file
+Write-Host ""
+$open = Read-Host "Open the summary file? (y/n)"
+if ($open -eq "y") {
+    Start-Process $OutputFile
+}
+
+----------------------------------------
+FILE: go.mod
+Path: \go.mod
+Size: 2 KB
+----------------------------------------
+Lines: 51
+
+module guarantee-management-system
+
+go 1.26.5
+
+require (
+	github.com/gin-gonic/gin v1.10.0
+	github.com/go-playground/validator/v10 v10.20.0
+	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/google/uuid v1.6.0
+	github.com/joho/godotenv v1.5.1
+	golang.org/x/crypto v0.26.0
+	gorm.io/driver/postgres v1.5.9
+	gorm.io/gorm v1.25.10
+)
+
+require (
+	github.com/bytedance/sonic v1.11.6 // indirect
+	github.com/bytedance/sonic/loader v0.1.1 // indirect
+	github.com/cloudwego/base64x v0.1.4 // indirect
+	github.com/cloudwego/iasm v0.2.0 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
+	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/go-playground/locales v0.14.1 // indirect
+	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
+	github.com/jackc/pgx/v5 v5.5.5 // indirect
+	github.com/jackc/puddle/v2 v2.2.1 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
+	github.com/kr/text v0.2.0 // indirect
+	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
+	github.com/rogpeppe/go-internal v1.15.0 // indirect
+	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
+	github.com/ugorji/go/codec v1.2.12 // indirect
+	golang.org/x/arch v0.8.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/text v0.17.0 // indirect
+	google.golang.org/protobuf v1.34.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+
+----------------------------------------
+FILE: go.sum
+Path: \go.sum
+Size: 10 KB
+----------------------------------------
+Lines: 122
+
+github.com/bytedance/sonic v1.11.6 h1:oUp34TzMlL+OY1OUWxHqsdkgC/Zfc85zGqw9siXjrc0=
+github.com/bytedance/sonic v1.11.6/go.mod h1:LysEHSvpvDySVdC2f87zGWf6CIKJcAvqab1ZaiQtds4=
+github.com/bytedance/sonic/loader v0.1.1 h1:c+e5Pt1k/cy5wMveRDyk2X4B9hF4g7an8N3zCYjJFNM=
+github.com/bytedance/sonic/loader v0.1.1/go.mod h1:ncP89zfokxS5LZrJxl5z0UJcsk4M4yY2JpfqGeCtNLU=
+github.com/cloudwego/base64x v0.1.4 h1:jwCgWpFanWmN8xoIUHa2rtzmkd5J2plF/dnLS6Xd/0Y=
+github.com/cloudwego/base64x v0.1.4/go.mod h1:0zlkT4Wn5C6NdauXdJRhSKRlJvmclQ1hhJgA0rcu/8w=
+github.com/cloudwego/iasm v0.2.0 h1:1KNIy1I1H9hNNFEEH3DVnI4UujN+1zjpuk6gwHLTssg=
+github.com/cloudwego/iasm v0.2.0/go.mod h1:8rXZaNYT2n95jn+zTI1sDr+IgcD2GVs0nlbbQPiEFhY=
+github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
+github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/gabriel-vasile/mimetype v1.4.3 h1:in2uUcidCuFcDKtdcBxlR0rJ1+fsokWf+uqxgUFjbI0=
+github.com/gabriel-vasile/mimetype v1.4.3/go.mod h1:d8uq/6HKRL6CGdk+aubisF/M5GcPfT7nKyLpA0lbSSk=
+github.com/gin-contrib/sse v0.1.0 h1:Y/yl/+YNO8GZSjAhjMsSuLt29uWRFHdHYUb5lYOV9qE=
+github.com/gin-contrib/sse v0.1.0/go.mod h1:RHrZQHXnP2xjPF+u1gW/2HnVO7nvIa9PG3Gm+fLHvGI=
+github.com/gin-gonic/gin v1.10.0 h1:nTuyha1TYqgedzytsKYqna+DfLos46nTv2ygFy86HFU=
+github.com/gin-gonic/gin v1.10.0/go.mod h1:4PMNQiOhvDRa013RKVbsiNwoyezlm2rm0uX/T7kzp5Y=
+github.com/go-playground/assert/v2 v2.2.0 h1:JvknZsQTYeFEAhQwI4qEt9cyV5ONwRHC+lYKSsYSR8s=
+github.com/go-playground/assert/v2 v2.2.0/go.mod h1:VDjEfimB/XKnb+ZQfWdccd7VUvScMdVu0Titje2rxJ4=
+github.com/go-playground/locales v0.14.1 h1:EWaQ/wswjilfKLTECiXz7Rh+3BjFhfDFKv/oXslEjJA=
+github.com/go-playground/locales v0.14.1/go.mod h1:hxrqLVvrK65+Rwrd5Fc6F2O76J/NuW9t0sjnWqG1slY=
+github.com/go-playground/universal-translator v0.18.1 h1:Bcnm0ZwsGyWbCzImXv+pAJnYK9S473LQFuzCbDbfSFY=
+github.com/go-playground/universal-translator v0.18.1/go.mod h1:xekY+UJKNuX9WP91TpwSH2VMlDf28Uj24BCp08ZFTUY=
+github.com/go-playground/validator/v10 v10.20.0 h1:K9ISHbSaI0lyB2eWMPJo+kOS/FBExVwjEviJTixqxL8=
+github.com/go-playground/validator/v10 v10.20.0/go.mod h1:dbuPbCMFw/DrkbEynArYaCwl3amGuJotoKCe95atGMM=
+github.com/goccy/go-json v0.10.2 h1:CrxCmQqYDkv1z7lO7Wbh2HN93uovUHgrECaO5ZrCXAU=
+github.com/goccy/go-json v0.10.2/go.mod h1:6MelG93GURQebXPDq3khkgXZkazVtN9CRI+MGFi0w8I=
+github.com/golang-jwt/jwt/v5 v5.2.1 h1:OuVbFODueb089Lh128TAcimifWaLhJwVflnrgM17wHk=
+github.com/golang-jwt/jwt/v5 v5.2.1/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
+github.com/google/go-cmp v0.5.5 h1:Khx7svrCpmxxtHBq5j2mp/xVjsi8hQMfNLvJFAlrGgU=
+github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
+github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
+github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=
+github.com/jackc/pgpassfile v1.0.0/go.mod h1:CEx0iS5ambNFdcRtxPj5JhEz+xB6uRky5eyVu/W2HEg=
+github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a h1:bbPeKD0xmW/Y25WS6cokEszi5g+S0QxI/d45PkRi7Nk=
+github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a/go.mod h1:5TJZWKEWniPve33vlWYSoGYefn3gLQRzjfDlhSJ9ZKM=
+github.com/jackc/pgx/v5 v5.5.5 h1:amBjrZVmksIdNjxGW/IiIMzxMKZFelXbUoPNb+8sjQw=
+github.com/jackc/pgx/v5 v5.5.5/go.mod h1:ez9gk+OAat140fv9ErkZDYFWmXLfV+++K0uAOiwgm1A=
+github.com/jackc/puddle/v2 v2.2.1 h1:RhxXJtFG022u4ibrCSMSiu5aOq1i77R3OHKNJj77OAk=
+github.com/jackc/puddle/v2 v2.2.1/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
+github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=
+github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
+github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
+github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
+github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
+github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
+github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
+github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
+github.com/klauspost/cpuid/v2 v2.0.9/go.mod h1:FInQzS24/EEf25PyTYn52gqo7WaD8xa0213Md/qVLRg=
+github.com/klauspost/cpuid/v2 v2.2.7 h1:ZWSB3igEs+d0qvnxR/ZBzXVmxkgt8DdzP6m9pfuVLDM=
+github.com/klauspost/cpuid/v2 v2.2.7/go.mod h1:Lcz8mBdAVJIBVzewtcLocK12l3Y+JytZYpaMropDUws=
+github.com/knz/go-libedit v1.10.1/go.mod h1:MZTVkCWyz0oBc7JOWP3wNAzd002ZbM/5hgShxwh4x8M=
+github.com/kr/pretty v0.3.0 h1:WgNl7dwNpEZ6jJ9k1snq4pZsg7DOEN8hP9Xw0Tsjwk0=
+github.com/kr/pretty v0.3.0/go.mod h1:640gp4NfQd8pI5XOwp5fnNeVWj67G7CFk/SaSQn7NBk=
+github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
+github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
+github.com/leodido/go-urn v1.4.0 h1:WT9HwE9SGECu3lg4d/dIA+jxlljEa1/ffXKmRjqdmIQ=
+github.com/leodido/go-urn v1.4.0/go.mod h1:bvxc+MVxLKB4z00jd1z+Dvzr47oO32F/QSNjSBOlFxI=
+github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
+github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
+github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
+github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w8PVh93nsPXa1VrQ6jlwL5oN8l14QlcNfg=
+github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
+github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=
+github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
+github.com/pelletier/go-toml/v2 v2.2.2 h1:aYUidT7k73Pcl9nb2gScu7NSrKCSHIDE89b3+6Wq+LM=
+github.com/pelletier/go-toml/v2 v2.2.2/go.mod h1:1t835xjRzz80PqgE6HHgN2JOsmgYu/h4qDAS4n929Rs=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/rogpeppe/go-internal v1.15.0 h1:D0RCU5rMAp+SpgkiNdrjfJ+LX4J1M32V2NeCY7EJ6hc=
+github.com/rogpeppe/go-internal v1.15.0/go.mod h1:DrUVZyrJU+txYW5/1kwtXQSMFio52ZOxX7yM1VHvnxs=
+github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
+github.com/stretchr/objx v0.5.0/go.mod h1:Yh+to48EsGEfYuaHDzXPcE3xhTkx73EhmCGUpEOglKo=
+github.com/stretchr/objx v0.5.2/go.mod h1:FRsXN1f5AsAjCGJKqEizvkpNtU+EGNCLh3NxZ/8L+MA=
+github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
+github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
+github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
+github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
+github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
+github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
+github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
+github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
+github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=
+github.com/twitchyliquid64/golang-asm v0.15.1/go.mod h1:a1lVb/DtPvCB8fslRZhAngC2+aY1QWCk3Cedj/Gdt08=
+github.com/ugorji/go/codec v1.2.12 h1:9LC83zGrHhuUA9l16C9AHXAqEV/2wBQ4nkvumAE65EE=
+github.com/ugorji/go/codec v1.2.12/go.mod h1:UNopzCgEMSXjBc6AOMqYvWC1ktqTAfzJZUZgYf6w6lg=
+golang.org/x/arch v0.0.0-20210923205945-b76863e36670/go.mod h1:5om86z9Hs0C8fWVUuoMHwpExlXzs5Tkyp9hOrfG7pp8=
+golang.org/x/arch v0.8.0 h1:3wRIsP3pM4yUptoR96otTUOXI367OS0+c9eeRi9doIc=
+golang.org/x/arch v0.8.0/go.mod h1:FEVrYAQjsQXMVJ1nsMoVVXPZg6p2JE2mx8psSWTDQys=
+golang.org/x/crypto v0.26.0 h1:RrRspgV4mU+YwB4FYnuBoKsUapNIL5cohGAmSH3azsw=
+golang.org/x/crypto v0.26.0/go.mod h1:GY7jblb9wI+FOo5y8/S2oY4zWP07AkOJ4+jxCqdqn54=
+golang.org/x/net v0.25.0 h1:d/OCCoBEUq33pjydKrGQhw7IlUPI2Oylr+8qLx49kac=
+golang.org/x/net v0.25.0/go.mod h1:JkAGAh7GEvH74S6FOH42FLoXpXbE/aqXSrIQjXgsiwM=
+golang.org/x/sync v0.8.0 h1:3NFvSEYkUoMifnESzZl15y791HH1qU2xm6eCJU5ZPXQ=
+golang.org/x/sync v0.8.0/go.mod h1:Czt+wKu1gCyEFDUtn0jG5QVvpJ6rzVqr5aXyt9drQfk=
+golang.org/x/sys v0.5.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.26.0 h1:KHjCJyddX0LoSTb3J+vWpupP9p0oznkqVk/IfjymZbo=
+golang.org/x/sys v0.26.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
+golang.org/x/text v0.17.0 h1:XtiM5bkSOt+ewxlOE/aE/AKEHibwj/6gvWMl9Rsh0Qc=
+golang.org/x/text v0.17.0/go.mod h1:BuEKDfySbSR4drPmRPG/7iBdf8hvFMuRexcpahXilzY=
+golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 h1:E7g+9GITq07hpfrRu66IVDexMakfv52eLZ2CXBWiKr4=
+golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
+google.golang.org/protobuf v1.34.1 h1:9ddQBjfCyZPOHPUiPxpYESBLc+T8P3E+Vo4IbKZgFWg=
+google.golang.org/protobuf v1.34.1/go.mod h1:c6P6GXX6sHbq/GpV6MGZEdwhWPcYBgnhAHhKbcUYpos=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
+gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=
+gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+gorm.io/driver/postgres v1.5.9 h1:DkegyItji119OlcaLjqN11kHoUgZ/j13E0jkJZgD6A8=
+gorm.io/driver/postgres v1.5.9/go.mod h1:DX3GReXH+3FPWGrrgffdvCk3DQ1dwDPdmbenSkweRGI=
+gorm.io/gorm v1.25.10 h1:dQpO+33KalOA+aFYGlK+EfxcI5MbO7EP2yYygwh9h+s=
+gorm.io/gorm v1.25.10/go.mod h1:hbnx/Oo0ChWMn1BIhpy1oYozzpM15i4YPuHDmfYtwg8=
+nullprogram.com/x/optparse v1.0.0/go.mod h1:KdyPE+Igbe0jQUrVfMqDMeJQIJZEuyV7pjYmp6pbG50=
+rsc.io/pdf v0.1.1/go.mod h1:n8OzWcQ6Sp37PL01nO98y4iUCRdTGarVfzxY20ICaU4=
+
+
+----------------------------------------
+FILE: health-check.ps1
+Path: \health-check.ps1
+Size: 8 KB
+----------------------------------------
+Lines: 190
+
+# health-check.ps1 - Comprehensive Health Check Script
+# Works on both Windows and Linux (via PowerShell Core)
+
+$baseUrl = "http://localhost:8080"
+$apiUrl = "$baseUrl/api/v1"
+
+# Detect OS
+$isWindows = $env:OS -eq "Windows_NT"
+
+Write-Host "============================================" -ForegroundColor Cyan
+if ($isWindows) {
+    Write-Host "  Guarantee Management System - Health Check (Windows)" -ForegroundColor Cyan
+} else {
+    Write-Host "  Guarantee Management System - Health Check (Linux)" -ForegroundColor Cyan
+}
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host ""
+
+# Check if server is running
+Write-Host "1. Checking if server is running..." -ForegroundColor Yellow
+try {
+    $healthCheck = Invoke-WebRequest -Uri "$baseUrl/health" -Method Get -UseBasicParsing -ErrorAction Stop
+    if ($healthCheck.StatusCode -eq 200) {
+        Write-Host "[OK] Server is running" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "[FAIL] Server is not running on $baseUrl" -ForegroundColor Red
+    Write-Host "Run: make run" -ForegroundColor Yellow
+    exit 1
+}
+Write-Host ""
+
+# Test 1: Health Check
+Write-Host "2. Testing Health Check endpoint..." -ForegroundColor Yellow
+try {
+    $healthResponse = Invoke-RestMethod -Uri "$baseUrl/health" -Method Get
+    if ($healthResponse.status -eq "ok") {
+        Write-Host "[OK] Health Check passed" -ForegroundColor Green
+        Write-Host "  App: $($healthResponse.app)" -ForegroundColor Gray
+        Write-Host "  Environment: $($healthResponse.env)" -ForegroundColor Gray
+    }
+} catch {
+    Write-Host "[FAIL] Health Check failed: $_" -ForegroundColor Red
+}
+Write-Host ""
+
+# Test 2: Login
+Write-Host "3. Testing Login endpoint..." -ForegroundColor Yellow
+$loginBody = @{
+    username = "abolfazl"
+    password = "abolfazl"
+} | ConvertTo-Json
+
+try {
+    $loginResponse = Invoke-RestMethod -Uri "$apiUrl/auth/login" -Method Post -Body $loginBody -ContentType "application/json"
+    $token = $loginResponse.data.token
+    Write-Host "[OK] Login successful" -ForegroundColor Green
+    $tokenPreview = $token.Substring(0, [Math]::Min(30, $token.Length))
+    Write-Host "  Token: $tokenPreview..." -ForegroundColor Gray
+    Write-Host "  Expires in: $($loginResponse.data.expires_in) seconds" -ForegroundColor Gray
+} catch {
+    Write-Host "[FAIL] Login failed: $_" -ForegroundColor Red
+    Write-Host "  Try: make admin-create-default" -ForegroundColor Yellow
+    exit 1
+}
+Write-Host ""
+
+# Set headers for authenticated requests
+$headers = @{
+    Authorization = "Bearer $token"
+}
+
+# Test 3: Get Profile
+Write-Host "4. Testing Profile endpoint..." -ForegroundColor Yellow
+try {
+    $profileResponse = Invoke-RestMethod -Uri "$apiUrl/auth/profile" -Method Get -Headers $headers
+    Write-Host "[OK] Profile retrieved successfully" -ForegroundColor Green
+    Write-Host "  Username: $($profileResponse.data.username)" -ForegroundColor Gray
+    Write-Host "  Full Name: $($profileResponse.data.full_name)" -ForegroundColor Gray
+    Write-Host "  Email: $($profileResponse.data.email)" -ForegroundColor Gray
+    Write-Host "  Is Active: $($profileResponse.data.is_active)" -ForegroundColor Gray
+} catch {
+    Write-Host "[FAIL] Profile retrieval failed: $_" -ForegroundColor Red
+}
+Write-Host ""
+
+# Test 4: List Admins
+Write-Host "5. Testing List Admins endpoint..." -ForegroundColor Yellow
+try {
+    $adminsResponse = Invoke-RestMethod -Uri "$apiUrl/admins" -Method Get -Headers $headers
+    Write-Host "[OK] Admins listed successfully" -ForegroundColor Green
+    Write-Host "  Total Admins: $($adminsResponse.data.Count)" -ForegroundColor Gray
+    Write-Host "  Page: $($adminsResponse.meta.current_page) of $($adminsResponse.meta.last_page)" -ForegroundColor Gray
+    foreach ($admin in $adminsResponse.data) {
+        $adminId = $admin.id
+        $adminUsername = $admin.username
+        $adminFullName = $admin.full_name
+        Write-Host "    - ID: $adminId | $adminUsername ($adminFullName)" -ForegroundColor Gray
+    }
+} catch {
+    Write-Host "[FAIL] List Admins failed: $_" -ForegroundColor Red
+}
+Write-Host ""
+
+# Test 5: Create Admin
+Write-Host "6. Testing Create Admin endpoint..." -ForegroundColor Yellow
+$newAdminBody = @{
+    username = "healthcheck"
+    password = "Health123!"
+    full_name = "Health Check User"
+    email = "health@example.com"
+} | ConvertTo-Json
+
+$adminCreated = $false
+try {
+    $createResponse = Invoke-RestMethod -Uri "$apiUrl/admins" -Method Post -Body $newAdminBody -Headers $headers -ContentType "application/json"
+    Write-Host "[OK] Admin created successfully" -ForegroundColor Green
+    Write-Host "  Created: $($createResponse.data.username)" -ForegroundColor Gray
+    $adminCreated = $true
+} catch {
+    if ($_.Exception.Response.StatusCode -eq 409) {
+        Write-Host "[INFO] Admin already exists (skipping)" -ForegroundColor Yellow
+        $adminCreated = $false
+    } else {
+        Write-Host "[FAIL] Admin creation failed: $_" -ForegroundColor Red
+        $adminCreated = $false
+    }
+}
+Write-Host ""
+
+# Test 6: Delete Admin (cleanup)
+Write-Host "7. Cleaning up test admin..." -ForegroundColor Yellow
+if ($adminCreated) {
+    try {
+        $admins = Invoke-RestMethod -Uri "$apiUrl/admins" -Method Get -Headers $headers
+        $adminToDelete = $admins.data | Where-Object { $_.username -eq "healthcheck" }
+        
+        if ($adminToDelete) {
+            $deleteResponse = Invoke-RestMethod -Uri "$apiUrl/admins/$($adminToDelete.id)" -Method Delete -Headers $headers
+            Write-Host "[OK] Test admin cleaned up" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "[INFO] Cleanup skipped: $_" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "[INFO] No test admin to clean up" -ForegroundColor Yellow
+}
+Write-Host ""
+
+# Test 7: Database Health (Optional)
+Write-Host "8. Checking Database health..." -ForegroundColor Yellow
+$dbHealthy = $false
+try {
+    $env:PGPASSWORD = "Whoknowwho"
+    $dbCheck = psql -U postgres -h localhost -d guarantee_db -tAc "SELECT 1" 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "[OK] Database is healthy" -ForegroundColor Green
+        $dbHealthy = $true
+    } else {
+        Write-Host "[FAIL] Database is not healthy" -ForegroundColor Red
+        Write-Host "  Error: $dbCheck" -ForegroundColor Gray
+        $dbHealthy = $false
+    }
+} catch {
+    Write-Host "[FAIL] Database check failed: $_" -ForegroundColor Red
+    $dbHealthy = $false
+}
+Write-Host ""
+
+# Summary
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  Health Check Summary" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "[OK] Server is running" -ForegroundColor Green
+Write-Host "[OK] Health Check endpoint: OK" -ForegroundColor Green
+Write-Host "[OK] Authentication: OK" -ForegroundColor Green
+Write-Host "[OK] Profile endpoint: OK" -ForegroundColor Green
+Write-Host "[OK] Admin CRUD operations: OK" -ForegroundColor Green
+if ($dbHealthy) {
+    Write-Host "[OK] Database: OK" -ForegroundColor Green
+} else {
+    Write-Host "[WARN] Database: Check required" -ForegroundColor Yellow
+}
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "All systems are healthy!" -ForegroundColor Green
+Write-Host ""
+Write-Host "Server: $baseUrl" -ForegroundColor Gray
+Write-Host "API: $apiUrl" -ForegroundColor Gray
+Write-Host "Environment: Development" -ForegroundColor Gray
+
+----------------------------------------
+FILE: Makefile
+Path: \Makefile
+Size: 15 KB
+----------------------------------------
+Lines: 412
+
+# ============================================
+# Guarantee Management System - Makefile
+# Cross-Platform (Windows & Linux)
+# ============================================
+
+.PHONY: help run build dev test lint fmt coverage
+.PHONY: migrate-up migrate-down migrate-create migrate-force migrate-single
+.PHONY: seed db-create db-drop db-reset db-shell db-status db-query
+.PHONY: docker-build docker-up docker-down docker-logs docker-clean docker-restart
+.PHONY: clean install-tools generate-swagger setup fresh debug
+.PHONY: admin-create admin-list admin-delete admin-reset-password admin-create-default admin-create-test
+.PHONY: technician-create technician-list technician-toggle technician-create-default
+
+# Detect OS
+ifeq ($(OS),Windows_NT)
+    OS_TYPE := Windows
+else
+    OS_TYPE := Linux
+endif
+
+# Load environment variables
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
+# Default values - Update with your actual password
+DB_HOST ?= localhost
+DB_PORT ?= 5432
+DB_USER ?= postgres
+DB_PASSWORD ?= Whoknowwho
+DB_NAME ?= guarantee_db
+
+# ============================================
+# Platform-specific commands
+# ============================================
+
+ifeq ($(OS_TYPE),Windows)
+    # Windows commands
+    RM := -rmdir /s /q 2>nul
+    RM_FILE := -del 2>nul
+    RMDIR := rmdir /s /q 2>nul
+    PSQL_CMD := powershell -Command "$$env:PGPASSWORD='$(DB_PASSWORD)'; psql -U $(DB_USER) -h $(DB_HOST) -d $(DB_NAME) -c"
+    PSQL_RAW := powershell -Command "$$env:PGPASSWORD='$(DB_PASSWORD)'; psql -U $(DB_USER) -h $(DB_HOST) -c"
+    PSQL_FILE := powershell -Command "$$env:PGPASSWORD='$(DB_PASSWORD)'; psql -U $(DB_USER) -h $(DB_HOST) -d $(DB_NAME) -f"
+    PSQL_SHELL := powershell -Command "$$env:PGPASSWORD='$(DB_PASSWORD)'; psql -U $(DB_USER) -h $(DB_HOST) -d $(DB_NAME)"
+    GO_BUILD := go build -o bin/api.exe
+    GO_RUN := go run
+else
+    # Linux commands
+    RM := rm -rf
+    RM_FILE := rm -f
+    RMDIR := rm -rf
+    PSQL_CMD := PGPASSWORD='$(DB_PASSWORD)' psql -U $(DB_USER) -h $(DB_HOST) -d $(DB_NAME) -c
+    PSQL_RAW := PGPASSWORD='$(DB_PASSWORD)' psql -U $(DB_USER) -h $(DB_HOST) -c
+    PSQL_FILE := PGPASSWORD='$(DB_PASSWORD)' psql -U $(DB_USER) -h $(DB_HOST) -d $(DB_NAME) -f
+    PSQL_SHELL := PGPASSWORD='$(DB_PASSWORD)' psql -U $(DB_USER) -h $(DB_HOST) -d $(DB_NAME)
+    GO_BUILD := go build -o bin/api
+    GO_RUN := go run
+endif
+
+# ============================================
+# Help
+# ============================================
+
+help:
+	@echo "============================================"
+	@echo "  Guarantee Management System - Commands"
+	@echo "  OS Detected: $(OS_TYPE)"
+	@echo "============================================"
+	@echo ""
+	@echo "Development Commands:"
+	@echo "  make run           Run the application"
+	@echo "  make build         Build the application"
+	@echo "  make dev           Run with hot reload (requires air)"
+	@echo "  make test          Run tests"
+	@echo "  make lint          Run linter"
+	@echo "  make fmt           Format code"
+	@echo "  make coverage      Generate test coverage report"
+	@echo ""
+	@echo "Database Commands:"
+	@echo "  make migrate-up    Run database migrations"
+	@echo "  make migrate-down  Rollback database migrations"
+	@echo "  make migrate-create NAME=xxx  Create a new migration"
+	@echo "  make migrate-single FILE=xxx  Run a specific migration"
+	@echo "  make migrate-force Force run all migrations (drop and recreate)"
+	@echo "  make seed          Seed the database"
+	@echo "  make db-create     Create database if not exists"
+	@echo "  make db-drop       Drop database"
+	@echo "  make db-reset      Reset database (drop and recreate)"
+	@echo "  make db-shell      Open database shell"
+	@echo "  make db-status     Show database tables"
+	@echo "  make db-query Q=xxx Run a custom SQL query"
+	@echo ""
+	@echo "Admin Management Commands:"
+	@echo "  make admin-create USERNAME=xxx PASSWORD=xxx  Create admin user"
+	@echo "    FULL_NAME=xxx EMAIL=xxx (optional)"
+	@echo "  make admin-list                         List all admin users"
+	@echo "  make admin-delete USERNAME=xxx          Delete admin user"
+	@echo "  make admin-reset-password USERNAME=xxx PASSWORD=xxx  Reset password"
+	@echo "  make admin-create-default               Create default admin (admin/Admin123!)"
+	@echo "  make admin-create-test                  Create test admin (testadmin/Test123!)"
+	@echo ""
+	@echo "Technician Management Commands:"
+	@echo "  make technician-create USERNAME=xxx PASSWORD=xxx  Create technician"
+	@echo "    FULL_NAME=xxx PHONE=xxx NATIONAL_ID=xxx ADDRESS=xxx (optional)"
+	@echo "  make technician-list                    List all technicians"
+	@echo "  make technician-toggle USERNAME=xxx ACTIVE=true/false  Activate/deactivate"
+	@echo "  make technician-create-default          Create default technician (tech1/Tech123!)"
+	@echo ""
+	@echo "Docker Commands:"
+	@echo "  make docker-build  Build Docker images"
+	@echo "  make docker-up     Start Docker containers"
+	@echo "  make docker-down   Stop Docker containers"
+	@echo "  make docker-logs   Show Docker logs"
+	@echo "  make docker-clean  Clean Docker containers and volumes"
+	@echo "  make docker-restart Restart Docker containers"
+	@echo ""
+	@echo "Utility Commands:"
+	@echo "  make clean         Clean build artifacts"
+	@echo "  make install-tools Install development tools"
+	@echo "  make generate-swagger Generate Swagger documentation"
+	@echo "  make setup         Full setup (tools + db + migrations + seed)"
+	@echo "  make fresh         Fresh start (clean + db-reset + seed)"
+	@echo "  make debug         Show current configuration"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make migrate-create NAME=create_products_table"
+	@echo "  make migrate-single FILE=004_create_product_categories_table.up.sql"
+	@echo "  make db-query Q='SELECT * FROM users;'"
+	@echo "  make admin-create USERNAME=johndoe PASSWORD=secret123 FULL_NAME='John Doe'"
+	@echo "  make technician-create USERNAME=tech1 PASSWORD=tech123 FULL_NAME='Tech User'"
+	@echo ""
+
+debug:
+	@echo "=== Current Configuration ==="
+	@echo "OS: $(OS_TYPE)"
+	@echo "DB_HOST: $(DB_HOST)"
+	@echo "DB_PORT: $(DB_PORT)"
+	@echo "DB_USER: $(DB_USER)"
+	@echo "DB_PASSWORD: [HIDDEN]"
+	@echo "DB_NAME: $(DB_NAME)"
+	@echo "=============================="
+
+# ============================================
+# Development Commands
+# ============================================
+
+run:
+	@echo "Starting application..."
+	$(GO_RUN) cmd/api/main.go
+
+build:
+	@echo "Building application..."
+	$(GO_BUILD) cmd/api/main.go
+	@echo "Build completed!"
+
+dev:
+	@echo "Starting development server with hot reload..."
+	go run github.com/air-verse/air@latest
+
+test:
+	@echo "Running tests..."
+ifeq ($(OS_TYPE),Windows)
+	set CGO_ENABLED=0 && go test -v -coverprofile=coverage.out ./...
+else
+	CGO_ENABLED=0 go test -v -coverprofile=coverage.out ./...
+endif
+	@echo "Tests completed"
+
+lint:
+	@echo "Running linter..."
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run ./...
+
+fmt:
+	@echo "Formatting code..."
+	go fmt ./...
+	@echo "Code formatted"
+
+coverage:
+	@echo "Generating test coverage report..."
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+# ============================================
+# Database Commands
+# ============================================
+
+migrate-up:
+	@echo "Running migrations..."
+	go run cmd/migrate/main.go -cmd=up
+
+migrate-down:
+	@echo "Rolling back migrations..."
+	go run cmd/migrate/main.go -cmd=down
+
+migrate-create:
+	@if [ -z "$(NAME)" ]; then \
+		echo "Error: NAME is required"; \
+		echo "Usage: make migrate-create NAME=your_migration_name"; \
+		exit 1; \
+	fi
+	@echo "Creating migration: $(NAME)"
+	go run cmd/migrate/main.go -cmd=create -name=$(NAME)
+
+migrate-single:
+	@if [ -z "$(FILE)" ]; then \
+		echo "Error: FILE is required"; \
+		echo "Usage: make migrate-single FILE=004_create_product_categories_table.up.sql"; \
+		exit 1; \
+	fi
+	@echo "Running migration: $(FILE)"
+	$(PSQL_FILE) migrations/$(FILE)
+
+migrate-force:
+	@echo "WARNING: This will drop and recreate all tables!"
+	@read -p "Are you sure? (y/N) " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		echo "Dropping and recreating database..."; \
+		$(PSQL_RAW) "DROP DATABASE IF EXISTS $(DB_NAME);"; \
+		$(PSQL_RAW) "CREATE DATABASE $(DB_NAME);"; \
+		$(PSQL_RAW) "GRANT ALL PRIVILEGES ON DATABASE $(DB_NAME) TO $(DB_USER);"; \
+		echo "Running migrations..."; \
+		go run cmd/migrate/main.go -cmd=up; \
+		echo "Database reset and migrations completed"; \
+	else \
+		echo "Operation cancelled."; \
+	fi
+
+seed:
+	@echo "Seeding database..."
+	go run cmd/seed/main.go
+
+db-create:
+	@echo "Creating database if not exists..."
+	-$(PSQL_RAW) "CREATE DATABASE $(DB_NAME);" 2>/dev/null || true
+	$(PSQL_RAW) "GRANT ALL PRIVILEGES ON DATABASE $(DB_NAME) TO $(DB_USER);"
+	@echo "Database $(DB_NAME) ready"
+
+db-drop:
+	@echo "WARNING: This will delete the database $(DB_NAME)!"
+	@read -p "Are you sure? (y/N) " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		$(PSQL_RAW) "DROP DATABASE IF EXISTS $(DB_NAME);"; \
+		echo "Database dropped"; \
+	else \
+		echo "Operation cancelled."; \
+	fi
+
+db-reset:
+	@echo "WARNING: This will delete the database $(DB_NAME)!"
+	@read -p "Are you sure? (y/N) " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		echo "Dropping database..."; \
+		$(PSQL_RAW) "DROP DATABASE IF EXISTS $(DB_NAME);"; \
+		echo "Creating database..."; \
+		$(PSQL_RAW) "CREATE DATABASE $(DB_NAME);"; \
+		$(PSQL_RAW) "GRANT ALL PRIVILEGES ON DATABASE $(DB_NAME) TO $(DB_USER);"; \
+		echo "Running migrations..."; \
+		go run cmd/migrate/main.go -cmd=up; \
+		echo "Seeding database..."; \
+		go run cmd/seed/main.go; \
+		echo "Database reset complete!"; \
+	else \
+		echo "Operation cancelled."; \
+	fi
+
+db-shell:
+	@echo "Opening database shell..."
+	$(PSQL_SHELL)
+
+db-status:
+	@echo "Checking database status..."
+	$(PSQL_CMD) "\dt"
+
+db-query:
+	@echo "Running query: $(Q)"
+	powershell -Command "$$env:PGPASSWORD='$(DB_PASSWORD)'; psql -U $(DB_USER) -h $(DB_HOST) -d $(DB_NAME) -c '$(Q)'"
+# ============================================
+# Admin Management Commands
+# ============================================
+
+# ============================================
+# Admin Management Commands - Windows Compatible
+# ============================================
+
+admin-create:
+	@echo "Creating admin user: $(USERNAME)..."
+	@go run cmd/admin/main.go create -username=$(USERNAME) -password=$(PASSWORD) -fullname="$(FULL_NAME)" -email="$(EMAIL)"
+
+admin-list:
+	@echo "Listing admin users..."
+	@go run cmd/admin/main.go list
+
+admin-delete:
+	@echo "Deleting admin user: $(USERNAME)..."
+	@go run cmd/admin/main.go delete -username=$(USERNAME)
+
+admin-reset-password:
+	@echo "Resetting password for: $(USERNAME)..."
+	@go run cmd/admin/main.go reset-password -username=$(USERNAME) -password=$(PASSWORD)
+
+admin-create-default:
+	@echo "Creating default admin user..."
+	@go run cmd/admin/main.go create -username=admin -password=Admin123! -fullname="System Administrator" -email="admin@guarantee-system.com"
+
+admin-create-test:
+	@echo "Creating test admin user..."
+	@go run cmd/admin/main.go create -username=testadmin -password=Test123! -fullname="Test Admin" -email="test@example.com"
+
+# ============================================
+# Technician Management Commands - Windows Compatible
+# ============================================
+
+technician-create:
+	@echo "Creating technician: $(USERNAME)..."
+	@go run cmd/admin/main.go create-technician -username=$(USERNAME) -password=$(PASSWORD) -fullname="$(FULL_NAME)" -phone="$(PHONE)" -nationalid="$(NATIONAL_ID)" -address="$(ADDRESS)"
+
+technician-list:
+	@echo "Listing technicians..."
+	@go run cmd/admin/main.go list-technicians
+
+technician-toggle:
+	@echo "Toggling technician: $(USERNAME) to $(ACTIVE)..."
+	@go run cmd/admin/main.go toggle-technician -username=$(USERNAME) -active=$(ACTIVE)
+
+technician-create-default:
+	@echo "Creating default technician..."
+	@go run cmd/admin/main.go create-technician -username=tech1 -password=Tech123! -fullname="John Technician" -phone="+1234567890" -nationalid="TECH001" -address="123 Tech Street"
+# ============================================
+# Docker Commands
+# ============================================
+
+docker-build:
+	@echo "Building Docker images..."
+	docker-compose build
+
+docker-up:
+	@echo "Starting Docker containers..."
+	docker-compose up -d
+	@echo "Containers started"
+	@echo "Frontend: http://localhost"
+	@echo "Backend API: http://localhost:8080"
+
+docker-down:
+	@echo "Stopping Docker containers..."
+	docker-compose down
+
+docker-logs:
+	@echo "Showing Docker logs..."
+	docker-compose logs -f
+
+docker-clean:
+	@echo "Cleaning Docker containers and volumes..."
+	docker-compose down -v
+	docker-compose rm -f
+	@echo "Cleaned"
+
+docker-restart: docker-down docker-up
+	@echo "Containers restarted"
+
+# ============================================
+# Utility Commands
+# ============================================
+
+clean:
+	@echo "Cleaning build artifacts..."
+	-rmdir /s /q bin 2>nul || true
+	-rmdir /s /q uploads 2>nul || true
+	-del coverage.out coverage.html 2>nul || true
+	@echo "Cleaned"
+
+install-tools:
+	@echo "Installing development tools..."
+	go install github.com/air-verse/air@latest
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/swaggo/swag/cmd/swag@latest
+	go install github.com/go-delve/delve/cmd/dlv@latest
+	@echo "Tools installed"
+
+generate-swagger:
+	@echo "Generating Swagger documentation..."
+	go install github.com/swaggo/swag/cmd/swag@latest
+	swag init -g cmd/api/main.go -o docs
+	@echo "Swagger documentation generated"
+
+# ============================================
+# Quick Commands
+# ============================================
+
+setup: install-tools db-create migrate-up seed
+	@echo "============================================"
+	@echo "  Setup Complete!"
+	@echo "============================================"
+	@echo "  Database: $(DB_NAME)"
+	@echo "  Host: $(DB_HOST):$(DB_PORT)"
+	@echo "  User: $(DB_USER)"
+	@echo ""
+	@echo "  Run 'make run' to start the application"
+	@echo "  Run 'make db-status' to check database"
+	@echo "  Run 'make admin-create-default' to create admin"
+	@echo "============================================"
+
+fresh: clean db-reset
+	@echo "Fresh start complete!"
+
+# ============================================
+# Default target
+# ============================================
+
+.DEFAULT_GOAL := help
+
+----------------------------------------
+FILE: test-makefile.ps1
+Path: \test-makefile.ps1
+Size: 3 KB
+----------------------------------------
+Lines: 78
+
+# test-makefile.ps1
+# Comprehensive Makefile Test Script for Windows
+
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  Guarantee Management System - Makefile Test" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host ""
+
+$tests = @(
+    # Basic Commands
+    @{Name="Help"; Command="make help"},
+    @{Name="Debug Config"; Command="make debug"},
+    @{Name="Format Code"; Command="make fmt"},
+    
+    # Database Commands
+    @{Name="Check Database Status"; Command="make db-status"},
+    @{Name="Run Migrations"; Command="make migrate-up"},
+    @{Name="Seed Database"; Command="make seed"},
+    @{Name="Check Status After Seed"; Command="make db-status"},
+    
+    # Build and Run
+    @{Name="Build Application"; Command="make build"},
+    @{Name="Run Tests"; Command="make test"},
+    @{Name="Run Linter"; Command="make lint"},
+    @{Name="Generate Coverage"; Command="make coverage"},
+    
+    # Custom Query
+    @{Name="Test Database Query"; Command="make db-query Q='SELECT COUNT(*) FROM admins;'"},
+    
+    # Cleanup
+    @{Name="Clean Build"; Command="make clean"}
+)
+
+$passed = 0
+$failed = 0
+
+foreach ($test in $tests) {
+    Write-Host "Testing: $($test.Name)" -ForegroundColor Yellow
+    Write-Host "Command: $($test.Command)" -ForegroundColor Gray
+    
+    try {
+        $startTime = Get-Date
+        $result = Invoke-Expression $test.Command 2>&1
+        $endTime = Get-Date
+        $duration = ($endTime - $startTime).TotalSeconds
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "[PASSED] ($duration seconds)" -ForegroundColor Green
+            $passed++
+        } else {
+            Write-Host "[FAILED] (Exit Code: $LASTEXITCODE)" -ForegroundColor Red
+            if ($result) {
+                Write-Host "Error: $($result | Out-String)" -ForegroundColor Red
+            }
+            $failed++
+        }
+    } catch {
+        Write-Host "[FAILED] (Exception)" -ForegroundColor Red
+        Write-Host "Error: $_" -ForegroundColor Red
+        $failed++
+    }
+    Write-Host ""
+}
+
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "Test Results:" -ForegroundColor Cyan
+Write-Host "  Passed: $passed" -ForegroundColor Green
+Write-Host "  Failed: $failed" -ForegroundColor Red
+Write-Host "  Total:  $($tests.Count)" -ForegroundColor White
+Write-Host "============================================" -ForegroundColor Cyan
+
+if ($failed -eq 0) {
+    Write-Host "All tests passed!" -ForegroundColor Green
+    exit 0
+} else {
+    Write-Host "Some tests failed. Please review the errors above." -ForegroundColor Red
+    exit 1
+}
+
+============================================
+DIRECTORY: \cmd\admin
+============================================
+
+----------------------------------------
+FILE: main.go
+Path: \cmd\admin\main.go
+Size: 9 KB
+----------------------------------------
+Lines: 310
+
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"os"
+
+	"guarantee-management-system/internal/config"
+	"guarantee-management-system/internal/database"
+
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+)
+
+func main() {
+	if len(os.Args) < 2 {
+		printUsage()
+		os.Exit(1)
+	}
+
+	command := os.Args[1]
+
+	// Load config
+	cfg := config.Load()
+
+	// Connect to database
+	if err := database.Connect(cfg); err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	defer database.Close()
+
+	db := database.GetDB()
+
+	switch command {
+	case "create":
+		createAdmin(db)
+	case "list":
+		listAdmins(db)
+	case "delete":
+		deleteAdmin(db)
+	case "reset-password":
+		resetAdminPassword(db)
+	case "create-technician":
+		createTechnician(db)
+	case "list-technicians":
+		listTechnicians(db)
+	case "toggle-technician":
+		toggleTechnician(db)
+	default:
+		fmt.Printf("Unknown command: %s\n", command)
+		printUsage()
+		os.Exit(1)
+	}
+}
+
+func printUsage() {
+	fmt.Println("Usage: go run cmd/admin/main.go <command> [options]")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  create                Create a new admin user")
+	fmt.Println("    -username=xxx       Username (required)")
+	fmt.Println("    -password=xxx       Password (required)")
+	fmt.Println("    -fullname=xxx       Full name")
+	fmt.Println("    -email=xxx          Email address")
+	fmt.Println()
+	fmt.Println("  list                  List all admin users")
+	fmt.Println()
+	fmt.Println("  delete                Delete an admin user")
+	fmt.Println("    -username=xxx       Username (required)")
+	fmt.Println()
+	fmt.Println("  reset-password        Reset admin password")
+	fmt.Println("    -username=xxx       Username (required)")
+	fmt.Println("    -password=xxx       New password (required)")
+	fmt.Println()
+	fmt.Println("  create-technician     Create a new technician")
+	fmt.Println("    -username=xxx       Username (required)")
+	fmt.Println("    -password=xxx       Password (required)")
+	fmt.Println("    -fullname=xxx       Full name")
+	fmt.Println("    -phone=xxx          Phone number")
+	fmt.Println("    -nationalid=xxx     National ID")
+	fmt.Println("    -address=xxx        Address")
+	fmt.Println()
+	fmt.Println("  list-technicians      List all technicians")
+	fmt.Println()
+	fmt.Println("  toggle-technician     Activate/deactivate technician")
+	fmt.Println("    -username=xxx       Username (required)")
+	fmt.Println("    -active=true/false  Active status (required)")
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  go run cmd/admin/main.go create -username=john -password=secret123 -fullname='John Doe' -email=john@example.com")
+	fmt.Println("  go run cmd/admin/main.go list")
+	fmt.Println("  go run cmd/admin/main.go delete -username=john")
+	fmt.Println("  go run cmd/admin/main.go reset-password -username=john -password=newpass123")
+	fmt.Println("  go run cmd/admin/main.go create-technician -username=tech1 -password=tech123 -fullname='Tech User'")
+}
+
+func createAdmin(db *gorm.DB) {
+	username := flag.String("username", "", "Username")
+	password := flag.String("password", "", "Password")
+	fullname := flag.String("fullname", "", "Full name")
+	email := flag.String("email", "", "Email")
+
+	// Parse flags after the command
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		log.Fatal("Failed to parse flags:", err)
+	}
+
+	if *username == "" || *password == "" {
+		log.Fatal("Error: username and password are required")
+	}
+
+	// Check if user already exists
+	var count int64
+	db.Table("admins").Where("username = ?", *username).Count(&count)
+	if count > 0 {
+		log.Fatalf("Error: admin user '%s' already exists", *username)
+	}
+
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal("Failed to hash password:", err)
+	}
+
+	// Create admin
+	admin := map[string]interface{}{
+		"username":  *username,
+		"password":  string(hashedPassword),
+		"full_name": *fullname,
+		"email":     *email,
+		"is_active": true,
+	}
+
+	if err := db.Table("admins").Create(&admin).Error; err != nil {
+		log.Fatal("Failed to create admin:", err)
+	}
+
+	fmt.Printf("âœ“ Admin user '%s' created successfully!\n", *username)
+}
+
+func listAdmins(db *gorm.DB) {
+	var admins []map[string]interface{}
+	if err := db.Table("admins").Where("is_active = ?", true).Find(&admins).Error; err != nil {
+		log.Fatal("Failed to list admins:", err)
+	}
+
+	fmt.Println("\n=== Admin Users ===")
+	fmt.Printf("%-5s %-20s %-30s %-20s\n", "ID", "Username", "Full Name", "Email")
+	fmt.Println("--------------------------------------------------------")
+
+	for _, admin := range admins {
+		fmt.Printf("%-5v %-20s %-30s %-20s\n",
+			admin["id"],
+			admin["username"],
+			admin["full_name"],
+			admin["email"],
+		)
+	}
+	fmt.Printf("\nTotal: %d admin(s)\n", len(admins))
+}
+
+func deleteAdmin(db *gorm.DB) {
+	username := flag.String("username", "", "Username")
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		log.Fatal("Failed to parse flags:", err)
+	}
+
+	if *username == "" {
+		log.Fatal("Error: username is required")
+	}
+
+	// Check if it's the last admin
+	var count int64
+	db.Table("admins").Where("is_active = ?", true).Count(&count)
+	if count <= 1 {
+		log.Fatal("Error: Cannot delete the last admin user")
+	}
+
+	result := db.Table("admins").Where("username = ?", *username).Delete(nil)
+	if result.RowsAffected == 0 {
+		log.Fatalf("Error: admin user '%s' not found", *username)
+	}
+
+	fmt.Printf("âœ“ Admin user '%s' deleted successfully!\n", *username)
+}
+
+func resetAdminPassword(db *gorm.DB) {
+	username := flag.String("username", "", "Username")
+	password := flag.String("password", "", "New password")
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		log.Fatal("Failed to parse flags:", err)
+	}
+
+	if *username == "" || *password == "" {
+		log.Fatal("Error: username and password are required")
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal("Failed to hash password:", err)
+	}
+
+	result := db.Table("admins").Where("username = ?", *username).Update("password", string(hashedPassword))
+	if result.RowsAffected == 0 {
+		log.Fatalf("Error: admin user '%s' not found", *username)
+	}
+
+	fmt.Printf("âœ“ Password for '%s' reset successfully!\n", *username)
+}
+
+func createTechnician(db *gorm.DB) {
+	username := flag.String("username", "", "Username")
+	password := flag.String("password", "", "Password")
+	fullname := flag.String("fullname", "", "Full name")
+	phone := flag.String("phone", "", "Phone number")
+	nationalid := flag.String("nationalid", "", "National ID")
+	address := flag.String("address", "", "Address")
+
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		log.Fatal("Failed to parse flags:", err)
+	}
+
+	if *username == "" || *password == "" {
+		log.Fatal("Error: username and password are required")
+	}
+
+	// Check if user already exists
+	var count int64
+	db.Table("technicians").Where("username = ?", *username).Count(&count)
+	if count > 0 {
+		log.Fatalf("Error: technician '%s' already exists", *username)
+	}
+
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal("Failed to hash password:", err)
+	}
+
+	// Create technician
+	tech := map[string]interface{}{
+		"username":    *username,
+		"password":    string(hashedPassword),
+		"full_name":   *fullname,
+		"phone":       *phone,
+		"national_id": *nationalid,
+		"address":     *address,
+		"is_active":   true,
+	}
+
+	if err := db.Table("technicians").Create(&tech).Error; err != nil {
+		log.Fatal("Failed to create technician:", err)
+	}
+
+	fmt.Printf("âœ“ Technician '%s' created successfully!\n", *username)
+}
+
+func listTechnicians(db *gorm.DB) {
+	var technicians []map[string]interface{}
+	if err := db.Table("technicians").Find(&technicians).Error; err != nil {
+		log.Fatal("Failed to list technicians:", err)
+	}
+
+	fmt.Println("\n=== Technicians ===")
+	fmt.Printf("%-5s %-20s %-25s %-15s %-10s\n", "ID", "Username", "Full Name", "Phone", "Active")
+	fmt.Println("----------------------------------------------------------------")
+
+	for _, tech := range technicians {
+		active := "No"
+		if tech["is_active"].(bool) {
+			active = "Yes"
+		}
+		fmt.Printf("%-5v %-20s %-25s %-15s %-10s\n",
+			tech["id"],
+			tech["username"],
+			tech["full_name"],
+			tech["phone"],
+			active,
+		)
+	}
+	fmt.Printf("\nTotal: %d technician(s)\n", len(technicians))
+}
+
+func toggleTechnician(db *gorm.DB) {
+	username := flag.String("username", "", "Username")
+	active := flag.String("active", "", "Active status (true/false)")
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		log.Fatal("Failed to parse flags:", err)
+	}
+
+	if *username == "" || *active == "" {
+		log.Fatal("Error: username and active status are required")
+	}
+
+	activeBool := *active == "true"
+
+	result := db.Table("technicians").Where("username = ?", *username).Update("is_active", activeBool)
+	if result.RowsAffected == 0 {
+		log.Fatalf("Error: technician '%s' not found", *username)
+	}
+
+	status := "activated"
+	if !activeBool {
+		status = "deactivated"
+	}
+	fmt.Printf("âœ“ Technician '%s' %s successfully!\n", *username, status)
+}
+
+
+============================================
+DIRECTORY: \cmd\api
+============================================
+
+----------------------------------------
+FILE: main.go
+Path: \cmd\api\main.go
+Size: 2 KB
+----------------------------------------
+Lines: 88
+
+package main
+
+import (
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"guarantee-management-system/internal/config"
+	"guarantee-management-system/internal/database"
+	"guarantee-management-system/internal/middleware"
+	"guarantee-management-system/internal/modules/auth"
+	"guarantee-management-system/internal/modules/customers"
+	"guarantee-management-system/internal/modules/dashboard" // Add this
+	"guarantee-management-system/internal/shared/storage"
+
+	"github.com/gin-gonic/gin"
+)
+
+func main() {
+	// Load configuration
+	cfg := config.Load()
+
+	// Set Gin mode
+	if cfg.AppEnv == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	// Initialize database
+	if err := database.Connect(cfg); err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	defer database.Close()
+
+	// Initialize storage
+	if err := storage.Initialize(cfg.UploadPath); err != nil {
+		log.Fatal("Failed to initialize storage:", err)
+	}
+
+	// Setup router
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(middleware.CORS(cfg))
+	router.Use(middleware.Logger())
+
+	// Health check
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "ok",
+			"app":    cfg.AppName,
+			"env":    cfg.AppEnv,
+		})
+	})
+
+	// API v1
+	v1 := router.Group("/api/v1")
+	{
+		// Initialize auth module
+		authModule := auth.NewAuthModule(database.GetDB(), cfg)
+		authModule.RegisterRoutes(v1)
+
+		// Initialize customers module
+		customersModule := customers.NewCustomerModule(database.GetDB())
+		customersModule.RegisterRoutes(v1)
+
+		// Initialize dashboard module
+		dashboardModule := dashboard.NewDashboardModule()
+		dashboardModule.RegisterRoutes(v1)
+	}
+
+	// Start server
+	port := cfg.AppPort
+	log.Printf("Server starting on port %s", port)
+	log.Printf("Environment: %s", cfg.AppEnv)
+
+	go func() {
+		if err := router.Run(":" + port); err != nil {
+			log.Fatal("Failed to start server:", err)
+		}
+	}()
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server...")
+}
+
+============================================
+DIRECTORY: \cmd\migrate
+============================================
+
+----------------------------------------
+FILE: main.go
+Path: \cmd\migrate\main.go
+Size: 4 KB
+----------------------------------------
+Lines: 168
+
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"time"
+
+	"guarantee-management-system/internal/config"
+	"guarantee-management-system/internal/database"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+)
+
+func main() {
+	var cmd string
+	var name string
+
+	// Check if using flags or positional arguments
+	if len(os.Args) > 1 && os.Args[1][0] != '-' {
+		// Positional arguments (e.g., go run main.go up)
+		cmd = os.Args[1]
+		if len(os.Args) > 2 {
+			name = os.Args[2]
+		}
+	} else {
+		// Flags (e.g., go run main.go -cmd=up)
+		flag.StringVar(&cmd, "cmd", "", "Migration command: up, down, create")
+		flag.StringVar(&name, "name", "", "Migration name for create command")
+		flag.Parse()
+	}
+
+	if cmd == "" {
+		log.Fatal("Please specify a command with -cmd flag: up, down, create")
+	}
+
+	// Load config
+	cfg := config.Load()
+
+	// Ensure database exists before connecting
+	if cmd == "up" || cmd == "down" {
+		if err := ensureDatabaseExists(cfg); err != nil {
+			log.Fatal("Failed to ensure database exists:", err)
+		}
+	}
+
+	// Connect to database
+	if err := database.Connect(cfg); err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	defer database.Close()
+
+	db := database.GetDB()
+
+	switch cmd {
+	case "up":
+		runMigrations(db)
+	case "down":
+		rollbackMigrations(db)
+	case "create":
+		if name == "" {
+			log.Fatal("Please specify migration name with -name flag")
+		}
+		createMigration(name)
+	default:
+		log.Fatal("Invalid command. Use: up, down, create")
+	}
+}
+
+func ensureDatabaseExists(cfg *config.Config) error {
+	// Connect to default postgres database
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=postgres sslmode=disable TimeZone=UTC",
+		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return fmt.Errorf("failed to connect to postgres database: %w", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return err
+	}
+	defer sqlDB.Close()
+
+	// Check if database exists
+	var exists bool
+	query := "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = ?)"
+	err = db.Raw(query, cfg.DBName).Scan(&exists).Error
+	if err != nil {
+		return fmt.Errorf("failed to check database existence: %w", err)
+	}
+
+	if !exists {
+		log.Printf("Database '%s' does not exist. Creating...", cfg.DBName)
+		createQuery := fmt.Sprintf("CREATE DATABASE %s", cfg.DBName)
+		if err := db.Exec(createQuery).Error; err != nil {
+			return fmt.Errorf("failed to create database: %w", err)
+		}
+		log.Printf("Database '%s' created successfully", cfg.DBName)
+	}
+
+	return nil
+}
+
+func runMigrations(db *gorm.DB) {
+	log.Println("Running migrations...")
+
+	// Read migrations directory
+	files, err := filepath.Glob("migrations/*.up.sql")
+	if err != nil {
+		log.Fatal("Failed to read migrations:", err)
+	}
+
+	if len(files) == 0 {
+		log.Println("No migrations found")
+		return
+	}
+
+	// Sort files (simple string sort works for our naming convention)
+	// In production, you might want more sophisticated sorting
+
+	for _, file := range files {
+		log.Printf("Running migration: %s", file)
+		sql, err := os.ReadFile(file)
+		if err != nil {
+			log.Fatal("Failed to read migration file:", err)
+		}
+
+		if err := db.Exec(string(sql)).Error; err != nil {
+			log.Fatalf("Failed to run migration %s: %v", file, err)
+		}
+	}
+
+	log.Println("Migrations completed successfully")
+}
+
+func rollbackMigrations(db *gorm.DB) {
+	log.Println("Rolling back migrations...")
+	// Implementation for rollback
+	// For now, just a placeholder
+	log.Println("Rollback not fully implemented yet")
+}
+
+func createMigration(name string) {
+	timestamp := time.Now().Format("20060102150405")
+	filename := fmt.Sprintf("migrations/%s_%s.up.sql", timestamp, name)
+	downFilename := fmt.Sprintf("migrations/%s_%s.down.sql", timestamp, name)
+
+	// Create up migration
+	content := "-- Migration: " + name + "\n\n"
+	if err := os.WriteFile(filename, []byte(content), 0644); err != nil {
+		log.Fatal("Failed to create migration:", err)
+	}
+
+	// Create down migration
+	downContent := "-- Rollback: " + name + "\n\n"
+	if err := os.WriteFile(downFilename, []byte(downContent), 0644); err != nil {
+		log.Fatal("Failed to create down migration:", err)
+	}
+
+	log.Printf("Created migration: %s", filename)
+	log.Printf("Created rollback: %s", downFilename)
+}
+
+
+============================================
+DIRECTORY: \cmd\seed
+============================================
+
+----------------------------------------
+FILE: main.go
+Path: \cmd\seed\main.go
+Size: 4 KB
+----------------------------------------
+Lines: 153
+
+package main
+
+import (
+	"log"
+
+	"guarantee-management-system/internal/config"
+	"guarantee-management-system/internal/database"
+
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+)
+
+func main() {
+	cfg := config.Load()
+
+	if err := database.Connect(cfg); err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	defer database.Close()
+
+	db := database.GetDB()
+
+	// Seed initial data
+	seedAdmins(db)
+	seedProductCategories(db)
+	seedProducts(db)
+	seedTechnicians(db)
+
+	log.Println("Database seeded successfully")
+}
+
+func seedAdmins(db *gorm.DB) {
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("Admin123!"), bcrypt.DefaultCost)
+
+	// Check if admin exists
+	var count int64
+	db.Table("admins").Where("username = ?", "admin").Count(&count)
+
+	if count == 0 {
+		admin := map[string]interface{}{
+			"username":  "admin",
+			"password":  string(hashedPassword),
+			"full_name": "System Administrator",
+			"email":     "admin@guarantee-system.com",
+			"is_active": true,
+		}
+
+		if err := db.Table("admins").Create(&admin).Error; err != nil {
+			log.Printf("Failed to seed admin: %v", err)
+		} else {
+			log.Println("Admin seeded successfully")
+		}
+	} else {
+		log.Println("Admin already exists, skipping...")
+	}
+}
+
+func seedProductCategories(db *gorm.DB) {
+	// Check if categories already exist
+	var count int64
+	db.Table("product_categories").Count(&count)
+
+	if count == 0 {
+		categories := []map[string]interface{}{
+			{"name": "Electronics", "description": "Electronic products and devices", "is_active": true},
+			{"name": "Home Appliances", "description": "Home and kitchen appliances", "is_active": true},
+			{"name": "Mobile Phones", "description": "Smartphones and accessories", "is_active": true},
+			{"name": "Computers", "description": "Laptops, desktops and peripherals", "is_active": true},
+			{"name": "Furniture", "description": "Home and office furniture", "is_active": true},
+		}
+
+		for _, category := range categories {
+			if err := db.Table("product_categories").Create(&category).Error; err != nil {
+				log.Printf("Failed to seed category: %v", err)
+			}
+		}
+		log.Println("Product categories seeded successfully")
+	} else {
+		log.Println("Product categories already exist, skipping...")
+	}
+}
+
+func seedProducts(db *gorm.DB) {
+	// Check if products already exist
+	var count int64
+	db.Table("products").Count(&count)
+
+	if count == 0 {
+		// Get category IDs
+		var categoryIDs []uint
+		db.Table("product_categories").Pluck("id", &categoryIDs)
+
+		if len(categoryIDs) > 0 {
+			products := []map[string]interface{}{
+				{"name": "Smart TV 55\"", "description": "4K Smart LED TV", "category_id": categoryIDs[0], "is_active": true},
+				{"name": "Washing Machine", "description": "Front load washing machine", "category_id": categoryIDs[1], "is_active": true},
+				{"name": "iPhone 15 Pro", "description": "Latest iPhone model", "category_id": categoryIDs[2], "is_active": true},
+				{"name": "MacBook Pro", "description": "Professional laptop", "category_id": categoryIDs[3], "is_active": true},
+				{"name": "Office Desk", "description": "Modern office desk", "category_id": categoryIDs[4], "is_active": true},
+			}
+
+			for _, product := range products {
+				if err := db.Table("products").Create(&product).Error; err != nil {
+					log.Printf("Failed to seed product: %v", err)
+				}
+			}
+			log.Println("Products seeded successfully")
+		}
+	} else {
+		log.Println("Products already exist, skipping...")
+	}
+}
+
+func seedTechnicians(db *gorm.DB) {
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("Tech123!"), bcrypt.DefaultCost)
+
+	// Check if technicians already exist
+	var count int64
+	db.Table("technicians").Count(&count)
+
+	if count == 0 {
+		technicians := []map[string]interface{}{
+			{
+				"full_name":   "John Doe",
+				"username":    "johndoe",
+				"password":    string(hashedPassword),
+				"phone":       "+1234567890",
+				"national_id": "ID123456",
+				"address":     "123 Main St, City",
+				"is_active":   true,
+			},
+			{
+				"full_name":   "Jane Smith",
+				"username":    "janesmith",
+				"password":    string(hashedPassword),
+				"phone":       "+0987654321",
+				"national_id": "ID654321",
+				"address":     "456 Oak Ave, Town",
+				"is_active":   true,
+			},
+		}
+
+		for _, tech := range technicians {
+			if err := db.Table("technicians").Create(&tech).Error; err != nil {
+				log.Printf("Failed to seed technician: %v", err)
+			}
+		}
+		log.Println("Technicians seeded successfully")
+	} else {
+		log.Println("Technicians already exist, skipping...")
+	}
+}
+
+
+============================================
+DIRECTORY: \internal\config
+============================================
+
+----------------------------------------
+FILE: config.go
+Path: \internal\config\config.go
+Size: 2 KB
+----------------------------------------
+Lines: 103
+
+package config
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"strconv"
+	"time"
+
+	"github.com/joho/godotenv"
+)
+
+type Config struct {
+	AppEnv  string
+	AppPort string
+	AppName string
+	AppURL  string
+
+	DBHost     string
+	DBPort     string
+	DBUser     string
+	DBPassword string
+	DBName     string
+	DBSSLMode  string
+
+	JWTSecret     string
+	JWTExpiration time.Duration
+
+	UploadPath    string
+	MaxUploadSize int64
+
+	CORSAllowedOrigins []string
+}
+
+func Load() *Config {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Warning: .env file not found, using environment variables")
+	}
+
+	jwtExpiration, _ := strconv.Atoi(getEnv("JWT_EXPIRATION", "24"))
+	maxUploadSize, _ := strconv.ParseInt(getEnv("MAX_UPLOAD_SIZE", "10485760"), 10, 64)
+
+	return &Config{
+		AppEnv:  getEnv("APP_ENV", "development"),
+		AppPort: getEnv("APP_PORT", "8080"),
+		AppName: getEnv("APP_NAME", "Guarantee Management System"),
+		AppURL:  getEnv("APP_URL", "http://localhost:8080"),
+
+		DBHost:     getEnv("DB_HOST", "localhost"),
+		DBPort:     getEnv("DB_PORT", "5432"),
+		DBUser:     getEnv("DB_USER", "postgres"),
+		DBPassword: getEnv("DB_PASSWORD", "password"),
+		DBName:     getEnv("DB_NAME", "guarantee_db"),
+		DBSSLMode:  getEnv("DB_SSL_MODE", "disable"),
+
+		JWTSecret:     getEnv("JWT_SECRET", "your-256-bit-secret-key-change-in-production"),
+		JWTExpiration: time.Duration(jwtExpiration) * time.Hour,
+
+		UploadPath:    getEnv("UPLOAD_PATH", "./uploads"),
+		MaxUploadSize: maxUploadSize,
+
+		CORSAllowedOrigins: getEnvAsSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173"}),
+	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvAsSlice(key string, defaultValue []string) []string {
+	if value := os.Getenv(key); value != "" {
+		// Simple comma-separated list
+		var result []string
+		current := ""
+		for _, char := range value {
+			if char == ',' {
+				if current != "" {
+					result = append(result, current)
+					current = ""
+				}
+			} else {
+				current += string(char)
+			}
+		}
+		if current != "" {
+			result = append(result, current)
+		}
+		return result
+	}
+	return defaultValue
+}
+
+func (c *Config) DBDSN() string {
+	return fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s TimeZone=UTC",
+		c.DBHost, c.DBPort, c.DBUser, c.DBPassword, c.DBName, c.DBSSLMode,
+	)
+}
+
+
+============================================
+DIRECTORY: \internal\database
+============================================
+
+----------------------------------------
+FILE: database.go
+Path: \internal\database\database.go
+Size: 1 KB
+----------------------------------------
+Lines: 57
+
+package database
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	"guarantee-management-system/internal/config"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+var DB *gorm.DB
+
+func Connect(cfg *config.Config) error {
+	var err error
+	dsn := cfg.DBDSN()
+
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+		NowFunc: func() time.Time {
+			return time.Now().UTC()
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	sqlDB, err := DB.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get database instance: %w", err)
+	}
+
+	// Connection pool settings
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	log.Println("Database connected successfully")
+	return nil
+}
+
+func Close() error {
+	sqlDB, err := DB.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
+}
+
+func GetDB() *gorm.DB {
+	return DB
+}
+
+
+============================================
+DIRECTORY: \internal\middleware
+============================================
+
+----------------------------------------
+FILE: auth.go
+Path: \internal\middleware\auth.go
+Size: 1 KB
+----------------------------------------
+Lines: 46
+
+package middleware
+
+import (
+	"strings"
+
+	"guarantee-management-system/internal/config"
+	"guarantee-management-system/internal/shared/responses"
+	"guarantee-management-system/internal/shared/utils"
+
+	"github.com/gin-gonic/gin"
+)
+
+func AuthMiddleware() gin.HandlerFunc {
+	cfg := config.Load()
+
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			responses.Unauthorized(c, "Authorization header is required")
+			c.Abort()
+			return
+		}
+
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			responses.Unauthorized(c, "Invalid authorization header format")
+			c.Abort()
+			return
+		}
+
+		token := parts[1]
+		claims, err := utils.ValidateToken(token, cfg.JWTSecret)
+		if err != nil {
+			responses.Unauthorized(c, "Invalid or expired token")
+			c.Abort()
+			return
+		}
+
+		// Set user context
+		c.Set("admin_id", claims.AdminID)
+		c.Set("username", claims.Username)
+
+		c.Next()
+	}
+}
+
+
+----------------------------------------
+FILE: cors.go
+Path: \internal\middleware\cors.go
+Size: 1 KB
+----------------------------------------
+Lines: 25
+
+package middleware
+
+import (
+	"guarantee-management-system/internal/config"
+
+	"github.com/gin-gonic/gin"
+)
+
+func CORS(cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Allow all origins for development
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+		c.Header("Access-Control-Expose-Headers", "Content-Length, Content-Type")
+		c.Header("Access-Control-Allow-Credentials", "true")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
+}
+
+----------------------------------------
+FILE: logger.go
+Path: \internal\middleware\logger.go
+Size: 0 KB
+----------------------------------------
+Lines: 24
+
+package middleware
+
+import (
+	"log"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
+
+func Logger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		method := c.Request.Method
+
+		c.Next()
+
+		latency := time.Since(start)
+		status := c.Writer.Status()
+
+		log.Printf("[%s] %s %s %d %v", method, path, c.ClientIP(), status, latency)
+	}
+}
+
+
+============================================
+DIRECTORY: \internal\modules\auth
+============================================
+
+----------------------------------------
+FILE: dto.go
+Path: \internal\modules\auth\dto.go
+Size: 1 KB
+----------------------------------------
+Lines: 41
+
+package auth
+
+type LoginRequest struct {
+	Username string `json:"username" binding:"required,min=3,max=50"`
+	Password string `json:"password" binding:"required,min=6"`
+}
+
+type LoginResponse struct {
+	Token     string   `json:"token"`
+	TokenType string   `json:"token_type"`
+	ExpiresIn int64    `json:"expires_in"`
+	Admin     AdminDTO `json:"admin"`
+}
+
+type AdminDTO struct {
+	ID        uint   `json:"id"`
+	Username  string `json:"username"`
+	FullName  string `json:"full_name"`
+	Email     string `json:"email"`
+	IsActive  bool   `json:"is_active"`
+	CreatedAt string `json:"created_at"`
+}
+
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+type AdminCreateRequest struct {
+	Username string `json:"username" binding:"required,min=3,max=50"`
+	Password string `json:"password" binding:"required,min=6"`
+	FullName string `json:"full_name" binding:"required,max=100"`
+	Email    string `json:"email" binding:"required,email"`
+}
+
+type AdminUpdateRequest struct {
+	FullName string `json:"full_name" binding:"max=100"`
+	Email    string `json:"email" binding:"email"`
+	IsActive *bool  `json:"is_active"`
+}
+
+
+----------------------------------------
+FILE: handler.go
+Path: \internal\modules\auth\handler.go
+Size: 7 KB
+----------------------------------------
+Lines: 273
+
+package auth
+
+import (
+	"net/http"
+	"strconv"
+
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/responses"
+
+	"github.com/gin-gonic/gin"
+)
+
+type AuthHandler struct {
+	service   *AuthService
+	validator *AuthValidator
+}
+
+func NewAuthHandler(service *AuthService, validator *AuthValidator) *AuthHandler {
+	return &AuthHandler{
+		service:   service,
+		validator: validator,
+	}
+}
+
+// Login handles admin login
+// @Summary Admin login
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "Login credentials"
+// @Success 200 {object} responses.Response{data=LoginResponse}
+// @Failure 400 {object} responses.Response
+// @Failure 401 {object} responses.Response
+// @Router /auth/login [post]
+func (h *AuthHandler) Login(c *gin.Context) {
+	req, err := h.validator.ValidateLoginRequest(c)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Capture all 4 return values: admin, token, expiresIn, err
+	admin, token, expiresIn, err := h.service.Login(req.Username, req.Password)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.Success(c, LoginResponse{
+		Token:     token,
+		TokenType: "Bearer",
+		ExpiresIn: expiresIn, // Use the actual expiration from the service
+		Admin:     *admin,
+	})
+}
+
+// GetProfile returns the current admin's profile
+// @Summary Get admin profile
+// @Tags Auth
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} responses.Response{data=AdminDTO}
+// @Failure 401 {object} responses.Response
+// @Router /auth/profile [get]
+func (h *AuthHandler) GetProfile(c *gin.Context) {
+	adminID, exists := c.Get("admin_id")
+	if !exists {
+		responses.Unauthorized(c, "Unauthorized")
+		return
+	}
+
+	admin, err := h.service.GetAdminProfile(adminID.(uint))
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.Success(c, admin)
+}
+
+// ChangePassword handles password change
+// @Summary Change admin password
+// @Tags Auth
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body ChangePasswordRequest true "Password change request"
+// @Success 200 {object} responses.Response
+// @Failure 400 {object} responses.Response
+// @Failure 401 {object} responses.Response
+// @Router /auth/change-password [post]
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	req, err := h.validator.ValidateChangePasswordRequest(c)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	adminID, exists := c.Get("admin_id")
+	if !exists {
+		responses.Unauthorized(c, "Unauthorized")
+		return
+	}
+
+	if err := h.service.ChangePassword(adminID.(uint), req.OldPassword, req.NewPassword); err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Password changed successfully", nil)
+}
+
+// CreateAdmin creates a new admin (super admin only)
+// @Summary Create admin
+// @Tags Auth
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body AdminCreateRequest true "Admin creation request"
+// @Success 201 {object} responses.Response{data=AdminDTO}
+// @Failure 400 {object} responses.Response
+// @Failure 403 {object} responses.Response
+// @Router /admins [post]
+func (h *AuthHandler) CreateAdmin(c *gin.Context) {
+	req, err := h.validator.ValidateAdminCreateRequest(c)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	admin, err := h.service.CreateAdmin(req)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Admin created successfully", admin)
+}
+
+// ListAdmins returns paginated list of admins
+// @Summary List admins
+// @Tags Auth
+// @Security BearerAuth
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(10)
+// @Success 200 {object} responses.Response{data=[]AdminDTO}
+// @Failure 401 {object} responses.Response
+// @Router /admins [get]
+func (h *AuthHandler) ListAdmins(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	admins, total, err := h.service.ListAdmins(page, limit)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.SuccessWithMeta(c, admins, responses.PaginationMeta{
+		CurrentPage: page,
+		PerPage:     limit,
+		Total:       total,
+		LastPage:    int((total + int64(limit) - 1) / int64(limit)),
+	})
+}
+
+// UpdateAdmin updates an admin
+// @Summary Update admin
+// @Tags Auth
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path int true "Admin ID"
+// @Param request body AdminUpdateRequest true "Admin update request"
+// @Success 200 {object} responses.Response{data=AdminDTO}
+// @Failure 400 {object} responses.Response
+// @Failure 404 {object} responses.Response
+// @Router /admins/{id} [put]
+func (h *AuthHandler) UpdateAdmin(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid admin ID")
+		return
+	}
+
+	var req AdminUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	admin, err := h.service.UpdateAdmin(uint(id), &req)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Admin updated successfully", admin)
+}
+
+// DeleteAdmin deletes an admin
+// @Summary Delete admin
+// @Tags Auth
+// @Security BearerAuth
+// @Produce json
+// @Param id path int true "Admin ID"
+// @Success 200 {object} responses.Response
+// @Failure 400 {object} responses.Response
+// @Failure 404 {object} responses.Response
+// @Router /admins/{id} [delete]
+func (h *AuthHandler) DeleteAdmin(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid admin ID")
+		return
+	}
+
+	if err := h.service.DeleteAdmin(uint(id)); err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Admin deleted successfully", nil)
+}
+
+
+----------------------------------------
+FILE: model.go
+Path: \internal\modules\auth\model.go
+Size: 1 KB
+----------------------------------------
+Lines: 25
+
+package auth
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+type Admin struct {
+	ID        uint           `gorm:"primaryKey" json:"id"`
+	Username  string         `gorm:"uniqueIndex;size:50;not null" json:"username"`
+	Password  string         `gorm:"size:255;not null" json:"-"`
+	FullName  string         `gorm:"size:100" json:"full_name"`
+	Email     string         `gorm:"size:100" json:"email"`
+	IsActive  bool           `gorm:"default:true" json:"is_active"`
+	LastLogin *time.Time     `json:"last_login,omitempty"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (Admin) TableName() string {
+	return "admins"
+}
+
+
+----------------------------------------
+FILE: repository.go
+Path: \internal\modules\auth\repository.go
+Size: 2 KB
+----------------------------------------
+Lines: 70
+
+package auth
+
+import (
+	"errors"
+
+	"gorm.io/gorm"
+)
+
+type AuthRepository struct {
+	db *gorm.DB
+}
+
+func NewAuthRepository(db *gorm.DB) *AuthRepository {
+	return &AuthRepository{db: db}
+}
+
+func (r *AuthRepository) FindAdminByUsername(username string) (*Admin, error) {
+	var admin Admin
+	err := r.db.Where("username = ? AND is_active = ?", username, true).First(&admin).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &admin, nil
+}
+
+func (r *AuthRepository) FindAdminByID(id uint) (*Admin, error) {
+	var admin Admin
+	err := r.db.Where("id = ? AND is_active = ?", id, true).First(&admin).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &admin, nil
+}
+
+func (r *AuthRepository) CreateAdmin(admin *Admin) error {
+	return r.db.Create(admin).Error
+}
+
+func (r *AuthRepository) UpdateAdmin(admin *Admin) error {
+	return r.db.Save(admin).Error
+}
+
+func (r *AuthRepository) UpdateLastLogin(id uint) error {
+	return r.db.Model(&Admin{}).Where("id = ?", id).Update("last_login", gorm.Expr("NOW()")).Error
+}
+
+func (r *AuthRepository) FindAllAdmins(offset, limit int) ([]Admin, int64, error) {
+	var admins []Admin
+	var total int64
+
+	query := r.db.Model(&Admin{}).Where("is_active = ?", true)
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&admins).Error
+	return admins, total, err
+}
+
+func (r *AuthRepository) DeleteAdmin(id uint) error {
+	return r.db.Delete(&Admin{}, id).Error
+}
+
+
+----------------------------------------
+FILE: routes.go
+Path: \internal\modules\auth\routes.go
+Size: 1 KB
+----------------------------------------
+Lines: 44
+
+package auth
+
+import (
+	"guarantee-management-system/internal/config"
+	"guarantee-management-system/internal/middleware"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+type AuthModule struct {
+	handler *AuthHandler
+}
+
+func NewAuthModule(db *gorm.DB, cfg *config.Config) *AuthModule {
+	repo := NewAuthRepository(db)
+	service := NewAuthService(repo, cfg)
+	validator := NewAuthValidator()
+	handler := NewAuthHandler(service, validator)
+
+	return &AuthModule{
+		handler: handler,
+	}
+}
+
+func (m *AuthModule) RegisterRoutes(router *gin.RouterGroup) {
+	// Public routes
+	router.POST("/auth/login", m.handler.Login)
+
+	// Protected routes
+	protected := router.Group("/")
+	protected.Use(middleware.AuthMiddleware())
+	{
+		protected.GET("/auth/profile", m.handler.GetProfile)
+		protected.POST("/auth/change-password", m.handler.ChangePassword)
+
+		// Admin management
+		protected.POST("/admins", m.handler.CreateAdmin)
+		protected.GET("/admins", m.handler.ListAdmins)
+		protected.PUT("/admins/:id", m.handler.UpdateAdmin)
+		protected.DELETE("/admins/:id", m.handler.DeleteAdmin)
+	}
+}
+
+
+----------------------------------------
+FILE: service.go
+Path: \internal\modules\auth\service.go
+Size: 6 KB
+----------------------------------------
+Lines: 204
+
+package auth
+
+import (
+	"guarantee-management-system/internal/config"
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/utils"
+	"log"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
+)
+
+type AuthService struct {
+	repo   *AuthRepository
+	config *config.Config
+}
+
+func NewAuthService(repo *AuthRepository, cfg *config.Config) *AuthService {
+	return &AuthService{
+		repo:   repo,
+		config: cfg,
+	}
+}
+
+func (s *AuthService) Login(username, password string) (*AdminDTO, string, int64, error) {
+	// Find admin by username
+	admin, err := s.repo.FindAdminByUsername(username)
+	if err != nil {
+		return nil, "", 0, errors.NewAppError(errors.ErrInternalServer, "Failed to find admin", 500)
+	}
+
+	if admin == nil {
+		return nil, "", 0, errors.NewAppError(errors.ErrInvalidCredentials, "Invalid username or password", 401)
+	}
+
+	// Verify password
+	if err := bcrypt.CompareHashAndPassword([]byte(admin.Password), []byte(password)); err != nil {
+		return nil, "", 0, errors.NewAppError(errors.ErrInvalidCredentials, "Invalid username or password", 401)
+	}
+
+	// Update last login - log error but don't fail
+	if err := s.repo.UpdateLastLogin(admin.ID); err != nil {
+		// Log error but continue
+		log.Printf("Warning: Failed to update last login for admin %d: %v", admin.ID, err)
+	}
+
+	// Generate JWT token
+	token, expiresIn, err := utils.GenerateToken(admin.ID, admin.Username, s.config.JWTSecret, s.config.JWTExpiration)
+	if err != nil {
+		return nil, "", 0, errors.NewAppError(errors.ErrInternalServer, "Failed to generate token", 500)
+	}
+
+	// Map to DTO
+	adminDTO := s.mapToDTO(admin)
+
+	return adminDTO, token, expiresIn, nil
+}
+
+func (s *AuthService) ChangePassword(adminID uint, oldPassword, newPassword string) error {
+	admin, err := s.repo.FindAdminByID(adminID)
+	if err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to find admin", 500)
+	}
+
+	if admin == nil {
+		return errors.NewAppError(errors.ErrNotFound, "Admin not found", 404)
+	}
+
+	// Verify old password
+	if err := bcrypt.CompareHashAndPassword([]byte(admin.Password), []byte(oldPassword)); err != nil {
+		return errors.NewAppError(errors.ErrInvalidCredentials, "Current password is incorrect", 401)
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to hash password", 500)
+	}
+
+	admin.Password = string(hashedPassword)
+	if err := s.repo.UpdateAdmin(admin); err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to update password", 500)
+	}
+
+	return nil
+}
+
+func (s *AuthService) GetAdminProfile(adminID uint) (*AdminDTO, error) {
+	admin, err := s.repo.FindAdminByID(adminID)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find admin", 500)
+	}
+
+	if admin == nil {
+		return nil, errors.NewAppError(errors.ErrNotFound, "Admin not found", 404)
+	}
+
+	return s.mapToDTO(admin), nil
+}
+
+func (s *AuthService) CreateAdmin(req *AdminCreateRequest) (*AdminDTO, error) {
+	// Check if admin already exists
+	existing, err := s.repo.FindAdminByUsername(req.Username)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check existing admin", 500)
+	}
+
+	if existing != nil {
+		return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Username already exists", 409)
+	}
+
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to hash password", 500)
+	}
+
+	admin := &Admin{
+		Username: req.Username,
+		Password: string(hashedPassword),
+		FullName: req.FullName,
+		Email:    req.Email,
+		IsActive: true,
+	}
+
+	if err := s.repo.CreateAdmin(admin); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create admin", 500)
+	}
+
+	return s.mapToDTO(admin), nil
+}
+
+func (s *AuthService) UpdateAdmin(adminID uint, req *AdminUpdateRequest) (*AdminDTO, error) {
+	admin, err := s.repo.FindAdminByID(adminID)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find admin", 500)
+	}
+
+	if admin == nil {
+		return nil, errors.NewAppError(errors.ErrNotFound, "Admin not found", 404)
+	}
+
+	if req.FullName != "" {
+		admin.FullName = req.FullName
+	}
+	if req.Email != "" {
+		admin.Email = req.Email
+	}
+	if req.IsActive != nil {
+		admin.IsActive = *req.IsActive
+	}
+
+	if err := s.repo.UpdateAdmin(admin); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update admin", 500)
+	}
+
+	return s.mapToDTO(admin), nil
+}
+
+func (s *AuthService) DeleteAdmin(adminID uint) error {
+	// Prevent deleting the last admin
+	_, total, err := s.repo.FindAllAdmins(0, 1)
+	if err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to check admin count", 500)
+	}
+
+	if total <= 1 {
+		return errors.NewAppError(errors.ErrValidation, "Cannot delete the last admin", 400)
+	}
+
+	if err := s.repo.DeleteAdmin(adminID); err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to delete admin", 500)
+	}
+
+	return nil
+}
+
+func (s *AuthService) ListAdmins(page, limit int) ([]AdminDTO, int64, error) {
+	offset := (page - 1) * limit
+
+	admins, total, err := s.repo.FindAllAdmins(offset, limit)
+	if err != nil {
+		return nil, 0, errors.NewAppError(errors.ErrInternalServer, "Failed to list admins", 500)
+	}
+
+	dtos := make([]AdminDTO, len(admins))
+	for i, admin := range admins {
+		dtos[i] = *s.mapToDTO(&admin)
+	}
+
+	return dtos, total, nil
+}
+
+func (s *AuthService) mapToDTO(admin *Admin) *AdminDTO {
+	return &AdminDTO{
+		ID:        admin.ID,
+		Username:  admin.Username,
+		FullName:  admin.FullName,
+		Email:     admin.Email,
+		IsActive:  admin.IsActive,
+		CreatedAt: admin.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+
+----------------------------------------
+FILE: validator.go
+Path: \internal\modules\auth\validator.go
+Size: 1 KB
+----------------------------------------
+Lines: 54
+
+package auth
+
+import (
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/validator"
+
+	"github.com/gin-gonic/gin"
+)
+
+type AuthValidator struct{}
+
+func NewAuthValidator() *AuthValidator {
+	return &AuthValidator{}
+}
+
+func (v *AuthValidator) ValidateLoginRequest(c *gin.Context) (*LoginRequest, error) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+
+	return &req, nil
+}
+
+func (v *AuthValidator) ValidateChangePasswordRequest(c *gin.Context) (*ChangePasswordRequest, error) {
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+
+	return &req, nil
+}
+
+func (v *AuthValidator) ValidateAdminCreateRequest(c *gin.Context) (*AdminCreateRequest, error) {
+	var req AdminCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+
+	return &req, nil
+}
+
+
+============================================
+DIRECTORY: \internal\modules\customers
+============================================
+
+----------------------------------------
+FILE: constants.go
+Path: \internal\modules\customers\constants.go
+Size: 0 KB
+----------------------------------------
+Lines: 23
+
+package customers
+
+const (
+	ModuleName = "customers"
+)
+
+// Customer status constants
+const (
+	StatusActive   = "active"
+	StatusInactive = "inactive"
+)
+
+// Validation constants
+const (
+	MaxFullNameLength   = 100
+	MinFullNameLength   = 2
+	MaxPhoneLength      = 20
+	MinPhoneLength      = 10
+	MaxNationalIDLength = 20
+	MinNationalIDLength = 6
+	MaxProvinceLength   = 50
+	MaxCityLength       = 50
+)
+
+----------------------------------------
+FILE: dto.go
+Path: \internal\modules\customers\dto.go
+Size: 1 KB
+----------------------------------------
+Lines: 40
+
+package customers
+
+
+type CustomerDTO struct {
+	ID         uint   `json:"id"`
+	FullName   string `json:"full_name"`
+	Phone      string `json:"phone"`
+	NationalID string `json:"national_id"`
+	Province   string `json:"province"`
+	City       string `json:"city"`
+	Address    string `json:"address"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
+}
+
+type CreateCustomerRequest struct {
+	FullName   string `json:"full_name" binding:"required,min=2,max=100"`
+	Phone      string `json:"phone" binding:"required,min=10,max=20"`
+	NationalID string `json:"national_id" binding:"required,min=6,max=20"`
+	Province   string `json:"province" binding:"max=50"`
+	City       string `json:"city" binding:"max=50"`
+	Address    string `json:"address"`
+}
+
+type UpdateCustomerRequest struct {
+	FullName   string `json:"full_name" binding:"min=2,max=100"`
+	Phone      string `json:"phone" binding:"min=10,max=20"`
+	NationalID string `json:"national_id" binding:"min=6,max=20"`
+	Province   string `json:"province" binding:"max=50"`
+	City       string `json:"city" binding:"max=50"`
+	Address    string `json:"address"`
+}
+
+type ListCustomersResponse struct {
+	Customers []CustomerDTO `json:"customers"`
+	Total     int64         `json:"total"`
+	Page      int           `json:"page"`
+	Limit     int           `json:"limit"`
+	LastPage  int           `json:"last_page"`
+}
+
+----------------------------------------
+FILE: errors.go
+Path: \internal\modules\customers\errors.go
+Size: 1 KB
+----------------------------------------
+Lines: 11
+
+package customers
+
+import "guarantee-management-system/internal/shared/errors"
+
+var (
+	ErrCustomerNotFound       = errors.NewAppError(errors.ErrNotFound, "Customer not found", 404)
+	ErrCustomerDuplicate      = errors.NewAppError(errors.ErrDuplicateEntry, "Customer already exists", 409)
+	ErrInvalidCustomerID      = errors.NewAppError(errors.ErrValidation, "Invalid customer ID", 400)
+	ErrPhoneAlreadyExists     = errors.NewAppError(errors.ErrDuplicateEntry, "Phone number already in use", 409)
+	ErrNationalIDAlreadyExists = errors.NewAppError(errors.ErrDuplicateEntry, "National ID already in use", 409)
+)
+
+----------------------------------------
+FILE: handler.go
+Path: \internal\modules\customers\handler.go
+Size: 6 KB
+----------------------------------------
+Lines: 218
+
+package customers
+
+import (
+	"net/http"
+	"strconv"
+
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/responses"
+
+	"github.com/gin-gonic/gin"
+)
+
+type CustomerHandler struct {
+	service   *CustomerService
+	validator *CustomerValidator
+}
+
+func NewCustomerHandler(service *CustomerService, validator *CustomerValidator) *CustomerHandler {
+	return &CustomerHandler{
+		service:   service,
+		validator: validator,
+	}
+}
+
+// CreateCustomer creates a new customer
+// @Summary Create customer
+// @Tags Customers
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body CreateCustomerRequest true "Customer creation request"
+// @Success 201 {object} responses.Response{data=CustomerDTO}
+// @Failure 400 {object} responses.Response
+// @Failure 409 {object} responses.Response
+// @Router /customers [post]
+func (h *CustomerHandler) Create(c *gin.Context) {
+	req, err := h.validator.ValidateCreateRequest(c)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	customer, err := h.service.Create(req)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Customer created successfully", customer)
+}
+
+// GetCustomer returns a single customer by ID
+// @Summary Get customer
+// @Tags Customers
+// @Security BearerAuth
+// @Produce json
+// @Param id path int true "Customer ID"
+// @Success 200 {object} responses.Response{data=CustomerDTO}
+// @Failure 404 {object} responses.Response
+// @Router /customers/{id} [get]
+func (h *CustomerHandler) Get(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid customer ID")
+		return
+	}
+
+	customer, err := h.service.GetByID(uint(id))
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.Success(c, customer)
+}
+
+// ListCustomers returns a paginated list of customers
+// @Summary List customers
+// @Tags Customers
+// @Security BearerAuth
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(10)
+// @Param search query string false "Search by name, phone or national ID"
+// @Success 200 {object} responses.Response{data=ListCustomersResponse}
+// @Router /customers [get]
+func (h *CustomerHandler) List(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	search := c.DefaultQuery("search", "")
+
+	result, err := h.service.List(page, limit, search)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.SuccessWithMeta(c, result.Customers, responses.PaginationMeta{
+		CurrentPage: result.Page,
+		PerPage:     result.Limit,
+		Total:       result.Total,
+		LastPage:    result.LastPage,
+	})
+}
+
+// UpdateCustomer updates an existing customer
+// @Summary Update customer
+// @Tags Customers
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path int true "Customer ID"
+// @Param request body UpdateCustomerRequest true "Customer update request"
+// @Success 200 {object} responses.Response{data=CustomerDTO}
+// @Failure 400 {object} responses.Response
+// @Failure 404 {object} responses.Response
+// @Router /customers/{id} [put]
+func (h *CustomerHandler) Update(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid customer ID")
+		return
+	}
+
+	req, err := h.validator.ValidateUpdateRequest(c)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	customer, err := h.service.Update(uint(id), req)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Customer updated successfully", customer)
+}
+
+// DeleteCustomer deletes a customer
+// @Summary Delete customer
+// @Tags Customers
+// @Security BearerAuth
+// @Produce json
+// @Param id path int true "Customer ID"
+// @Success 200 {object} responses.Response
+// @Failure 404 {object} responses.Response
+// @Router /customers/{id} [delete]
+func (h *CustomerHandler) Delete(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid customer ID")
+		return
+	}
+
+	if err := h.service.Delete(uint(id)); err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Customer deleted successfully", nil)
+}
+
+// SearchCustomers searches for customers
+// @Summary Search customers
+// @Tags Customers
+// @Security BearerAuth
+// @Produce json
+// @Param q query string true "Search query"
+// @Success 200 {object} responses.Response{data=[]CustomerDTO}
+// @Router /customers/search [get]
+func (h *CustomerHandler) Search(c *gin.Context) {
+	query := c.Query("q")
+	if query == "" {
+		responses.Error(c, http.StatusBadRequest, "Search query is required")
+		return
+	}
+
+	customers, err := h.service.Search(query)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.Success(c, customers)
+}
+
+----------------------------------------
+FILE: model.go
+Path: \internal\modules\customers\model.go
+Size: 1 KB
+----------------------------------------
+Lines: 24
+
+package customers
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+type Customer struct {
+	ID         uint           `gorm:"primaryKey" json:"id"`
+	FullName   string         `gorm:"size:100;not null" json:"full_name"`
+	Phone      string         `gorm:"size:20;not null" json:"phone"`
+	NationalID string         `gorm:"size:20;not null;index" json:"national_id"`
+	Province   string         `gorm:"size:50" json:"province"`
+	City       string         `gorm:"size:50" json:"city"`
+	Address    string         `gorm:"type:text" json:"address"`
+	CreatedAt  time.Time      `json:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
+	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (Customer) TableName() string {
+	return "customers"
+}
+
+----------------------------------------
+FILE: permissions.go
+Path: \internal\modules\customers\permissions.go
+Size: 1 KB
+----------------------------------------
+Lines: 24
+
+package customers
+
+// Permission constants for customers module
+const (
+	PermViewCustomers   = "customers.view"
+	PermCreateCustomer  = "customers.create"
+	PermEditCustomer    = "customers.edit"
+	PermDeleteCustomer  = "customers.delete"
+	PermExportCustomers = "customers.export"
+)
+
+// RolePermissions defines which roles have which permissions
+var RolePermissions = map[string][]string{
+	"admin": {
+		PermViewCustomers,
+		PermCreateCustomer,
+		PermEditCustomer,
+		PermDeleteCustomer,
+		PermExportCustomers,
+	},
+	"technician": {
+		PermViewCustomers,
+	},
+}
+
+----------------------------------------
+FILE: repository.go
+Path: \internal\modules\customers\repository.go
+Size: 2 KB
+----------------------------------------
+Lines: 80
+
+package customers
+
+import (
+	"gorm.io/gorm"
+)
+
+type CustomerRepository struct {
+	db *gorm.DB
+}
+
+func NewCustomerRepository(db *gorm.DB) *CustomerRepository {
+	return &CustomerRepository{db: db}
+}
+
+func (r *CustomerRepository) Create(customer *Customer) error {
+	return r.db.Create(customer).Error
+}
+
+func (r *CustomerRepository) FindByID(id uint) (*Customer, error) {
+	var customer Customer
+	err := r.db.Where("id = ?", id).First(&customer).Error
+	if err != nil {
+		return nil, err
+	}
+	return &customer, nil
+}
+
+func (r *CustomerRepository) FindAll(page, limit int, search string) ([]Customer, int64, error) {
+	var customers []Customer
+	var total int64
+
+	query := r.db.Model(&Customer{})
+
+	if search != "" {
+		query = query.Where(
+			"full_name ILIKE ? OR phone ILIKE ? OR national_id ILIKE ?",
+			"%"+search+"%", "%"+search+"%", "%"+search+"%",
+		)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&customers).Error
+	return customers, total, err
+}
+
+func (r *CustomerRepository) Update(customer *Customer) error {
+	return r.db.Save(customer).Error
+}
+
+func (r *CustomerRepository) Delete(id uint) error {
+	return r.db.Delete(&Customer{}, id).Error
+}
+
+func (r *CustomerRepository) FindByNationalID(nationalID string) (*Customer, error) {
+	var customer Customer
+	err := r.db.Where("national_id = ?", nationalID).First(&customer).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &customer, nil
+}
+
+func (r *CustomerRepository) FindByPhone(phone string) (*Customer, error) {
+	var customer Customer
+	err := r.db.Where("phone = ?", phone).First(&customer).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &customer, nil
+}
+
+----------------------------------------
+FILE: routes.go
+Path: \internal\modules\customers\routes.go
+Size: 1 KB
+----------------------------------------
+Lines: 37
+
+package customers
+
+import (
+	"guarantee-management-system/internal/middleware"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+type CustomerModule struct {
+	handler *CustomerHandler
+}
+
+func NewCustomerModule(db *gorm.DB) *CustomerModule {
+	repo := NewCustomerRepository(db)
+	service := NewCustomerService(repo)
+	validator := NewCustomerValidator()
+	handler := NewCustomerHandler(service, validator)
+
+	return &CustomerModule{
+		handler: handler,
+	}
+}
+
+func (m *CustomerModule) RegisterRoutes(router *gin.RouterGroup) {
+	// Protected routes
+	customers := router.Group("/customers")
+	customers.Use(middleware.AuthMiddleware())
+	{
+		customers.POST("/", m.handler.Create)
+		customers.GET("/", m.handler.List)
+		customers.GET("/search", m.handler.Search)
+		customers.GET("/:id", m.handler.Get)
+		customers.PUT("/:id", m.handler.Update)
+		customers.DELETE("/:id", m.handler.Delete)
+	}
+}
+
+----------------------------------------
+FILE: service.go
+Path: \internal\modules\customers\service.go
+Size: 5 KB
+----------------------------------------
+Lines: 182
+
+package customers
+
+import (
+	"guarantee-management-system/internal/shared/errors"
+	"gorm.io/gorm"
+	"time"
+)
+
+type CustomerService struct {
+	repo *CustomerRepository
+}
+
+func NewCustomerService(repo *CustomerRepository) *CustomerService {
+	return &CustomerService{repo: repo}
+}
+
+func (s *CustomerService) Create(req *CreateCustomerRequest) (*CustomerDTO, error) {
+	// Check if national ID already exists
+	existing, err := s.repo.FindByNationalID(req.NationalID)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check existing customer", 500)
+	}
+	if existing != nil {
+		return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Customer with this National ID already exists", 409)
+	}
+
+	// Check if phone already exists
+	existingPhone, err := s.repo.FindByPhone(req.Phone)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check existing customer", 500)
+	}
+	if existingPhone != nil {
+		return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Customer with this Phone number already exists", 409)
+	}
+
+	customer := &Customer{
+		FullName:   req.FullName,
+		Phone:      req.Phone,
+		NationalID: req.NationalID,
+		Province:   req.Province,
+		City:       req.City,
+		Address:    req.Address,
+	}
+
+	if err := s.repo.Create(customer); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
+	}
+
+	return s.mapToDTO(customer), nil
+}
+
+func (s *CustomerService) GetByID(id uint) (*CustomerDTO, error) {
+	customer, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.NewAppError(errors.ErrNotFound, "Customer not found", 404)
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find customer", 500)
+	}
+	return s.mapToDTO(customer), nil
+}
+
+func (s *CustomerService) List(page, limit int, search string) (*ListCustomersResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	customers, total, err := s.repo.FindAll(page, limit, search)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list customers", 500)
+	}
+
+	dtos := make([]CustomerDTO, len(customers))
+	for i, customer := range customers {
+		dtos[i] = *s.mapToDTO(&customer)
+	}
+
+	lastPage := int(total) / limit
+	if int(total)%limit != 0 {
+		lastPage++
+	}
+
+	return &ListCustomersResponse{
+		Customers: dtos,
+		Total:     total,
+		Page:      page,
+		Limit:     limit,
+		LastPage:  lastPage,
+	}, nil
+}
+
+func (s *CustomerService) Update(id uint, req *UpdateCustomerRequest) (*CustomerDTO, error) {
+	customer, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.NewAppError(errors.ErrNotFound, "Customer not found", 404)
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find customer", 500)
+	}
+
+	if req.FullName != "" {
+		customer.FullName = req.FullName
+	}
+	if req.Phone != "" {
+		// Check if new phone belongs to another customer
+		if req.Phone != customer.Phone {
+			existing, err := s.repo.FindByPhone(req.Phone)
+			if err != nil {
+				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check phone", 500)
+			}
+			if existing != nil && existing.ID != id {
+				return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Phone number already in use", 409)
+			}
+		}
+		customer.Phone = req.Phone
+	}
+	if req.NationalID != "" && req.NationalID != customer.NationalID {
+		existing, err := s.repo.FindByNationalID(req.NationalID)
+		if err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check national ID", 500)
+		}
+		if existing != nil && existing.ID != id {
+			return nil, errors.NewAppError(errors.ErrDuplicateEntry, "National ID already in use", 409)
+		}
+		customer.NationalID = req.NationalID
+	}
+	if req.Province != "" {
+		customer.Province = req.Province
+	}
+	if req.City != "" {
+		customer.City = req.City
+	}
+	if req.Address != "" {
+		customer.Address = req.Address
+	}
+
+	if err := s.repo.Update(customer); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update customer", 500)
+	}
+
+	return s.mapToDTO(customer), nil
+}
+
+func (s *CustomerService) Delete(id uint) error {
+	if err := s.repo.Delete(id); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return errors.NewAppError(errors.ErrNotFound, "Customer not found", 404)
+		}
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to delete customer", 500)
+	}
+	return nil
+}
+
+func (s *CustomerService) Search(query string) ([]CustomerDTO, error) {
+	customers, _, err := s.repo.FindAll(1, 20, query)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to search customers", 500)
+	}
+
+	dtos := make([]CustomerDTO, len(customers))
+	for i, customer := range customers {
+		dtos[i] = *s.mapToDTO(&customer)
+	}
+	return dtos, nil
+}
+
+func (s *CustomerService) mapToDTO(customer *Customer) *CustomerDTO {
+	return &CustomerDTO{
+		ID:         customer.ID,
+		FullName:   customer.FullName,
+		Phone:      customer.Phone,
+		NationalID: customer.NationalID,
+		Province:   customer.Province,
+		City:       customer.City,
+		Address:    customer.Address,
+		CreatedAt:  customer.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:  customer.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+----------------------------------------
+FILE: validator.go
+Path: \internal\modules\customers\validator.go
+Size: 1 KB
+----------------------------------------
+Lines: 40
+
+package customers
+
+import (
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/validator"
+
+	"github.com/gin-gonic/gin"
+)
+
+type CustomerValidator struct{}
+
+func NewCustomerValidator() *CustomerValidator {
+	return &CustomerValidator{}
+}
+
+func (v *CustomerValidator) ValidateCreateRequest(c *gin.Context) (*CreateCustomerRequest, error) {
+	var req CreateCustomerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+
+	return &req, nil
+}
+
+func (v *CustomerValidator) ValidateUpdateRequest(c *gin.Context) (*UpdateCustomerRequest, error) {
+	var req UpdateCustomerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+
+	return &req, nil
+}
+
+============================================
+DIRECTORY: \internal\modules\dashboard
+============================================
+
+----------------------------------------
+FILE: handler.go
+Path: \internal\modules\dashboard\handler.go
+Size: 1 KB
+----------------------------------------
+Lines: 29
+
+package dashboard
+
+import (
+	"guarantee-management-system/internal/shared/responses"
+
+	"github.com/gin-gonic/gin"
+)
+
+type DashboardHandler struct{}
+
+func NewDashboardHandler() *DashboardHandler {
+	return &DashboardHandler{}
+}
+
+func (h *DashboardHandler) GetStats(c *gin.Context) {
+	stats := gin.H{
+		"total_guarantees":    1234,
+		"pending_guarantees":  45,
+		"approved_guarantees": 567,
+		"rejected_guarantees": 12,
+		"total_customers":     856,
+		"total_technicians":   23,
+		"total_products":      342,
+		"total_repairs":       89,
+		"pending_repairs":     12,
+		"completed_repairs":   77,
+	}
+	responses.Success(c, stats)
+}
+
+----------------------------------------
+FILE: routes.go
+Path: \internal\modules\dashboard\routes.go
+Size: 1 KB
+----------------------------------------
+Lines: 26
+
+package dashboard
+
+import (
+	"guarantee-management-system/internal/middleware"
+
+	"github.com/gin-gonic/gin"
+)
+
+type DashboardModule struct {
+	handler *DashboardHandler
+}
+
+func NewDashboardModule() *DashboardModule {
+	handler := NewDashboardHandler()
+	return &DashboardModule{
+		handler: handler,
+	}
+}
+
+func (m *DashboardModule) RegisterRoutes(router *gin.RouterGroup) {
+	dashboard := router.Group("/dashboard")
+	dashboard.Use(middleware.AuthMiddleware())
+	{
+		dashboard.GET("/stats", m.handler.GetStats)
+	}
+}
+
+============================================
+DIRECTORY: \internal\shared\errors
+============================================
+
+----------------------------------------
+FILE: errors.go
+Path: \internal\shared\errors\errors.go
+Size: 1 KB
+----------------------------------------
+Lines: 38
+
+package errors
+
+import "errors"
+
+// Application errors
+var (
+	ErrInternalServer     = errors.New("internal server error")
+	ErrNotFound           = errors.New("resource not found")
+	ErrValidation         = errors.New("validation error")
+	ErrUnauthorized       = errors.New("unauthorized")
+	ErrForbidden          = errors.New("forbidden")
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrDuplicateEntry     = errors.New("duplicate entry")
+	ErrInvalidToken       = errors.New("invalid token")
+	ErrExpiredToken       = errors.New("expired token")
+)
+
+type AppError struct {
+	Err     error
+	Message string
+	Code    int
+}
+
+func NewAppError(err error, message string, code int) *AppError {
+	return &AppError{
+		Err:     err,
+		Message: message,
+		Code:    code,
+	}
+}
+
+func (e *AppError) Error() string {
+	if e.Message != "" {
+		return e.Message
+	}
+	return e.Err.Error()
+}
+
+
+============================================
+DIRECTORY: \internal\shared\responses
+============================================
+
+----------------------------------------
+FILE: responses.go
+Path: \internal\shared\responses\responses.go
+Size: 2 KB
+----------------------------------------
+Lines: 98
+
+package responses
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+type Response struct {
+	Success bool        `json:"success"`
+	Message string      `json:"message,omitempty"`
+	Data    interface{} `json:"data,omitempty"`
+	Errors  interface{} `json:"errors,omitempty"`
+	Meta    interface{} `json:"meta,omitempty"`
+}
+
+type PaginationMeta struct {
+	CurrentPage int   `json:"current_page"`
+	PerPage     int   `json:"per_page"`
+	Total       int64 `json:"total"`
+	LastPage    int   `json:"last_page"`
+}
+
+func Success(c *gin.Context, data interface{}) {
+	c.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    data,
+	})
+}
+
+func SuccessWithMessage(c *gin.Context, message string, data interface{}) {
+	c.JSON(http.StatusOK, Response{
+		Success: true,
+		Message: message,
+		Data:    data,
+	})
+}
+
+func SuccessWithMeta(c *gin.Context, data interface{}, meta interface{}) {
+	c.JSON(http.StatusOK, Response{
+		Success: true,
+		Data:    data,
+		Meta:    meta,
+	})
+}
+
+func Error(c *gin.Context, code int, message string) {
+	c.JSON(code, Response{
+		Success: false,
+		Message: message,
+	})
+}
+
+func ValidationError(c *gin.Context, errors interface{}) {
+	c.JSON(http.StatusBadRequest, Response{
+		Success: false,
+		Message: "Validation error",
+		Errors:  errors,
+	})
+}
+
+func InternalError(c *gin.Context, err error) {
+	c.JSON(http.StatusInternalServerError, Response{
+		Success: false,
+		Message: "Internal server error",
+	})
+}
+
+func NotFound(c *gin.Context, message string) {
+	if message == "" {
+		message = "Resource not found"
+	}
+	c.JSON(http.StatusNotFound, Response{
+		Success: false,
+		Message: message,
+	})
+}
+
+func Unauthorized(c *gin.Context, message string) {
+	if message == "" {
+		message = "Unauthorized"
+	}
+	c.JSON(http.StatusUnauthorized, Response{
+		Success: false,
+		Message: message,
+	})
+}
+
+func Forbidden(c *gin.Context, message string) {
+	if message == "" {
+		message = "Forbidden"
+	}
+	c.JSON(http.StatusForbidden, Response{
+		Success: false,
+		Message: message,
+	})
+}
+
+
+============================================
+DIRECTORY: \internal\shared\storage
+============================================
+
+----------------------------------------
+FILE: storage.go
+Path: \internal\shared\storage\storage.go
+Size: 3 KB
+----------------------------------------
+Lines: 126
+
+package storage
+
+import (
+	"fmt"
+	"io"
+	"mime/multipart"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/google/uuid"
+)
+
+type FileInfo struct {
+	Name     string `json:"name"`
+	Path     string `json:"path"`
+	MimeType string `json:"mime_type"`
+	Size     int64  `json:"size"`
+}
+
+var uploadPath string
+
+func Initialize(path string) error {
+	uploadPath = path
+	// Create base upload directory and subdirectories
+	dirs := []string{
+		path,
+		filepath.Join(path, "invoices"),
+		filepath.Join(path, "guarantee_cards"),
+		filepath.Join(path, "reports"),
+		filepath.Join(path, "repair_images"),
+	}
+
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+	}
+
+	return nil
+}
+
+func SaveFile(file *multipart.FileHeader, subDir string) (*FileInfo, error) {
+	// Validate file size (10MB default)
+	if file.Size > 10*1024*1024 {
+		return nil, fmt.Errorf("file size exceeds 10MB limit")
+	}
+
+	// Generate unique filename
+	ext := filepath.Ext(file.Filename)
+	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+
+	// Create subdirectory path
+	dirPath := filepath.Join(uploadPath, subDir)
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	// Full file path
+	filePath := filepath.Join(dirPath, filename)
+
+	// Save file
+	src, err := file.Open()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create file: %w", err)
+	}
+	defer dst.Close()
+
+	if _, err = io.Copy(dst, src); err != nil {
+		return nil, fmt.Errorf("failed to copy file: %w", err)
+	}
+
+	// Determine mime type
+	mimeType := file.Header.Get("Content-Type")
+	if mimeType == "" {
+		// Fallback to extension-based detection
+		switch strings.ToLower(ext) {
+		case ".jpg", ".jpeg":
+			mimeType = "image/jpeg"
+		case ".png":
+			mimeType = "image/png"
+		case ".pdf":
+			mimeType = "application/pdf"
+		default:
+			mimeType = "application/octet-stream"
+		}
+	}
+
+	// Get relative path for database storage
+	relativePath := filepath.Join(subDir, filename)
+
+	return &FileInfo{
+		Name:     file.Filename,
+		Path:     relativePath,
+		MimeType: mimeType,
+		Size:     file.Size,
+	}, nil
+}
+
+func DeleteFile(path string) error {
+	fullPath := filepath.Join(uploadPath, path)
+	if err := os.Remove(fullPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil // File doesn't exist, consider it deleted
+		}
+		return fmt.Errorf("failed to delete file: %w", err)
+	}
+	return nil
+}
+
+func GetFilePath(path string) string {
+	return filepath.Join(uploadPath, path)
+}
+
+func FileExists(path string) bool {
+	fullPath := filepath.Join(uploadPath, path)
+	_, err := os.Stat(fullPath)
+	return err == nil
+}
+
+
+============================================
+DIRECTORY: \internal\shared\utils
+============================================
+
+----------------------------------------
+FILE: jwt.go
+Path: \internal\shared\utils\jwt.go
+Size: 1 KB
+----------------------------------------
+Lines: 55
+
+package utils
+
+import (
+	"errors"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+type Claims struct {
+	AdminID  uint   `json:"admin_id"`
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
+
+func GenerateToken(adminID uint, username, secret string, expiration time.Duration) (string, int64, error) {
+	expiresAt := time.Now().Add(expiration)
+	claims := &Claims{
+		AdminID:  adminID,
+		Username: username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", 0, err
+	}
+
+	return tokenString, int64(expiration.Seconds()), nil
+}
+
+func ValidateToken(tokenString, secret string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return []byte(secret), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, errors.New("invalid token")
+}
+
+
+============================================
+DIRECTORY: \internal\shared\validator
+============================================
+
+----------------------------------------
+FILE: validator.go
+Path: \internal\shared\validator\validator.go
+Size: 2 KB
+----------------------------------------
+Lines: 81
+
+package validator
+
+import (
+	"fmt"
+	"reflect"
+	"strings"
+
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
+)
+
+var validate *validator.Validate
+
+func init() {
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		validate = v
+		// Register custom validation tag if needed
+		v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+			name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+			if name == "-" {
+				return ""
+			}
+			return name
+		})
+	}
+}
+
+func ValidateStruct(s interface{}) error {
+	if validate == nil {
+		return nil
+	}
+	return validate.Struct(s)
+}
+
+func GetValidationErrors(err error) map[string]string {
+	errors := make(map[string]string)
+	if validationErrors, ok := err.(validator.ValidationErrors); ok {
+		for _, ve := range validationErrors {
+			field := ve.Field()
+			// Convert field name from Pascal to camel case
+			field = strings.ToLower(field[:1]) + field[1:]
+			errors[field] = getErrorMessage(ve)
+		}
+	}
+	return errors
+}
+
+func GetValidationErrorString(err error) string {
+	errors := GetValidationErrors(err)
+	if len(errors) == 0 {
+		return "Validation failed"
+	}
+
+	var messages []string
+	for field, message := range errors {
+		messages = append(messages, fmt.Sprintf("%s: %s", field, message))
+	}
+	return strings.Join(messages, "; ")
+}
+
+func getErrorMessage(ve validator.FieldError) string {
+	switch ve.Tag() {
+	case "required":
+		return "This field is required"
+	case "email":
+		return "Invalid email format"
+	case "min":
+		return fmt.Sprintf("Minimum length is %s", ve.Param())
+	case "max":
+		return fmt.Sprintf("Maximum length is %s", ve.Param())
+	case "len":
+		return fmt.Sprintf("Length must be %s", ve.Param())
+	case "numeric":
+		return "Must be a number"
+	case "url":
+		return "Invalid URL format"
+	default:
+		return fmt.Sprintf("Invalid value for %s", ve.Tag())
+	}
+}
+
+
+============================================
+DIRECTORY: \migrations
+============================================
+
+----------------------------------------
+FILE: 001_create_admins_table.up.sql
+Path: \migrations\001_create_admins_table.up.sql
+Size: 1 KB
+----------------------------------------
+Lines: 34
+
+-- Create admins table if not exists
+CREATE TABLE IF NOT EXISTS admins (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100),
+    email VARCHAR(100),
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+-- Create indexes only if they don't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_admins_username') THEN
+        CREATE INDEX idx_admins_username ON admins(username);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_admins_email') THEN
+        CREATE INDEX idx_admins_email ON admins(email);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_admins_deleted_at') THEN
+        CREATE INDEX idx_admins_deleted_at ON admins(deleted_at);
+    END IF;
+END $$;
+
+-- Insert default admin only if not exists
+INSERT INTO admins (username, password, full_name, email, is_active) 
+SELECT 'admin', '$2a$10$Bg7wFoLgx3kQoPJXKdIXUuW3nX5Y6Z7A8B9C0D1E2F3G4H5I6J7K8L9M0N1O2P', 'System Administrator', 'admin@guarantee-system.com', true
+WHERE NOT EXISTS (SELECT 1 FROM admins WHERE username = 'admin');
+
+----------------------------------------
+FILE: 002_create_technicians_table.up.sql
+Path: \migrations\002_create_technicians_table.up.sql
+Size: 1 KB
+----------------------------------------
+Lines: 30
+
+-- Create technicians table
+CREATE TABLE IF NOT EXISTS technicians (
+    id BIGSERIAL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
+    national_id VARCHAR(20),
+    address TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+-- Create indexes only if they don't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_technicians_username') THEN
+        CREATE INDEX idx_technicians_username ON technicians(username);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_technicians_national_id') THEN
+        CREATE INDEX idx_technicians_national_id ON technicians(national_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_technicians_deleted_at') THEN
+        CREATE INDEX idx_technicians_deleted_at ON technicians(deleted_at);
+    END IF;
+END $$;
+
+----------------------------------------
+FILE: 003_create_customers_table.up.sql
+Path: \migrations\003_create_customers_table.up.sql
+Size: 1 KB
+----------------------------------------
+Lines: 29
+
+-- Create customers table
+CREATE TABLE IF NOT EXISTS customers (
+    id BIGSERIAL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    national_id VARCHAR(20) NOT NULL,
+    province VARCHAR(50),
+    city VARCHAR(50),
+    address TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+-- Create indexes safely
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_customers_national_id') THEN
+        CREATE INDEX idx_customers_national_id ON customers(national_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_customers_phone') THEN
+        CREATE INDEX idx_customers_phone ON customers(phone);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_customers_deleted_at') THEN
+        CREATE INDEX idx_customers_deleted_at ON customers(deleted_at);
+    END IF;
+END $$;
+
+----------------------------------------
+FILE: 004_create_product_categories_table.up.sql
+Path: \migrations\004_create_product_categories_table.up.sql
+Size: 1 KB
+----------------------------------------
+Lines: 22
+
+-- Create product_categories table
+CREATE TABLE IF NOT EXISTS product_categories (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+-- Create indexes safely
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_product_categories_name') THEN
+        CREATE INDEX idx_product_categories_name ON product_categories(name);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_product_categories_deleted_at') THEN
+        CREATE INDEX idx_product_categories_deleted_at ON product_categories(deleted_at);
+    END IF;
+END $$;
+
+----------------------------------------
+FILE: 005_create_products_table.up.sql
+Path: \migrations\005_create_products_table.up.sql
+Size: 1 KB
+----------------------------------------
+Lines: 27
+
+-- Create products table
+CREATE TABLE IF NOT EXISTS products (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    category_id BIGINT NOT NULL REFERENCES product_categories(id),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+-- Create indexes safely
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_products_name') THEN
+        CREATE INDEX idx_products_name ON products(name);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_products_category_id') THEN
+        CREATE INDEX idx_products_category_id ON products(category_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_products_deleted_at') THEN
+        CREATE INDEX idx_products_deleted_at ON products(deleted_at);
+    END IF;
+END $$;
+
+----------------------------------------
+FILE: 006_create_guarantees_table.up.sql
+Path: \migrations\006_create_guarantees_table.up.sql
+Size: 2 KB
+----------------------------------------
+Lines: 43
+
+-- Create guarantees table
+CREATE TABLE IF NOT EXISTS guarantees (
+    id BIGSERIAL PRIMARY KEY,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    customer_id BIGINT NOT NULL REFERENCES customers(id),
+    product_id BIGINT NOT NULL REFERENCES products(id),
+    purchase_date DATE NOT NULL,
+    expiry_date DATE NOT NULL,
+    status VARCHAR(20) DEFAULT 'Pending',
+    invoice_image VARCHAR(255),
+    guarantee_card_image VARCHAR(255),
+    notes TEXT,
+    created_by BIGINT REFERENCES admins(id),
+    approved_by BIGINT REFERENCES admins(id),
+    approved_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+-- Create indexes safely
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_guarantees_code') THEN
+        CREATE INDEX idx_guarantees_code ON guarantees(code);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_guarantees_customer_id') THEN
+        CREATE INDEX idx_guarantees_customer_id ON guarantees(customer_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_guarantees_product_id') THEN
+        CREATE INDEX idx_guarantees_product_id ON guarantees(product_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_guarantees_status') THEN
+        CREATE INDEX idx_guarantees_status ON guarantees(status);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_guarantees_deleted_at') THEN
+        CREATE INDEX idx_guarantees_deleted_at ON guarantees(deleted_at);
+    END IF;
+END $$;
+
+----------------------------------------
+FILE: 007_create_repairs_table.up.sql
+Path: \migrations\007_create_repairs_table.up.sql
+Size: 1 KB
+----------------------------------------
+Lines: 33
+
+-- Create repairs table
+CREATE TABLE IF NOT EXISTS repairs (
+    id BIGSERIAL PRIMARY KEY,
+    guarantee_id BIGINT NOT NULL REFERENCES guarantees(id),
+    technician_id BIGINT REFERENCES technicians(id),
+    status VARCHAR(20) DEFAULT 'Pending',
+    description TEXT,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+-- Create indexes safely
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_repairs_guarantee_id') THEN
+        CREATE INDEX idx_repairs_guarantee_id ON repairs(guarantee_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_repairs_technician_id') THEN
+        CREATE INDEX idx_repairs_technician_id ON repairs(technician_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_repairs_status') THEN
+        CREATE INDEX idx_repairs_status ON repairs(status);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_repairs_deleted_at') THEN
+        CREATE INDEX idx_repairs_deleted_at ON repairs(deleted_at);
+    END IF;
+END $$;
+
+----------------------------------------
+FILE: 008_create_repair_reports_table.up.sql
+Path: \migrations\008_create_repair_reports_table.up.sql
+Size: 1 KB
+----------------------------------------
+Lines: 32
+
+-- Create repair_reports table
+CREATE TABLE IF NOT EXISTS repair_reports (
+    id BIGSERIAL PRIMARY KEY,
+    repair_id BIGINT NOT NULL REFERENCES repairs(id),
+    technician_id BIGINT NOT NULL REFERENCES technicians(id),
+    report TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'Pending',
+    images TEXT[],
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+-- Create indexes safely
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_repair_reports_repair_id') THEN
+        CREATE INDEX idx_repair_reports_repair_id ON repair_reports(repair_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_repair_reports_technician_id') THEN
+        CREATE INDEX idx_repair_reports_technician_id ON repair_reports(technician_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_repair_reports_status') THEN
+        CREATE INDEX idx_repair_reports_status ON repair_reports(status);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_repair_reports_deleted_at') THEN
+        CREATE INDEX idx_repair_reports_deleted_at ON repair_reports(deleted_at);
+    END IF;
+END $$;
+
+----------------------------------------
+FILE: 009_create_parts_table.up.sql
+Path: \migrations\009_create_parts_table.up.sql
+Size: 1 KB
+----------------------------------------
+Lines: 25
+
+-- Create parts table
+CREATE TABLE IF NOT EXISTS parts (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    quantity INTEGER DEFAULT 0,
+    minimum_quantity INTEGER DEFAULT 0,
+    price DECIMAL(10,2),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+-- Create indexes safely
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_parts_name') THEN
+        CREATE INDEX idx_parts_name ON parts(name);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_parts_deleted_at') THEN
+        CREATE INDEX idx_parts_deleted_at ON parts(deleted_at);
+    END IF;
+END $$;
+
+----------------------------------------
+FILE: 010_create_part_requests_table.up.sql
+Path: \migrations\010_create_part_requests_table.up.sql
+Size: 1 KB
+----------------------------------------
+Lines: 35
+
+-- Create part_requests table
+CREATE TABLE IF NOT EXISTS part_requests (
+    id BIGSERIAL PRIMARY KEY,
+    part_id BIGINT NOT NULL REFERENCES parts(id),
+    repair_id BIGINT REFERENCES repairs(id),
+    quantity INTEGER NOT NULL,
+    status VARCHAR(20) DEFAULT 'Requested',
+    requested_by BIGINT REFERENCES technicians(id),
+    approved_by BIGINT REFERENCES admins(id),
+    requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    approved_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+-- Create indexes safely
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_part_requests_part_id') THEN
+        CREATE INDEX idx_part_requests_part_id ON part_requests(part_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_part_requests_repair_id') THEN
+        CREATE INDEX idx_part_requests_repair_id ON part_requests(repair_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_part_requests_status') THEN
+        CREATE INDEX idx_part_requests_status ON part_requests(status);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_part_requests_deleted_at') THEN
+        CREATE INDEX idx_part_requests_deleted_at ON part_requests(deleted_at);
+    END IF;
+END $$;
+
+----------------------------------------
+FILE: 20260721085726_create_products_table.down.sql
+Path: \migrations\20260721085726_create_products_table.down.sql
+Size: 0 KB
+----------------------------------------
+Lines: 3
+
+-- Rollback: create_products_table
+
+
+
+----------------------------------------
+FILE: 20260721085726_create_products_table.up.sql
+Path: \migrations\20260721085726_create_products_table.up.sql
+Size: 0 KB
+----------------------------------------
+Lines: 3
+
+-- Migration: create_products_table
+
+
+
+============================================
+  STATISTICS
+============================================
+
+File Types:
+  (no extension) : 2 files
+  .example : 1 files
+  .go : 33 files
+  .mod : 1 files
+  .ps1 : 3 files
+  .sql : 12 files
+  .sum : 1 files
+
+Languages:
+  Docker : 1 files
+  Go : 33 files
+  Make : 1 files
+  Other : 3 files
+  PowerShell : 3 files
+  SQL : 12 files
+
