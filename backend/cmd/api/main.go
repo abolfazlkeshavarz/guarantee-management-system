@@ -10,8 +10,9 @@ import (
 	"guarantee-management-system/internal/database"
 	"guarantee-management-system/internal/middleware"
 	"guarantee-management-system/internal/modules/auth"
-	"guarantee-management-system/internal/shared/storage"
 	"guarantee-management-system/internal/modules/customers"
+	"guarantee-management-system/internal/modules/dashboard" // Add this
+	"guarantee-management-system/internal/shared/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -58,9 +59,13 @@ func main() {
 		authModule := auth.NewAuthModule(database.GetDB(), cfg)
 		authModule.RegisterRoutes(v1)
 
-		//Initalaize customer moduele
+		// Initialize customers module
 		customersModule := customers.NewCustomerModule(database.GetDB())
-    	customersModule.RegisterRoutes(v1)
+		customersModule.RegisterRoutes(v1)
+
+		// Initialize dashboard module
+		dashboardModule := dashboard.NewDashboardModule()
+		dashboardModule.RegisterRoutes(v1)
 	}
 
 	// Start server

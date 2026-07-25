@@ -2,10 +2,10 @@
   GUARANTEE MANAGEMENT SYSTEM - CODE SUMMARY
 ============================================
 
-Generated: 2026-07-23 10:18:20
+Generated: 2026-07-25 10:43:24
 Project Root: D:\Abolfazl Keshavarz\guarantee-management-system\frontend
-Total Files: 46
-Total Directories: 12
+Total Files: 58
+Total Directories: 17
 
 ============================================
   FILE CONTENTS
@@ -65,6 +65,85 @@ Lines: 26
   "registries": {}
 }
 
+
+----------------------------------------
+FILE: fix-all-issues.ps1
+Path: \fix-all-issues.ps1
+Size: 3 KB
+----------------------------------------
+Lines: 71
+
+# fix-all-issues.ps1
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Fixing Frontend Issues" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+
+Write-Host "Step 1: Check if backend is running..." -ForegroundColor Yellow
+try {
+    $response = Invoke-WebRequest -Uri "http://localhost:8080/health" -UseBasicParsing -ErrorAction Stop
+    Write-Host "Backend is running" -ForegroundColor Green
+} catch {
+    Write-Host "Backend is not running!" -ForegroundColor Red
+    Write-Host "Please start backend first:" -ForegroundColor Yellow
+    Write-Host "  cd ../backend" -ForegroundColor Gray
+    Write-Host "  make run" -ForegroundColor Gray
+    exit 1
+}
+Write-Host ""
+
+Write-Host "Step 2: Check CORS configuration..." -ForegroundColor Yellow
+Write-Host "Make sure CORS middleware allows: http://localhost:5173" -ForegroundColor Gray
+Write-Host ""
+
+Write-Host "Step 3: Test API endpoints..." -ForegroundColor Yellow
+
+# Test login
+$loginBody = @{
+    username = "abolfazl"
+    password = "abolfazl"
+} | ConvertTo-Json
+
+try {
+    $loginResponse = Invoke-RestMethod -Uri "http://localhost:8080/api/v1/auth/login" -Method Post -Body $loginBody -ContentType "application/json"
+    $token = $loginResponse.data.token
+    Write-Host "Login successful" -ForegroundColor Green
+    
+    # Test customers API with token
+    $headers = @{
+        Authorization = "Bearer $token"
+    }
+    $customersResponse = Invoke-RestMethod -Uri "http://localhost:8080/api/v1/customers" -Method Get -Headers $headers
+    Write-Host "Customers API working" -ForegroundColor Green
+    Write-Host "Total customers: $($customersResponse.meta.total)" -ForegroundColor Gray
+} catch {
+    if ($_.Exception.Response.StatusCode -eq 401) {
+        Write-Host "Authentication error - please check credentials" -ForegroundColor Yellow
+    } elseif ($_.Exception.Response.StatusCode -eq 404) {
+        Write-Host "Customers endpoint not found - please check backend routes" -ForegroundColor Yellow
+    } else {
+        Write-Host "API test failed: $_" -ForegroundColor Red
+    }
+}
+Write-Host ""
+
+Write-Host "Step 4: Test Dashboard Stats..." -ForegroundColor Yellow
+try {
+    $dashboardResponse = Invoke-RestMethod -Uri "http://localhost:8080/api/v1/dashboard/stats" -Method Get -Headers $headers
+    Write-Host "Dashboard Stats API working" -ForegroundColor Green
+} catch {
+    Write-Host "Dashboard Stats API not found (this is OK if not implemented)" -ForegroundColor Yellow
+}
+Write-Host ""
+
+Write-Host "========================================" -ForegroundColor Green
+Write-Host "  Testing Complete!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "If all tests passed, your frontend should work." -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Start the frontend:" -ForegroundColor Yellow
+Write-Host "  npm run dev" -ForegroundColor Gray
 
 ----------------------------------------
 FILE: generate-code-summary.ps1
@@ -342,9 +421,9 @@ Lines: 14
 ----------------------------------------
 FILE: package.json
 Path: \package.json
-Size: 1 KB
+Size: 2 KB
 ----------------------------------------
-Lines: 51
+Lines: 60
 
 {
   "name": "frontend",
@@ -359,26 +438,35 @@ Lines: 51
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@fontsource-variable/figtree": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
-    "@hookform/resolvers": "^5.4.0",
+    "@fontsource-variable/noto-sans": "^5.3.0",
+    "@fontsource-variable/playfair-display": "^5.3.0",
+    "@hookform/resolvers": "^5.4.2",
+    "@hugeicons/core-free-icons": "^4.2.3",
+    "@hugeicons/react": "^1.1.9",
     "@radix-ui/react-avatar": "^1.2.4",
     "@radix-ui/react-dialog": "^1.1.21",
     "@radix-ui/react-dropdown-menu": "^2.1.22",
-    "@radix-ui/react-label": "^2.1.13",
+    "@radix-ui/react-label": "^2.1.15",
     "@radix-ui/react-select": "^2.3.5",
-    "@radix-ui/react-slot": "^1.3.1",
+    "@radix-ui/react-slot": "^1.3.3",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.101.4",
     "@tanstack/react-query-devtools": "^5.101.4",
     "axios": "^1.18.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
     "lucide-react": "^1.26.0",
     "next-themes": "^0.4.6",
+    "radix-ui": "^1.6.7",
     "react": "^19.2.7",
+    "react-aria-components": "^1.19.0",
     "react-dom": "^19.2.7",
-    "react-hook-form": "^7.82.0",
+    "react-hook-form": "^7.83.0",
     "react-router-dom": "^7.18.1",
+    "recharts": "^3.10.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
@@ -391,7 +479,7 @@ Lines: 51
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
-    "shadcn": "^4.14.0",
+    "shadcn": "^4.14.1",
     "typescript": "~6.0.2",
     "vite": "^8.1.1"
   }
@@ -401,9 +489,9 @@ Lines: 51
 ----------------------------------------
 FILE: package-lock.json
 Path: \package-lock.json
-Size: 254 KB
+Size: 318 KB
 ----------------------------------------
-Lines: 7505
+Lines: 9025
 
 {
   "name": "frontend",
@@ -416,26 +504,35 @@ Lines: 7505
       "version": "0.0.0",
       "dependencies": {
         "@base-ui/react": "^1.6.0",
+        "@fontsource-variable/figtree": "^5.3.0",
         "@fontsource-variable/geist": "^5.3.0",
-        "@hookform/resolvers": "^5.4.0",
+        "@fontsource-variable/noto-sans": "^5.3.0",
+        "@fontsource-variable/playfair-display": "^5.3.0",
+        "@hookform/resolvers": "^5.4.2",
+        "@hugeicons/core-free-icons": "^4.2.3",
+        "@hugeicons/react": "^1.1.9",
         "@radix-ui/react-avatar": "^1.2.4",
         "@radix-ui/react-dialog": "^1.1.21",
         "@radix-ui/react-dropdown-menu": "^2.1.22",
-        "@radix-ui/react-label": "^2.1.13",
+        "@radix-ui/react-label": "^2.1.15",
         "@radix-ui/react-select": "^2.3.5",
-        "@radix-ui/react-slot": "^1.3.1",
+        "@radix-ui/react-slot": "^1.3.3",
         "@tailwindcss/vite": "^4.3.3",
         "@tanstack/react-query": "^5.101.4",
         "@tanstack/react-query-devtools": "^5.101.4",
         "axios": "^1.18.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "date-fns": "^4.4.0",
         "lucide-react": "^1.26.0",
         "next-themes": "^0.4.6",
+        "radix-ui": "^1.6.7",
         "react": "^19.2.7",
+        "react-aria-components": "^1.19.0",
         "react-dom": "^19.2.7",
-        "react-hook-form": "^7.82.0",
+        "react-hook-form": "^7.83.0",
         "react-router-dom": "^7.18.1",
+        "recharts": "^3.10.0",
         "sonner": "^2.0.7",
         "tailwind-merge": "^3.6.0",
         "tailwindcss": "^4.3.3",
@@ -448,7 +545,7 @@ Lines: 7505
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^6.0.3",
         "oxlint": "^1.71.0",
-        "shadcn": "^4.14.0",
+        "shadcn": "^4.14.1",
         "typescript": "~6.0.2",
         "vite": "^8.1.1"
       }
@@ -1219,10 +1316,37 @@ Lines: 7505
       "integrity": "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==",
       "license": "MIT"
     },
+    "node_modules/@fontsource-variable/figtree": {
+      "version": "5.3.0",
+      "resolved": "https://registry.npmjs.org/@fontsource-variable/figtree/-/figtree-5.3.0.tgz",
+      "integrity": "sha512-VRVodD7OiG7apQwE8/2fMjaqpY/a0qRJqL5HtYj8CKIVps+9amaFcdfKmDIf7iqYQx6iPLlArVXAfKeIZmVcNQ==",
+      "license": "OFL-1.1",
+      "funding": {
+        "url": "https://github.com/sponsors/ayuhito"
+      }
+    },
     "node_modules/@fontsource-variable/geist": {
       "version": "5.3.0",
       "resolved": "https://registry.npmjs.org/@fontsource-variable/geist/-/geist-5.3.0.tgz",
       "integrity": "sha512-j0m+vLQuG5XAYoHtGCVu0spvlGreR3EzpECUVzkFmI1mTVnAO38l/NEPDCFgZ177JxzYJCLSmTQibIiYPilGrA==",
+      "license": "OFL-1.1",
+      "funding": {
+        "url": "https://github.com/sponsors/ayuhito"
+      }
+    },
+    "node_modules/@fontsource-variable/noto-sans": {
+      "version": "5.3.0",
+      "resolved": "https://registry.npmjs.org/@fontsource-variable/noto-sans/-/noto-sans-5.3.0.tgz",
+      "integrity": "sha512-e3ZuxzY9AL2psXPZlhwhnYrHUHv6PMoyK9MQ7croF0CUgURLqu9EMjW7q2FgVLwij1tjLsIHQrnwQ8aUcg4BiA==",
+      "license": "OFL-1.1",
+      "funding": {
+        "url": "https://github.com/sponsors/ayuhito"
+      }
+    },
+    "node_modules/@fontsource-variable/playfair-display": {
+      "version": "5.3.0",
+      "resolved": "https://registry.npmjs.org/@fontsource-variable/playfair-display/-/playfair-display-5.3.0.tgz",
+      "integrity": "sha512-IHdzTvE8eGIXHteZql7KXoqdc3Gfm+Zs1u4XlSC3MeplkwviT3sx/P6gI0tLwg/xIYLF4ZJYveZ5V+bl9cnDwA==",
       "license": "OFL-1.1",
       "funding": {
         "url": "https://github.com/sponsors/ayuhito"
@@ -1242,15 +1366,155 @@ Lines: 7505
       }
     },
     "node_modules/@hookform/resolvers": {
-      "version": "5.4.0",
-      "resolved": "https://registry.npmjs.org/@hookform/resolvers/-/resolvers-5.4.0.tgz",
-      "integrity": "sha512-EIsqr/t/qbinPIhGjMdtvutIN1Kk4uwbROE9/UQ93CAVGR7GkA7Y92+fX80OzXi/OB67jVFYwKGO1WzkxmkFZw==",
+      "version": "5.4.2",
+      "resolved": "https://registry.npmjs.org/@hookform/resolvers/-/resolvers-5.4.2.tgz",
+      "integrity": "sha512-aPct0xA24dh2qGLHRzBuCqjI3fZf4qiEdgUBTt9z6TVqgpVoP4K7Aq2j17wnY6p/QPD8fQlh5+4Vd3nwSeOn9Q==",
       "license": "MIT",
       "dependencies": {
         "@standard-schema/utils": "^0.3.0"
       },
       "peerDependencies": {
-        "react-hook-form": "^7.55.0"
+        "@sinclair/typebox": ">=0.25.24",
+        "@standard-schema/spec": "^1.0.0",
+        "@typeschema/main": ">=0.13.7",
+        "@vinejs/vine": "^2.0.0 || ^3.0.0",
+        "ajv": "^8.12.0",
+        "ajv-errors": "^3.0.0",
+        "ajv-formats": "^2.1.1",
+        "arktype": "^2.0.0",
+        "ata-validator": "^0.7.0",
+        "class-transformer": ">=0.4.0",
+        "class-validator": ">=0.12.0",
+        "computed-types": "^1.0.0",
+        "effect": "^3.10.3",
+        "fluentvalidation-ts": "^3.0.0",
+        "fp-ts": "^2.7.0",
+        "io-ts": "^2.0.0",
+        "joi": "^17.0.0",
+        "nope-validator": ">=0.12.0",
+        "react-hook-form": "^7.55.0",
+        "superstruct": ">=0.12.0",
+        "typanion": "^3.3.2",
+        "valibot": "^1.0.0 || ^1.0.0-beta.4 || ^1.0.0-rc",
+        "vest": ">=3.0.0",
+        "yup": "^1.0.0",
+        "zod": "^3.25.0 || ^4.0.0"
+      },
+      "peerDependenciesMeta": {
+        "@sinclair/typebox": {
+          "optional": true
+        },
+        "@standard-schema/spec": {
+          "optional": true
+        },
+        "@typeschema/main": {
+          "optional": true
+        },
+        "@vinejs/vine": {
+          "optional": true
+        },
+        "ajv": {
+          "optional": true
+        },
+        "ajv-errors": {
+          "optional": true
+        },
+        "ajv-formats": {
+          "optional": true
+        },
+        "arktype": {
+          "optional": true
+        },
+        "ata-validator": {
+          "optional": true
+        },
+        "class-transformer": {
+          "optional": true
+        },
+        "class-validator": {
+          "optional": true
+        },
+        "computed-types": {
+          "optional": true
+        },
+        "effect": {
+          "optional": true
+        },
+        "fluentvalidation-ts": {
+          "optional": true
+        },
+        "fp-ts": {
+          "optional": true
+        },
+        "io-ts": {
+          "optional": true
+        },
+        "joi": {
+          "optional": true
+        },
+        "nope-validator": {
+          "optional": true
+        },
+        "superstruct": {
+          "optional": true
+        },
+        "typanion": {
+          "optional": true
+        },
+        "valibot": {
+          "optional": true
+        },
+        "vest": {
+          "optional": true
+        },
+        "yup": {
+          "optional": true
+        },
+        "zod": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@hugeicons/core-free-icons": {
+      "version": "4.2.3",
+      "resolved": "https://registry.npmjs.org/@hugeicons/core-free-icons/-/core-free-icons-4.2.3.tgz",
+      "integrity": "sha512-fpiU0qFZkv4ABi23xJ2m4qNr0BBfuIaYjPboN8WDA6aj9D+OzXa7eykxKOpACZRuGbDz1U9S5DsNx1d5KNnsgA==",
+      "license": "MIT"
+    },
+    "node_modules/@hugeicons/react": {
+      "version": "1.1.9",
+      "resolved": "https://registry.npmjs.org/@hugeicons/react/-/react-1.1.9.tgz",
+      "integrity": "sha512-O+lWSWjbijoAvMCxn4K2bQWCGN5+mP1y5j+X99j23mXMj+s0X25fs71T6t9YJLaBodwmZdaewD27dzS/PiboQw==",
+      "license": "MIT",
+      "peerDependencies": {
+        "react": ">=16.0.0"
+      }
+    },
+    "node_modules/@internationalized/date": {
+      "version": "3.12.2",
+      "resolved": "https://registry.npmjs.org/@internationalized/date/-/date-3.12.2.tgz",
+      "integrity": "sha512-FY1Y+H64NDs+HAF6omlnWxm3mEpfgaCSWtL5l551ZZfImA+kGjPFgrnJrGjH6lfmLL0g8Z/mBu1R3kufeCp6Jw==",
+      "license": "Apache-2.0",
+      "dependencies": {
+        "@swc/helpers": "^0.5.0"
+      }
+    },
+    "node_modules/@internationalized/number": {
+      "version": "3.6.7",
+      "resolved": "https://registry.npmjs.org/@internationalized/number/-/number-3.6.7.tgz",
+      "integrity": "sha512-3ji1fcrT+FPAK86UqEhB/psHixYo6niWPJtt7+qRaYFynt/BaJG8GhAPimtWUpEiVSTq8ZM8L5psMxGquiB/Vg==",
+      "license": "Apache-2.0",
+      "dependencies": {
+        "@swc/helpers": "^0.5.0"
+      }
+    },
+    "node_modules/@internationalized/string": {
+      "version": "3.2.9",
+      "resolved": "https://registry.npmjs.org/@internationalized/string/-/string-3.2.9.tgz",
+      "integrity": "sha512-kzP/M/mbQxODlmOt4bIQZ2SBVUWUSqMLXooXixnX7noche8WHaQcA+nwFN1K2KCF/cp+LDUhcJsCicwkvhD1pg==",
+      "license": "Apache-2.0",
+      "dependencies": {
+        "@swc/helpers": "^0.5.0"
       }
     },
     "node_modules/@jridgewell/gen-mapping": {
@@ -1399,6 +1663,7 @@ Lines: 7505
       "version": "0.139.0",
       "resolved": "https://registry.npmjs.org/@oxc-project/types/-/types-0.139.0.tgz",
       "integrity": "sha512-r9gHphtCs+1M7J0pw6Sn/hh/Wpa/iQrOOkrNAlVLF/gHq+/CJmHIWKKUUhdWjcD6CIa8idarspCsASiXCXvFUw==",
+      "dev": true,
       "license": "MIT",
       "funding": {
         "url": "https://github.com/sponsors/Boshen"
@@ -1763,13 +2028,117 @@ Lines: 7505
       "integrity": "sha512-rqWnm76nYT8HoNNqEjpgJ7Pw/DrBj5iBTrmEPo6HTX5+VJyBNOqTdv4g89G63HuR5g0AaENoAcH7Is5fF2kZ8Q==",
       "license": "MIT"
     },
-    "node_modules/@radix-ui/react-arrow": {
-      "version": "1.1.13",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-arrow/-/react-arrow-1.1.13.tgz",
-      "integrity": "sha512-0Q310knIY0K+mkmncU9FxLggfW7V49Ok2oY+iu27KkERTsQXxYCIC8XW5QoK4w7Jp1z00vT5xj3oxTcn7QlcTg==",
+    "node_modules/@radix-ui/react-accessible-icon": {
+      "version": "1.1.15",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-accessible-icon/-/react-accessible-icon-1.1.15.tgz",
+      "integrity": "sha512-WTQwcAvQf5sOcuUyi90lKPbhwcvQ+j55cjrSmeaN+L2vKU3DooOvlKw2MDeiJ5IkV5N905KW0/fGojKOBhD11A==",
       "license": "MIT",
       "dependencies": {
-        "@radix-ui/react-primitive": "2.1.8"
+        "@radix-ui/react-visually-hidden": "1.2.11"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-accordion": {
+      "version": "1.2.20",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-accordion/-/react-accordion-1.2.20.tgz",
+      "integrity": "sha512-jDhG9FvAEnlhnjrsINbNXcUa4G+L1KqSkJSunkbKEzFRcAb52jvM0PjPxPRvhe1HNc5F5yc0yzzWeeqlH4yBIg==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-collapsible": "1.1.20",
+        "@radix-ui/react-collection": "1.1.15",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-controllable-state": "1.2.6"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-alert-dialog": {
+      "version": "1.1.23",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-alert-dialog/-/react-alert-dialog-1.1.23.tgz",
+      "integrity": "sha512-VAYOiQRqj3GPpYJE0I9J+X8Ip05cyVlNdKOFeiGS2Ou1HHGfpl0BxOyZm6nmVDyU+W+NF3/XLzmjHmVGydhwgA==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-dialog": "1.1.23",
+        "@radix-ui/react-primitive": "2.1.10"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-arrow": {
+      "version": "1.1.15",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-arrow/-/react-arrow-1.1.15.tgz",
+      "integrity": "sha512-v4zggRcjadnI+ClKDuijlQEW4tw3NoaeHc/PwpKnLoLLKNUG4InLegkstooLcRIUWCs+8L22dGURCVuFfOKfnA==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/react-primitive": "2.1.10"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-aspect-ratio": {
+      "version": "1.1.15",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-aspect-ratio/-/react-aspect-ratio-1.1.15.tgz",
+      "integrity": "sha512-fy+dyVR+90nelK8rqIznFlxzx7uPcGbhxH8Nfr2bHb4UfSe+e3hklOC0luK0hDwVwnRX7xTRySpsrQVeW+/oNQ==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/react-primitive": "2.1.10"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -1787,17 +2156,76 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-avatar": {
-      "version": "1.2.4",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-avatar/-/react-avatar-1.2.4.tgz",
-      "integrity": "sha512-u4Sz6ajq2WobGMqbsNXnFI/3JP/o7TUBkEmQ4BRUYofPDQawdO3WWYy5907c9VgOFX+ETjKI3VxnnrKYAF7Pmg==",
+      "version": "1.2.6",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-avatar/-/react-avatar-1.2.6.tgz",
+      "integrity": "sha512-4ULOTJ/mqy2hT9GlWa/MFHxHSvH3nJzHnZM1waNsc5Bonv7i70aNenghXmD97S6OJ81ekXONGGt4nT1r0PfEdA==",
       "license": "MIT",
       "dependencies": {
         "@radix-ui/primitive": "1.1.7",
-        "@radix-ui/react-context": "1.2.1",
-        "@radix-ui/react-primitive": "2.1.8",
-        "@radix-ui/react-use-callback-ref": "1.1.3",
-        "@radix-ui/react-use-is-hydrated": "0.1.2",
-        "@radix-ui/react-use-layout-effect": "1.1.3"
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-callback-ref": "1.1.4",
+        "@radix-ui/react-use-is-hydrated": "0.1.3",
+        "@radix-ui/react-use-layout-effect": "1.1.4"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-checkbox": {
+      "version": "1.3.11",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-checkbox/-/react-checkbox-1.3.11.tgz",
+      "integrity": "sha512-Gnptr9pDDQxD3hgq2dtPbtrp/c2qH1mBwIzw3X/ivrMb2e1t0jMTi606fVEqFPaQR1ggXIVQWKj3P2WW9v7zGQ==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-size": "1.1.4"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-collapsible": {
+      "version": "1.1.20",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-collapsible/-/react-collapsible-1.1.20.tgz",
+      "integrity": "sha512-mcGesGplBnzN2sbvJETzpCNfSMyPnb29q1GRLU+Ib7bJrpIG2ywmRoh2V5VbA2uNvKikKUlVbAPks7JDjz4A8Q==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-layout-effect": "1.1.4"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -1815,15 +2243,15 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-collection": {
-      "version": "1.1.13",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-collection/-/react-collection-1.1.13.tgz",
-      "integrity": "sha512-Q8xYqNRFObXPmi45bFSkGdM2JA5hjBeYGFqzg6lZR3wp6b+cciraVq8DdneTabtws+uOYqjmsvmKOufk/M9Cyg==",
+      "version": "1.1.15",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-collection/-/react-collection-1.1.15.tgz",
+      "integrity": "sha512-9W+B9NPF0NaaPh/1NJd3+KqsnlLqU9H7T2rvww+fp+T/evVXdNAyYcnfRQZFOjkR1ajQp3yORlqnI8soawLvNA==",
       "license": "MIT",
       "dependencies": {
-        "@radix-ui/react-compose-refs": "1.1.4",
-        "@radix-ui/react-context": "1.2.1",
-        "@radix-ui/react-primitive": "2.1.8",
-        "@radix-ui/react-slot": "1.3.1"
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-slot": "1.3.3"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -1841,9 +2269,9 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-compose-refs": {
-      "version": "1.1.4",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-compose-refs/-/react-compose-refs-1.1.4.tgz",
-      "integrity": "sha512-pWJo6lQAfR6uy1n7ii7PaCc9dLPwTXDYbQpORZU5B548Aqvl2pP1SM1vJGKyxIFqZMHRopRO4CQYX2iXAIB5jA==",
+      "version": "1.1.5",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-compose-refs/-/react-compose-refs-1.1.5.tgz",
+      "integrity": "sha512-+48PbAAbq3didjJxa+OaWY2ZwgAKsNiRGyeHKszblZMQ+kcpd9pAaT11cMkGEie0vsOi3QdeTE6d5Fe3Gn61kA==",
       "license": "MIT",
       "peerDependencies": {
         "@types/react": "*",
@@ -1856,9 +2284,9 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-context": {
-      "version": "1.2.1",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-context/-/react-context-1.2.1.tgz",
-      "integrity": "sha512-EraVbFjiIjibpLr6EjvEDmSCYJU2SlKDMiO+qEK/D9GOWnQoAQlpQo2occGYC1UM9MBeEx5Bek3UtW/Qi57vAg==",
+      "version": "1.2.2",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-context/-/react-context-1.2.2.tgz",
+      "integrity": "sha512-RHCUGwKHDr0hDGg4X7ma4JG4/+12qxw8rkh5QKdDldlCvtja6nUx1Ef/8HVrJze81lEsgLQlqjzjGNHantgnQA==",
       "license": "MIT",
       "peerDependencies": {
         "@types/react": "*",
@@ -1870,25 +2298,52 @@ Lines: 7505
         }
       }
     },
-    "node_modules/@radix-ui/react-dialog": {
-      "version": "1.1.21",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-dialog/-/react-dialog-1.1.21.tgz",
-      "integrity": "sha512-h+7qMDDmZJ8qTSPrwNyKb/PACY0ehtN8QOBlCz+C2C1jgehKekdhmHddG9YQk8BF/sHJqglPjte+jA1Jrp9HcA==",
+    "node_modules/@radix-ui/react-context-menu": {
+      "version": "2.3.7",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-context-menu/-/react-context-menu-2.3.7.tgz",
+      "integrity": "sha512-CtXP35dxaB5T3zXSd+E3uHe/QpXcpYnZmxp6OaIbfthtfW4wyb77M23BG+bwIJDtsMwEP/YssdsmNyZu7jhWew==",
       "license": "MIT",
       "dependencies": {
         "@radix-ui/primitive": "1.1.7",
-        "@radix-ui/react-compose-refs": "1.1.4",
-        "@radix-ui/react-context": "1.2.1",
-        "@radix-ui/react-dismissable-layer": "1.1.17",
-        "@radix-ui/react-focus-guards": "1.1.5",
-        "@radix-ui/react-focus-scope": "1.1.14",
-        "@radix-ui/react-id": "1.1.3",
-        "@radix-ui/react-portal": "1.1.15",
-        "@radix-ui/react-presence": "1.1.9",
-        "@radix-ui/react-primitive": "2.1.8",
-        "@radix-ui/react-slot": "1.3.1",
-        "@radix-ui/react-use-controllable-state": "1.2.5",
-        "@radix-ui/react-use-layout-effect": "1.1.3",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-menu": "2.1.24",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-controllable-state": "1.2.6"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-dialog": {
+      "version": "1.1.23",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-dialog/-/react-dialog-1.1.23.tgz",
+      "integrity": "sha512-Ksw4WeROkO4rC9k/onilX/Ao2Cr1ku1unMNH+XSCcP4jSXYu7HDsg9n4ojMjVb22XpYjAQ9qfrFlVbru1vXDUA==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-dismissable-layer": "1.1.19",
+        "@radix-ui/react-focus-guards": "1.1.6",
+        "@radix-ui/react-focus-scope": "1.1.16",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-portal": "1.1.17",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-slot": "1.3.3",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-layout-effect": "1.1.4",
         "aria-hidden": "^1.2.4",
         "react-remove-scroll": "^2.7.2"
       },
@@ -1908,9 +2363,9 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-direction": {
-      "version": "1.1.3",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-direction/-/react-direction-1.1.3.tgz",
-      "integrity": "sha512-OdgAA/xb6WOQMKNn0mtbYoruMG6YMaBOnq+evWxSpMmiEMBdeFZawnIWRfPPeVXCRm+0lnN8jpJLjhD7/UIxWw==",
+      "version": "1.1.4",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-direction/-/react-direction-1.1.4.tgz",
+      "integrity": "sha512-5pzg4FGQNpExhnhT2zlrP1wZFaYCd1K0nYWoFAdcYoYK868IEigqMX3B3f8yIoRlAhAeDWciLI6ZdCKHF9P4Vg==",
       "license": "MIT",
       "peerDependencies": {
         "@types/react": "*",
@@ -1923,16 +2378,16 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-dismissable-layer": {
-      "version": "1.1.17",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-dismissable-layer/-/react-dismissable-layer-1.1.17.tgz",
-      "integrity": "sha512-QAXwa38pG0xNAYh1pjdSaf86NrkqsMoDNmget/Y7X8O8E/C3Iqlj9GAPE4DfX9BPLXc7WH2TWSzMRnIoCdcjzQ==",
+      "version": "1.1.19",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-dismissable-layer/-/react-dismissable-layer-1.1.19.tgz",
+      "integrity": "sha512-8g4pfOL9HoKKLWGiypT+dphVqjFfmcXO5GBnhsG6zI+lxAx/8feQpr+1LSN8Re3hiZ+XkLNS4O9ztK11/LzQ6w==",
       "license": "MIT",
       "dependencies": {
         "@radix-ui/primitive": "1.1.7",
-        "@radix-ui/react-compose-refs": "1.1.4",
-        "@radix-ui/react-primitive": "2.1.8",
-        "@radix-ui/react-use-callback-ref": "1.1.3",
-        "@radix-ui/react-use-effect-event": "0.0.4"
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-callback-ref": "1.1.4",
+        "@radix-ui/react-use-effect-event": "0.0.5"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -1950,18 +2405,18 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-dropdown-menu": {
-      "version": "2.1.22",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-dropdown-menu/-/react-dropdown-menu-2.1.22.tgz",
-      "integrity": "sha512-wZRLTjZaJf1HTxx0YepFKZUuo+SZMi+Cr4kJ2fuA5FxDSUE0vHDTscahUaU+jfz6LFk4OuguwqJs5K0JsIsIBA==",
+      "version": "2.1.24",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-dropdown-menu/-/react-dropdown-menu-2.1.24.tgz",
+      "integrity": "sha512-geq8l2rJkxvkXsT9RMgtUE3P8pITFpTsvYpbySi1IH4fZEABD/Gp85myayFgxk0ktljGMJnCbeFkyTusvSvv7g==",
       "license": "MIT",
       "dependencies": {
         "@radix-ui/primitive": "1.1.7",
-        "@radix-ui/react-compose-refs": "1.1.4",
-        "@radix-ui/react-context": "1.2.1",
-        "@radix-ui/react-id": "1.1.3",
-        "@radix-ui/react-menu": "2.1.22",
-        "@radix-ui/react-primitive": "2.1.8",
-        "@radix-ui/react-use-controllable-state": "1.2.5"
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-menu": "2.1.24",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-controllable-state": "1.2.6"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -1979,9 +2434,9 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-focus-guards": {
-      "version": "1.1.5",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-focus-guards/-/react-focus-guards-1.1.5.tgz",
-      "integrity": "sha512-UQvlB7L/BYh3P8MLvwZnQkH521EDos40Rwnbt5+Qpg4Vbk0z3xJjRUmR6+aka4aT1IQQXFdO5bNPoE7cvFl5xQ==",
+      "version": "1.1.6",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-focus-guards/-/react-focus-guards-1.1.6.tgz",
+      "integrity": "sha512-RNOJjfZMTyBM6xYmV3IVGXkPjIhcBAuv48POevAXwrGJhkWZ9p1rFoIS1JFooPuT193AZmRsCPhpoVJxx6OPoQ==",
       "license": "MIT",
       "peerDependencies": {
         "@types/react": "*",
@@ -1994,14 +2449,73 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-focus-scope": {
-      "version": "1.1.14",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-focus-scope/-/react-focus-scope-1.1.14.tgz",
-      "integrity": "sha512-/x4htnJfmW53MplkrePaDpf1o/rN1C++g88WpVobULXbSyC19NtLkXmewuJ/HCaceSmfKDNL5gOXcBGnuAvnvQ==",
+      "version": "1.1.16",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-focus-scope/-/react-focus-scope-1.1.16.tgz",
+      "integrity": "sha512-wmRZ2WWLvmt6KHy2rNPOdPUjwq5xOHY02+m+udwJTn0aNIox/rkskAvJTyTLGhPK6KgrUjlJUJpgmx/+wFiFIQ==",
       "license": "MIT",
       "dependencies": {
-        "@radix-ui/react-compose-refs": "1.1.4",
-        "@radix-ui/react-primitive": "2.1.8",
-        "@radix-ui/react-use-callback-ref": "1.1.3"
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-callback-ref": "1.1.4"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-form": {
+      "version": "0.1.16",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-form/-/react-form-0.1.16.tgz",
+      "integrity": "sha512-Q4TLEn2A7TAypxwmd6R9EwrlXDvkfYSDMrq9/887AXAGh+G1rH+kYJKSTv+Si9Y0JPKTwKYv6PviAJosysNimA==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-label": "2.1.15",
+        "@radix-ui/react-primitive": "2.1.10"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-hover-card": {
+      "version": "1.1.23",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-hover-card/-/react-hover-card-1.1.23.tgz",
+      "integrity": "sha512-H8qONfZd3ltrU3+jHCIgITbWo6e1iTKvP9DHdrvYbX48ooRM5FjEDTn16AMwdfuOGkWdZEhpl3PLL/Wk/AnHDQ==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-dismissable-layer": "1.1.19",
+        "@radix-ui/react-popper": "1.3.7",
+        "@radix-ui/react-portal": "1.1.17",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-controllable-state": "1.2.6"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2019,12 +2533,12 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-id": {
-      "version": "1.1.3",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-id/-/react-id-1.1.3.tgz",
-      "integrity": "sha512-f/Wxm0ctyMymUJK0fqTSQlm85rbzdAkoNbPXJQ5+6caowVO8Yx+NWGjGz/oGhs/D+WIbbQpOrU0hU2Li2/42xQ==",
+      "version": "1.1.4",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-id/-/react-id-1.1.4.tgz",
+      "integrity": "sha512-TMQp2llA+RYn7JcjnrMnz7wN4pcVttPZnRZo52PLQsoLVKzNlVwUeHmfePgTgRluXFvlD3GD5g5MOVVTJCO0qA==",
       "license": "MIT",
       "dependencies": {
-        "@radix-ui/react-use-layout-effect": "1.1.3"
+        "@radix-ui/react-use-layout-effect": "1.1.4"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2037,12 +2551,12 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-label": {
-      "version": "2.1.13",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-label/-/react-label-2.1.13.tgz",
-      "integrity": "sha512-kj7BXyM4uG0dyeoEdVmPQAOFN291+iJOtiGTvkXe1ijJWLQbAHpFNkopvqquaMVn+zjqTZRhnefESAinMErHKg==",
+      "version": "2.1.15",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-label/-/react-label-2.1.15.tgz",
+      "integrity": "sha512-o/rdYEwZTTo5tjknnPeyQFU45kUC4i/XyeDPP+HGyi6XqpOP6Zf5Ya5vh/Yfe9Id5JiuWnnAx2XqIeD3UYZt0g==",
       "license": "MIT",
       "dependencies": {
-        "@radix-ui/react-primitive": "2.1.8"
+        "@radix-ui/react-primitive": "2.1.10"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2060,27 +2574,196 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-menu": {
-      "version": "2.1.22",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-menu/-/react-menu-2.1.22.tgz",
-      "integrity": "sha512-xCFrVLttGDPwMjIPI6GS+tm3IGUNKsPXffrJQIPpQJuE9Qy1bU9GNUCkwranU/pEqyBlwMxcBIK/FUJFAZ9SqQ==",
+      "version": "2.1.24",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-menu/-/react-menu-2.1.24.tgz",
+      "integrity": "sha512-uW7RVuU6Lp/ZtfeY4b3kL32zccgEWvPv1+cf17ubYzHa9cL8AHokmk36cG/XEiH/smbQvumnieXX9j/e9RqJWA==",
       "license": "MIT",
       "dependencies": {
         "@radix-ui/primitive": "1.1.7",
-        "@radix-ui/react-collection": "1.1.13",
-        "@radix-ui/react-compose-refs": "1.1.4",
-        "@radix-ui/react-context": "1.2.1",
-        "@radix-ui/react-direction": "1.1.3",
-        "@radix-ui/react-dismissable-layer": "1.1.17",
-        "@radix-ui/react-focus-guards": "1.1.5",
-        "@radix-ui/react-focus-scope": "1.1.14",
-        "@radix-ui/react-id": "1.1.3",
-        "@radix-ui/react-popper": "1.3.5",
-        "@radix-ui/react-portal": "1.1.15",
-        "@radix-ui/react-presence": "1.1.9",
-        "@radix-ui/react-primitive": "2.1.8",
-        "@radix-ui/react-roving-focus": "1.1.17",
-        "@radix-ui/react-slot": "1.3.1",
-        "@radix-ui/react-use-callback-ref": "1.1.3",
+        "@radix-ui/react-collection": "1.1.15",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-dismissable-layer": "1.1.19",
+        "@radix-ui/react-focus-guards": "1.1.6",
+        "@radix-ui/react-focus-scope": "1.1.16",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-popper": "1.3.7",
+        "@radix-ui/react-portal": "1.1.17",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-roving-focus": "1.1.19",
+        "@radix-ui/react-slot": "1.3.3",
+        "@radix-ui/react-use-callback-ref": "1.1.4",
+        "aria-hidden": "^1.2.4",
+        "react-remove-scroll": "^2.7.2"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-menubar": {
+      "version": "1.1.24",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-menubar/-/react-menubar-1.1.24.tgz",
+      "integrity": "sha512-eeVs0vf7cuqXaM0qLQCPcufImiJNVBXdJDLu7ZGYl2732UH23Qat/foNGrr6vYV3/DdTsBqASoggUFgH14OcZA==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-collection": "1.1.15",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-menu": "2.1.24",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-roving-focus": "1.1.19",
+        "@radix-ui/react-use-controllable-state": "1.2.6"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-navigation-menu": {
+      "version": "1.2.22",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-navigation-menu/-/react-navigation-menu-1.2.22.tgz",
+      "integrity": "sha512-ou7iLEJ+yrhQndkkA4U21XIdS/CS45F4iXIkTZcb6/Ne9EMsOuDudVmCwmDnfFZZ+y1FZqXRNSIgBy+YMvZVZg==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-collection": "1.1.15",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-dismissable-layer": "1.1.19",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-callback-ref": "1.1.4",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-layout-effect": "1.1.4",
+        "@radix-ui/react-use-previous": "1.1.4",
+        "@radix-ui/react-visually-hidden": "1.2.11"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-one-time-password-field": {
+      "version": "0.1.16",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-one-time-password-field/-/react-one-time-password-field-0.1.16.tgz",
+      "integrity": "sha512-Tj9P6ntAJEw52oq/F0AGknXR4XncxEt7XU47O3xJQOiWfLzEy3d9gtgKfvjSzGxzHkfL+VzvxGu2KTFsloJqXw==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/number": "1.1.3",
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-collection": "1.1.15",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-roving-focus": "1.1.19",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-effect-event": "0.0.5",
+        "@radix-ui/react-use-is-hydrated": "0.1.3",
+        "@radix-ui/react-use-layout-effect": "1.1.4"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-password-toggle-field": {
+      "version": "0.1.11",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-password-toggle-field/-/react-password-toggle-field-0.1.11.tgz",
+      "integrity": "sha512-4gvFnmDXu3dgj21CqsufzIameRvlRd4SBqaWhcrlrNhRo0Y5i/49AmRJYe1fdAM3G2VNBbmin4b0D6cdQocwgw==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-effect-event": "0.0.5",
+        "@radix-ui/react-use-is-hydrated": "0.1.3"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-popover": {
+      "version": "1.1.23",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-popover/-/react-popover-1.1.23.tgz",
+      "integrity": "sha512-mw58MrBlyHWFisTOYignD0vf/3gdcgAR+9of1s9G/38CbFiUwH1nCDkc0AUM9IrXFgN5Ue8n45j9WCgyM1sbiQ==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-dismissable-layer": "1.1.19",
+        "@radix-ui/react-focus-guards": "1.1.6",
+        "@radix-ui/react-focus-scope": "1.1.16",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-popper": "1.3.7",
+        "@radix-ui/react-portal": "1.1.17",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-slot": "1.3.3",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
         "aria-hidden": "^1.2.4",
         "react-remove-scroll": "^2.7.2"
       },
@@ -2100,20 +2783,20 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-popper": {
-      "version": "1.3.5",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-popper/-/react-popper-1.3.5.tgz",
-      "integrity": "sha512-6hLng2Rs45IZcvZ31BNvMeaFEMMEbtsog4xPcb8LZrGfyoV9fdAXqB9UKhLpTHtL0+E2DhSr6VW54Tehd6ksAQ==",
+      "version": "1.3.7",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-popper/-/react-popper-1.3.7.tgz",
+      "integrity": "sha512-UsJrrd7w4wuKKTdvd/DNERVlwSlUcyXzjhyDwBk+3aPOsCjOY6ZSbxuw8E6lZTjjfP8Cpd0J8VVkrYUWyGYXyg==",
       "license": "MIT",
       "dependencies": {
         "@floating-ui/react-dom": "^2.0.0",
-        "@radix-ui/react-arrow": "1.1.13",
-        "@radix-ui/react-compose-refs": "1.1.4",
-        "@radix-ui/react-context": "1.2.1",
-        "@radix-ui/react-primitive": "2.1.8",
-        "@radix-ui/react-use-callback-ref": "1.1.3",
-        "@radix-ui/react-use-layout-effect": "1.1.3",
-        "@radix-ui/react-use-rect": "1.1.3",
-        "@radix-ui/react-use-size": "1.1.3",
+        "@radix-ui/react-arrow": "1.1.15",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-callback-ref": "1.1.4",
+        "@radix-ui/react-use-layout-effect": "1.1.4",
+        "@radix-ui/react-use-rect": "1.1.4",
+        "@radix-ui/react-use-size": "1.1.4",
         "@radix-ui/rect": "1.1.3"
       },
       "peerDependencies": {
@@ -2132,13 +2815,13 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-portal": {
-      "version": "1.1.15",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-portal/-/react-portal-1.1.15.tgz",
-      "integrity": "sha512-kAfBVJUKNNKZuyGQXXG6rKolAV2KAmxxVkPXJgoq9dEFTl39286RufHQFNTL8rzha4vP8159BJ6hMGpB+bqv7A==",
+      "version": "1.1.17",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-portal/-/react-portal-1.1.17.tgz",
+      "integrity": "sha512-vKQLcWypUnwZVvfV7UkGahH2g6ySe8M8R+zYBwPrv5byZ9QAW6cQVvNKo7GgmD+p8aYb6D9JBuvy8/WhOno2wQ==",
       "license": "MIT",
       "dependencies": {
-        "@radix-ui/react-primitive": "2.1.8",
-        "@radix-ui/react-use-layout-effect": "1.1.3"
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-layout-effect": "1.1.4"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2156,12 +2839,12 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-presence": {
-      "version": "1.1.9",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-presence/-/react-presence-1.1.9.tgz",
-      "integrity": "sha512-LTi1v05bprIb8/GSY/GWusI0jfsYjQ3CD3Nin8o7jVxnpHzVQfzjOQJoJTQkE9bdmOnsS7SFdhkXiBv8PrYnxw==",
+      "version": "1.1.10",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-presence/-/react-presence-1.1.10.tgz",
+      "integrity": "sha512-3wyzCQ6+ubRA+D4uv9m95JYLXxmOHp05qjrkjeA7uKHHtjpPggQzc6DAb0URl7j67oR0K2foO4ip27TiX037Bw==",
       "license": "MIT",
       "dependencies": {
-        "@radix-ui/react-use-layout-effect": "1.1.3"
+        "@radix-ui/react-use-layout-effect": "1.1.4"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2179,12 +2862,67 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-primitive": {
-      "version": "2.1.8",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-primitive/-/react-primitive-2.1.8.tgz",
-      "integrity": "sha512-DOlK1BdcIeYYUcFkSYFka4v1h95XTov93b0jCgW1EEiZuIhdwHY2NlE1teLIh+p0uBsuZI5A+voay+iVWpprfA==",
+      "version": "2.1.10",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-primitive/-/react-primitive-2.1.10.tgz",
+      "integrity": "sha512-MucOnzh6hR5mid6VpkbglRAMYMjKLqRnGBbjXkzjK52fuQDd1qbkx78a5P40mkcnVXJdEVxm26E9OPAiUq7nBg==",
       "license": "MIT",
       "dependencies": {
-        "@radix-ui/react-slot": "1.3.1"
+        "@radix-ui/react-slot": "1.3.3"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-progress": {
+      "version": "1.1.16",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-progress/-/react-progress-1.1.16.tgz",
+      "integrity": "sha512-5XnomAsoZZCY+KNTxbIghpGqPruZvKFNlvcAljVAOdDRDsH4/OZQxhtwo5wdtoDM5R6MhJBb2sPnDuRFep3lzg==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-primitive": "2.1.10"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-radio-group": {
+      "version": "1.4.7",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-radio-group/-/react-radio-group-1.4.7.tgz",
+      "integrity": "sha512-cgYFEkntCxppHZgtSZ+7vh0wbZQ+IC7PPMw8DSnRG27B6kDd32/Zw0OJt7dGDigCoprMuWHjg2PvUn3PYvPFoQ==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-roving-focus": "1.1.19",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-size": "1.1.4"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2202,22 +2940,53 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-roving-focus": {
-      "version": "1.1.17",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-roving-focus/-/react-roving-focus-1.1.17.tgz",
-      "integrity": "sha512-YdJmjETw7Py+4Nziv71jgZ6fH7xQgB5p+pQ5rV8Iufyrm0RHSijec/UV1zPfQoK/YcfzB9nOl/2bi1zf1SjRMQ==",
+      "version": "1.1.19",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-roving-focus/-/react-roving-focus-1.1.19.tgz",
+      "integrity": "sha512-V9jI6hDjT7l3jsCQD9bLNvDLM3tH/gdbOTp7Tefp3hbbgCGQoK7tUvrWiRlcoBHIZ809ElXwNQwVo0B98LuTXQ==",
       "license": "MIT",
       "dependencies": {
         "@radix-ui/primitive": "1.1.7",
-        "@radix-ui/react-collection": "1.1.13",
-        "@radix-ui/react-compose-refs": "1.1.4",
-        "@radix-ui/react-context": "1.2.1",
-        "@radix-ui/react-direction": "1.1.3",
-        "@radix-ui/react-id": "1.1.3",
-        "@radix-ui/react-primitive": "2.1.8",
-        "@radix-ui/react-use-callback-ref": "1.1.3",
-        "@radix-ui/react-use-controllable-state": "1.2.5",
-        "@radix-ui/react-use-is-hydrated": "0.1.2",
-        "@radix-ui/react-use-layout-effect": "1.1.3"
+        "@radix-ui/react-collection": "1.1.15",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-callback-ref": "1.1.4",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-is-hydrated": "0.1.3",
+        "@radix-ui/react-use-layout-effect": "1.1.4"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-scroll-area": {
+      "version": "1.2.18",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-scroll-area/-/react-scroll-area-1.2.18.tgz",
+      "integrity": "sha512-Zn5Cd171wxsO3Dfg8HaW6RifTb9CYTKQJHs/G4+LN1GfmJpaQMZQyQxMprVPHpaz7QY4l9BxK2JwQuzHsXC8nA==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/number": "1.1.3",
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-callback-ref": "1.1.4",
+        "@radix-ui/react-use-layout-effect": "1.1.4"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2235,31 +3004,31 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-select": {
-      "version": "2.3.5",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-select/-/react-select-2.3.5.tgz",
-      "integrity": "sha512-6CQx0xtdarAkSCsqgLJaz+coYQaru7rt8K6gMItR2rA+WP8/Ig6kRAzP6Zw88RccG98IZnszqJlJx9hejYOL3A==",
+      "version": "2.3.7",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-select/-/react-select-2.3.7.tgz",
+      "integrity": "sha512-WFGImkmbzcfxeIwq/+4HvRN0pizBwbwQUED4I13ezQsDdfl38ZntN6TmR8XaSzPBqoCToe8rF75j6NPNDSzhbg==",
       "license": "MIT",
       "dependencies": {
         "@radix-ui/number": "1.1.3",
         "@radix-ui/primitive": "1.1.7",
-        "@radix-ui/react-collection": "1.1.13",
-        "@radix-ui/react-compose-refs": "1.1.4",
-        "@radix-ui/react-context": "1.2.1",
-        "@radix-ui/react-direction": "1.1.3",
-        "@radix-ui/react-dismissable-layer": "1.1.17",
-        "@radix-ui/react-focus-guards": "1.1.5",
-        "@radix-ui/react-focus-scope": "1.1.14",
-        "@radix-ui/react-id": "1.1.3",
-        "@radix-ui/react-popper": "1.3.5",
-        "@radix-ui/react-portal": "1.1.15",
-        "@radix-ui/react-presence": "1.1.9",
-        "@radix-ui/react-primitive": "2.1.8",
-        "@radix-ui/react-slot": "1.3.1",
-        "@radix-ui/react-use-callback-ref": "1.1.3",
-        "@radix-ui/react-use-controllable-state": "1.2.5",
-        "@radix-ui/react-use-layout-effect": "1.1.3",
-        "@radix-ui/react-use-previous": "1.1.3",
-        "@radix-ui/react-visually-hidden": "1.2.9",
+        "@radix-ui/react-collection": "1.1.15",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-dismissable-layer": "1.1.19",
+        "@radix-ui/react-focus-guards": "1.1.6",
+        "@radix-ui/react-focus-scope": "1.1.16",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-popper": "1.3.7",
+        "@radix-ui/react-portal": "1.1.17",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-slot": "1.3.3",
+        "@radix-ui/react-use-callback-ref": "1.1.4",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-layout-effect": "1.1.4",
+        "@radix-ui/react-use-previous": "1.1.4",
+        "@radix-ui/react-visually-hidden": "1.2.11",
         "aria-hidden": "^1.2.4",
         "react-remove-scroll": "^2.7.2"
       },
@@ -2278,14 +3047,69 @@ Lines: 7505
         }
       }
     },
-    "node_modules/@radix-ui/react-slot": {
-      "version": "1.3.1",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-slot/-/react-slot-1.3.1.tgz",
-      "integrity": "sha512-Bu/aAQHFFh6/QAvXAeUMurJ9fbW0JUIqlojU/yBXZ7cAVqy75Y7JYYyuCr9zLNF0p4WWoJYV54CTUIf4l7FzTw==",
+    "node_modules/@radix-ui/react-separator": {
+      "version": "1.1.15",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-separator/-/react-separator-1.1.15.tgz",
+      "integrity": "sha512-jOLO4lssEzWpoDu7G+Ze4VjwMRUBt291pnZD0gmalREZipnTX3wadQo7Fy48GCTfe14/YRN6rw/rOJqrE85Wxw==",
       "license": "MIT",
       "dependencies": {
+        "@radix-ui/react-primitive": "2.1.10"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-slider": {
+      "version": "1.4.7",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-slider/-/react-slider-1.4.7.tgz",
+      "integrity": "sha512-mTSLf1GC/C0moWjTbvCM6Qn/gBjvlFt1azuWF2v7MN5C3Zq2U2J2lN3ZEYkpujuOU5Ro7A28wkviSxaKnG0BYg==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/number": "1.1.3",
         "@radix-ui/primitive": "1.1.7",
-        "@radix-ui/react-compose-refs": "1.1.4"
+        "@radix-ui/react-collection": "1.1.15",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-layout-effect": "1.1.4",
+        "@radix-ui/react-use-previous": "1.1.4",
+        "@radix-ui/react-use-size": "1.1.4"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-slot": {
+      "version": "1.3.3",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-slot/-/react-slot-1.3.3.tgz",
+      "integrity": "sha512-qx7oqnYbxnK9kYI9m317qmFmEgo6ywqWvbTogdj7cL9p3/yx4M48p7Rnw5z3H890cL/ow/EeWJsuTykeZVXP5Q==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/react-compose-refs": "1.1.5"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2297,10 +3121,220 @@ Lines: 7505
         }
       }
     },
+    "node_modules/@radix-ui/react-switch": {
+      "version": "1.3.7",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-switch/-/react-switch-1.3.7.tgz",
+      "integrity": "sha512-48tB/4dn2UVLBCYhTu9AuR63IHl73l/qLbLgxd86noTUor4/K4LFDAcYjK+isP5313qxaFpjPVogE7+Y0/V3Kw==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-size": "1.1.4"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-tabs": {
+      "version": "1.1.21",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-tabs/-/react-tabs-1.1.21.tgz",
+      "integrity": "sha512-UKxJlZid7FVtsk/WTxj4i4uSEgj2Au+KBbS7SQyTlzMhhn+86Cz3tISZdTa87bfEfcuvZezf2ZsxD4xuEKtkog==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-roving-focus": "1.1.19",
+        "@radix-ui/react-use-controllable-state": "1.2.6"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-toast": {
+      "version": "1.2.23",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-toast/-/react-toast-1.2.23.tgz",
+      "integrity": "sha512-ofhyAsYaocRGOs/n0XWdUOSVzEAG6BfrMVM8z0c0kLEWY38w/0WuMFPTJP/HVaZPYkMvHZoKIIhNcjbTCBILPg==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-collection": "1.1.15",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-dismissable-layer": "1.1.19",
+        "@radix-ui/react-portal": "1.1.17",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-callback-ref": "1.1.4",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-layout-effect": "1.1.4",
+        "@radix-ui/react-visually-hidden": "1.2.11"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-toggle": {
+      "version": "1.1.18",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-toggle/-/react-toggle-1.1.18.tgz",
+      "integrity": "sha512-7lonPlKfSacd20GlOBx2ltuVKz9oqWYZz+oMQyOltw6t1y2nyftj2ZmwwUHYn49kqfDWcp8dNZm5NgV+5Z+mug==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-use-controllable-state": "1.2.6"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-toggle-group": {
+      "version": "1.1.19",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-toggle-group/-/react-toggle-group-1.1.19.tgz",
+      "integrity": "sha512-OtnwuSVjd1Ofi+AdnvhsjQdyuhCDwYs1w9RyB5BN/OavXOVQo42SYqQjwUnbPnaiPFBpQ9aX70dWeee+v2oBLA==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-roving-focus": "1.1.19",
+        "@radix-ui/react-toggle": "1.1.18",
+        "@radix-ui/react-use-controllable-state": "1.2.6"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-toolbar": {
+      "version": "1.1.19",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-toolbar/-/react-toolbar-1.1.19.tgz",
+      "integrity": "sha512-Ph0IvtYw4VB12ZnZg+YtrGs8yJQsnizwo/zu0R4Y/nWugtJzA7Pg1eWeuDR9+LSqn+xjamss+UOSOJJJ4gx8jw==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-roving-focus": "1.1.19",
+        "@radix-ui/react-separator": "1.1.15",
+        "@radix-ui/react-toggle-group": "1.1.19"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-tooltip": {
+      "version": "1.2.16",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-tooltip/-/react-tooltip-1.2.16.tgz",
+      "integrity": "sha512-6EamKFRRnlpdadndbZ6LMwycfwkwPte1B42hs6QA0gYhjaOKqW4PZ4pjaW9UrlDX5eVt/OjncE7BFTPL5nmZhg==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-dismissable-layer": "1.1.19",
+        "@radix-ui/react-id": "1.1.4",
+        "@radix-ui/react-popper": "1.3.7",
+        "@radix-ui/react-portal": "1.1.17",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-slot": "1.3.3",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-layout-effect": "1.1.4",
+        "@radix-ui/react-visually-hidden": "1.2.11"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
     "node_modules/@radix-ui/react-use-callback-ref": {
-      "version": "1.1.3",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-callback-ref/-/react-use-callback-ref-1.1.3.tgz",
-      "integrity": "sha512-AUS7HoBBAncIsGMLNG+CcpLuJ+JIBbZzmyM8Qdb1eIThX0AlhSSC6wn40xfBlPE+ypx/vSSiRWnklUAjy3U3UA==",
+      "version": "1.1.4",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-callback-ref/-/react-use-callback-ref-1.1.4.tgz",
+      "integrity": "sha512-R6OUY2e2fA6Yn6s+VSx5KBV6Nx8LQEhu+cz7LCej18rQ1HLyg9PSC9jP/ZNx0o6FAIK9c0F1kHylzSxKsdlkrQ==",
       "license": "MIT",
       "peerDependencies": {
         "@types/react": "*",
@@ -2313,14 +3347,14 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-use-controllable-state": {
-      "version": "1.2.5",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-controllable-state/-/react-use-controllable-state-1.2.5.tgz",
-      "integrity": "sha512-UB1dXpxvHjR48poyKdKdTm7jT0kp3elkUKdKQiOkirlbYumqXinSJtrjDsr9maXNPvL12bKI4CDSmydms/9Aeg==",
+      "version": "1.2.6",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-controllable-state/-/react-use-controllable-state-1.2.6.tgz",
+      "integrity": "sha512-uEQJGT97ZA/TgP/Hydw47lHu+/vQj6z/0jA+WeTbK1o9Rx45GImjpD0tc3W5ad3D6XTSR6e1yEO0FvGq6WQfVQ==",
       "license": "MIT",
       "dependencies": {
         "@radix-ui/primitive": "1.1.7",
-        "@radix-ui/react-use-effect-event": "0.0.4",
-        "@radix-ui/react-use-layout-effect": "1.1.3"
+        "@radix-ui/react-use-effect-event": "0.0.5",
+        "@radix-ui/react-use-layout-effect": "1.1.4"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2333,12 +3367,30 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-use-effect-event": {
-      "version": "0.0.4",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-effect-event/-/react-use-effect-event-0.0.4.tgz",
-      "integrity": "sha512-XYcfa6wlXDCwQtePuEiPmXLSAhGL4DWtedSyRgGbG3y10mw+OnrLp6SyeY1gJFMiYF0Dx0nMAX9InylKbLEFQQ==",
+      "version": "0.0.5",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-effect-event/-/react-use-effect-event-0.0.5.tgz",
+      "integrity": "sha512-7cshFL8HGS/7HEiHH+9kL9HBwp2sa9yX18Knwek6KYWmXwM7pegMgta2AXMQKI+rq3JnfSj9x8wYqFMTdG1Jgg==",
       "license": "MIT",
       "dependencies": {
-        "@radix-ui/react-use-layout-effect": "1.1.3"
+        "@radix-ui/react-use-layout-effect": "1.1.4"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@radix-ui/react-use-escape-keydown": {
+      "version": "1.1.5",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-escape-keydown/-/react-use-escape-keydown-1.1.5.tgz",
+      "integrity": "sha512-ge3ipobwSXTj4JyVtswQ7qZj0ZHdtbGuOno/LrgAAeSxtsJ6Vs4Gz5IkPH2bmqpjcLUFoqGhA/mueuIf63UXlA==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/react-use-callback-ref": "1.1.4"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2351,9 +3403,9 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-use-is-hydrated": {
-      "version": "0.1.2",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-is-hydrated/-/react-use-is-hydrated-0.1.2.tgz",
-      "integrity": "sha512-2+gAVu9uaSLbopCTvvuWX9MIgEOlyqXC1Ok+KLCO7cZPSHLENs7dL0KbFQUGFIcFKmDW/bmaQRJtd8E3cnMRUw==",
+      "version": "0.1.3",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-is-hydrated/-/react-use-is-hydrated-0.1.3.tgz",
+      "integrity": "sha512-umO/aJ+82CpOnhDZUTbILCQf7kU/g0iv+oGs/Q8jw7IkhWBzaEP4sA268PhFAJTFetbwp3ICc6ktpI4TqtxcIw==",
       "license": "MIT",
       "peerDependencies": {
         "@types/react": "*",
@@ -2366,9 +3418,9 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-use-layout-effect": {
-      "version": "1.1.3",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-layout-effect/-/react-use-layout-effect-1.1.3.tgz",
-      "integrity": "sha512-rDiah9wvtqihWtWz02XreeRKIxt2EJF8y5D9rtY9l5A2zxePAtcPiOMpDugNRw5bFHz+1/8viVoc7ZVKiJknCw==",
+      "version": "1.1.4",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-layout-effect/-/react-use-layout-effect-1.1.4.tgz",
+      "integrity": "sha512-K20DkRkUwDnxEYMBPcg3Y6voLkEy5p5QQmszZgLngKKiC7dzBR/aEuK3w1qlx2JWDUNH6FluahYdgR3BP+QbYw==",
       "license": "MIT",
       "peerDependencies": {
         "@types/react": "*",
@@ -2381,9 +3433,9 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-use-previous": {
-      "version": "1.1.3",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-previous/-/react-use-previous-1.1.3.tgz",
-      "integrity": "sha512-kbefNKla5AGhgvMqrg/qS7mYVLXTEHQLqoFIS03nKN2dAfQQ5PK5Tp+2LxS7BV6a6l4HHv4jTg6rtV2Uajwe2w==",
+      "version": "1.1.4",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-previous/-/react-use-previous-1.1.4.tgz",
+      "integrity": "sha512-XoSLhbRbqxFtgJoi2fNHA3C6pDlY34x508vUpUGoFZfvePfHXHbE1lC4FYFMnJWgiCRroSTw6fOsXQoVS9RwZg==",
       "license": "MIT",
       "peerDependencies": {
         "@types/react": "*",
@@ -2396,9 +3448,9 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-use-rect": {
-      "version": "1.1.3",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-rect/-/react-use-rect-1.1.3.tgz",
-      "integrity": "sha512-W0GSYZFKEfi6raMiMEfJSngvVbFDIyxtW5JuVg5NoQBY59l0dVQVGLbhog/tOdwq0qtZ+TXuX1ikSNan4/IZXA==",
+      "version": "1.1.4",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-rect/-/react-use-rect-1.1.4.tgz",
+      "integrity": "sha512-cSOCh6JlkmfjLyNcLiu2nB4v+nm+dkZ+Q5KHWk/soo4U7ZLiEQFKHK9/YmtBHjfCEaU43IBKQOc4/uJmCaiCTQ==",
       "license": "MIT",
       "dependencies": {
         "@radix-ui/rect": "1.1.3"
@@ -2414,12 +3466,12 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-use-size": {
-      "version": "1.1.3",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-size/-/react-use-size-1.1.3.tgz",
-      "integrity": "sha512-jJq6tQQLvO/z4uWbztjwPV+1a/+H4rCaWypasLB/ac8DEdd6+p7dIm7o3F6P2KZPGkPMqD4s5424EdAdoU+GLA==",
+      "version": "1.1.4",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-use-size/-/react-use-size-1.1.4.tgz",
+      "integrity": "sha512-D3anSY15EJoxrihpsXI6SMrmmonnQtR2ni7arO+Lfdg3O95b9hNXxONk8jA5C8ANdF/h5HMAxejgs8PWJ6rlhw==",
       "license": "MIT",
       "dependencies": {
-        "@radix-ui/react-use-layout-effect": "1.1.3"
+        "@radix-ui/react-use-layout-effect": "1.1.4"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2432,12 +3484,12 @@ Lines: 7505
       }
     },
     "node_modules/@radix-ui/react-visually-hidden": {
-      "version": "1.2.9",
-      "resolved": "https://registry.npmjs.org/@radix-ui/react-visually-hidden/-/react-visually-hidden-1.2.9.tgz",
-      "integrity": "sha512-seuZXNZVCz1kLSQMRO/TdNOSahBI3S5nXE4jzO7u7aFRWQlMAnwyrr8vKMkEU115fCLEyzR2YyjnP+aRMxK34w==",
+      "version": "1.2.11",
+      "resolved": "https://registry.npmjs.org/@radix-ui/react-visually-hidden/-/react-visually-hidden-1.2.11.tgz",
+      "integrity": "sha512-NFS86RYYZb4/exihaESBGOpMJFz8MGLAfu3mOBSGByVnVPC9JPASfYubxd/8KbkQK0sYAv8lVQDEQukDX/qXvQ==",
       "license": "MIT",
       "dependencies": {
-        "@radix-ui/react-primitive": "2.1.8"
+        "@radix-ui/react-primitive": "2.1.10"
       },
       "peerDependencies": {
         "@types/react": "*",
@@ -2460,6 +3512,41 @@ Lines: 7505
       "integrity": "sha512-JtyZR+mqgBibTo8xea3B6ZRmzZiM/YeVBtUkas6zMuXjAlfIFIW2FgqeM9eLyvEaYX66vr6DJMK+4U6LV0KhNw==",
       "license": "MIT"
     },
+    "node_modules/@react-types/shared": {
+      "version": "3.36.0",
+      "resolved": "https://registry.npmjs.org/@react-types/shared/-/shared-3.36.0.tgz",
+      "integrity": "sha512-DkP/H0C2YjjS7gZWKNqOmU8a16qHPjQNdzMwmTq9SzplM6Iw0kVMTZ0OIoe6FOgGqa+FwMsE2QbPjh/n3g/jXQ==",
+      "license": "Apache-2.0",
+      "peerDependencies": {
+        "react": "^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1"
+      }
+    },
+    "node_modules/@reduxjs/toolkit": {
+      "version": "2.12.0",
+      "resolved": "https://registry.npmjs.org/@reduxjs/toolkit/-/toolkit-2.12.0.tgz",
+      "integrity": "sha512-KiT+RzZbp6mQET+Mg+h2c97+9j1sNflUxQkIHI7Yuzf6Peu+OYpmkn6nbHWmLLWj+1ZODUJFwGZ7gx3L9R9EOw==",
+      "license": "MIT",
+      "dependencies": {
+        "@standard-schema/spec": "^1.0.0",
+        "@standard-schema/utils": "^0.3.0",
+        "immer": "^11.0.0",
+        "redux": "^5.0.1",
+        "redux-thunk": "^3.1.0",
+        "reselect": "^5.1.0"
+      },
+      "peerDependencies": {
+        "react": "^16.9.0 || ^17.0.0 || ^18 || ^19",
+        "react-redux": "^7.2.1 || ^8.1.3 || ^9.0.0"
+      },
+      "peerDependenciesMeta": {
+        "react": {
+          "optional": true
+        },
+        "react-redux": {
+          "optional": true
+        }
+      }
+    },
     "node_modules/@rolldown/binding-android-arm64": {
       "version": "1.1.5",
       "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm64/-/binding-android-arm64-1.1.5.tgz",
@@ -2467,6 +3554,7 @@ Lines: 7505
       "cpu": [
         "arm64"
       ],
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "os": [
@@ -2483,6 +3571,7 @@ Lines: 7505
       "cpu": [
         "arm64"
       ],
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "os": [
@@ -2499,6 +3588,7 @@ Lines: 7505
       "cpu": [
         "x64"
       ],
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "os": [
@@ -2515,6 +3605,7 @@ Lines: 7505
       "cpu": [
         "x64"
       ],
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "os": [
@@ -2531,6 +3622,7 @@ Lines: 7505
       "cpu": [
         "arm"
       ],
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "os": [
@@ -2547,6 +3639,7 @@ Lines: 7505
       "cpu": [
         "arm64"
       ],
+      "dev": true,
       "libc": [
         "glibc"
       ],
@@ -2566,6 +3659,7 @@ Lines: 7505
       "cpu": [
         "arm64"
       ],
+      "dev": true,
       "libc": [
         "musl"
       ],
@@ -2585,6 +3679,7 @@ Lines: 7505
       "cpu": [
         "ppc64"
       ],
+      "dev": true,
       "libc": [
         "glibc"
       ],
@@ -2604,6 +3699,7 @@ Lines: 7505
       "cpu": [
         "s390x"
       ],
+      "dev": true,
       "libc": [
         "glibc"
       ],
@@ -2623,6 +3719,7 @@ Lines: 7505
       "cpu": [
         "x64"
       ],
+      "dev": true,
       "libc": [
         "glibc"
       ],
@@ -2642,6 +3739,7 @@ Lines: 7505
       "cpu": [
         "x64"
       ],
+      "dev": true,
       "libc": [
         "musl"
       ],
@@ -2661,6 +3759,7 @@ Lines: 7505
       "cpu": [
         "arm64"
       ],
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "os": [
@@ -2677,6 +3776,7 @@ Lines: 7505
       "cpu": [
         "wasm32"
       ],
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "dependencies": {
@@ -2695,6 +3795,7 @@ Lines: 7505
       "cpu": [
         "arm64"
       ],
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "os": [
@@ -2711,6 +3812,7 @@ Lines: 7505
       "cpu": [
         "x64"
       ],
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "os": [
@@ -2724,6 +3826,7 @@ Lines: 7505
       "version": "1.0.1",
       "resolved": "https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.1.tgz",
       "integrity": "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==",
+      "dev": true,
       "license": "MIT"
     },
     "node_modules/@sec-ant/readable-stream": {
@@ -2746,11 +3849,26 @@ Lines: 7505
         "url": "https://github.com/sponsors/sindresorhus"
       }
     },
+    "node_modules/@standard-schema/spec": {
+      "version": "1.1.0",
+      "resolved": "https://registry.npmjs.org/@standard-schema/spec/-/spec-1.1.0.tgz",
+      "integrity": "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==",
+      "license": "MIT"
+    },
     "node_modules/@standard-schema/utils": {
       "version": "0.3.0",
       "resolved": "https://registry.npmjs.org/@standard-schema/utils/-/utils-0.3.0.tgz",
       "integrity": "sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==",
       "license": "MIT"
+    },
+    "node_modules/@swc/helpers": {
+      "version": "0.5.23",
+      "resolved": "https://registry.npmjs.org/@swc/helpers/-/helpers-0.5.23.tgz",
+      "integrity": "sha512-5lSsMOTXURePglDfvuAQUqkGek9Hg2kksOYay2m0+XR++b2NWYL/4sWyuvVBIs8oKnJaxkdi9whaL/sqN13afw==",
+      "license": "Apache-2.0",
+      "dependencies": {
+        "tslib": "^2.8.0"
+      }
     },
     "node_modules/@tailwindcss/node": {
       "version": "4.3.3",
@@ -3357,11 +4475,74 @@ Lines: 7505
         "tslib": "^2.4.0"
       }
     },
+    "node_modules/@types/d3-array": {
+      "version": "3.2.2",
+      "resolved": "https://registry.npmjs.org/@types/d3-array/-/d3-array-3.2.2.tgz",
+      "integrity": "sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw==",
+      "license": "MIT"
+    },
+    "node_modules/@types/d3-color": {
+      "version": "3.1.3",
+      "resolved": "https://registry.npmjs.org/@types/d3-color/-/d3-color-3.1.3.tgz",
+      "integrity": "sha512-iO90scth9WAbmgv7ogoq57O9YpKmFBbmoEoCHDB2xMBY0+/KVrqAaCDyCE16dUspeOvIxFFRI+0sEtqDqy2b4A==",
+      "license": "MIT"
+    },
+    "node_modules/@types/d3-ease": {
+      "version": "3.0.2",
+      "resolved": "https://registry.npmjs.org/@types/d3-ease/-/d3-ease-3.0.2.tgz",
+      "integrity": "sha512-NcV1JjO5oDzoK26oMzbILE6HW7uVXOHLQvHshBUW4UMdZGfiY6v5BeQwh9a9tCzv+CeefZQHJt5SRgK154RtiA==",
+      "license": "MIT"
+    },
+    "node_modules/@types/d3-interpolate": {
+      "version": "3.0.4",
+      "resolved": "https://registry.npmjs.org/@types/d3-interpolate/-/d3-interpolate-3.0.4.tgz",
+      "integrity": "sha512-mgLPETlrpVV1YRJIglr4Ez47g7Yxjl1lj7YKsiMCb27VJH9W8NVM6Bb9d8kkpG/uAQS5AmbA48q2IAolKKo1MA==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/d3-color": "*"
+      }
+    },
+    "node_modules/@types/d3-path": {
+      "version": "3.1.1",
+      "resolved": "https://registry.npmjs.org/@types/d3-path/-/d3-path-3.1.1.tgz",
+      "integrity": "sha512-VMZBYyQvbGmWyWVea0EHs/BwLgxc+MKi1zLDCONksozI4YJMcTt8ZEuIR4Sb1MMTE8MMW49v0IwI5+b7RmfWlg==",
+      "license": "MIT"
+    },
+    "node_modules/@types/d3-scale": {
+      "version": "4.0.9",
+      "resolved": "https://registry.npmjs.org/@types/d3-scale/-/d3-scale-4.0.9.tgz",
+      "integrity": "sha512-dLmtwB8zkAeO/juAMfnV+sItKjlsw2lKdZVVy6LRr0cBmegxSABiLEpGVmSJJ8O08i4+sGR6qQtb6WtuwJdvVw==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/d3-time": "*"
+      }
+    },
+    "node_modules/@types/d3-shape": {
+      "version": "3.1.8",
+      "resolved": "https://registry.npmjs.org/@types/d3-shape/-/d3-shape-3.1.8.tgz",
+      "integrity": "sha512-lae0iWfcDeR7qt7rA88BNiqdvPS5pFVPpo5OfjElwNaT2yyekbM0C9vK+yqBqEmHr6lDkRnYNoTBYlAgJa7a4w==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/d3-path": "*"
+      }
+    },
+    "node_modules/@types/d3-time": {
+      "version": "3.0.4",
+      "resolved": "https://registry.npmjs.org/@types/d3-time/-/d3-time-3.0.4.tgz",
+      "integrity": "sha512-yuzZug1nkAAaBlBBikKZTgzCeA+k1uy4ZFwWANOfKw5z5LRhV0gNA7gNkKm7HoK+HRN0wX3EkxGk0fpbWhmB7g==",
+      "license": "MIT"
+    },
+    "node_modules/@types/d3-timer": {
+      "version": "3.0.2",
+      "resolved": "https://registry.npmjs.org/@types/d3-timer/-/d3-timer-3.0.2.tgz",
+      "integrity": "sha512-Ps3T8E8dZDam6fUyNiMkekK3XUsaUEik+idO9/YjPtfj2qruF8tFBXS7XhtE4iIXBLxhmLjP3SXpLhVf21I9Lw==",
+      "license": "MIT"
+    },
     "node_modules/@types/node": {
       "version": "24.13.3",
       "resolved": "https://registry.npmjs.org/@types/node/-/node-24.13.3.tgz",
       "integrity": "sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q==",
-      "devOptional": true,
+      "dev": true,
       "license": "MIT",
       "dependencies": {
         "undici-types": "~7.18.0"
@@ -3371,7 +4552,7 @@ Lines: 7505
       "version": "19.2.17",
       "resolved": "https://registry.npmjs.org/@types/react/-/react-19.2.17.tgz",
       "integrity": "sha512-MXfmqaVPEVgkBT/aY0aGCkRWWtByiYQXo3xdQ8r5RzuFrPiRn8Gar2tQdXSUQ2GKV3bkXckek89V8wQBY2Q/Aw==",
-      "devOptional": true,
+      "dev": true,
       "license": "MIT",
       "dependencies": {
         "csstype": "^3.2.2"
@@ -3381,11 +4562,17 @@ Lines: 7505
       "version": "19.2.3",
       "resolved": "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.2.3.tgz",
       "integrity": "sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==",
-      "devOptional": true,
+      "dev": true,
       "license": "MIT",
       "peerDependencies": {
         "@types/react": "^19.2.0"
       }
+    },
+    "node_modules/@types/use-sync-external-store": {
+      "version": "0.0.6",
+      "resolved": "https://registry.npmjs.org/@types/use-sync-external-store/-/use-sync-external-store-0.0.6.tgz",
+      "integrity": "sha512-zFDAD+tlpf2r4asuHEj0XH6pY6i0g5NeAHPn+15wk3BV6JA69eERFXC1gyGThDkVa1zCyKr5jox1+2LbV/AMLg==",
+      "license": "MIT"
     },
     "node_modules/@types/validate-npm-package-name": {
       "version": "4.0.2",
@@ -3851,6 +5038,12 @@ Lines: 7505
         "url": "https://github.com/sponsors/sindresorhus"
       }
     },
+    "node_modules/client-only": {
+      "version": "0.0.1",
+      "resolved": "https://registry.npmjs.org/client-only/-/client-only-0.0.1.tgz",
+      "integrity": "sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==",
+      "license": "MIT"
+    },
     "node_modules/clsx": {
       "version": "2.1.1",
       "resolved": "https://registry.npmjs.org/clsx/-/clsx-2.1.1.tgz",
@@ -4106,8 +5299,139 @@ Lines: 7505
       "version": "3.2.3",
       "resolved": "https://registry.npmjs.org/csstype/-/csstype-3.2.3.tgz",
       "integrity": "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==",
-      "devOptional": true,
+      "dev": true,
       "license": "MIT"
+    },
+    "node_modules/d3-array": {
+      "version": "3.2.4",
+      "resolved": "https://registry.npmjs.org/d3-array/-/d3-array-3.2.4.tgz",
+      "integrity": "sha512-tdQAmyA18i4J7wprpYq8ClcxZy3SC31QMeByyCFyRt7BVHdREQZ5lpzoe5mFEYZUWe+oq8HBvk9JjpibyEV4Jg==",
+      "license": "ISC",
+      "dependencies": {
+        "internmap": "1 - 2"
+      },
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/d3-color": {
+      "version": "3.1.0",
+      "resolved": "https://registry.npmjs.org/d3-color/-/d3-color-3.1.0.tgz",
+      "integrity": "sha512-zg/chbXyeBtMQ1LbD/WSoW2DpC3I0mpmPdW+ynRTj/x2DAWYrIY7qeZIHidozwV24m4iavr15lNwIwLxRmOxhA==",
+      "license": "ISC",
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/d3-ease": {
+      "version": "3.0.1",
+      "resolved": "https://registry.npmjs.org/d3-ease/-/d3-ease-3.0.1.tgz",
+      "integrity": "sha512-wR/XK3D3XcLIZwpbvQwQ5fK+8Ykds1ip7A2Txe0yxncXSdq1L9skcG7blcedkOX+ZcgxGAmLX1FrRGbADwzi0w==",
+      "license": "BSD-3-Clause",
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/d3-format": {
+      "version": "3.1.2",
+      "resolved": "https://registry.npmjs.org/d3-format/-/d3-format-3.1.2.tgz",
+      "integrity": "sha512-AJDdYOdnyRDV5b6ArilzCPPwc1ejkHcoyFarqlPqT7zRYjhavcT3uSrqcMvsgh2CgoPbK3RCwyHaVyxYcP2Arg==",
+      "license": "ISC",
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/d3-interpolate": {
+      "version": "3.0.1",
+      "resolved": "https://registry.npmjs.org/d3-interpolate/-/d3-interpolate-3.0.1.tgz",
+      "integrity": "sha512-3bYs1rOD33uo8aqJfKP3JWPAibgw8Zm2+L9vBKEHJ2Rg+viTR7o5Mmv5mZcieN+FRYaAOWX5SJATX6k1PWz72g==",
+      "license": "ISC",
+      "dependencies": {
+        "d3-color": "1 - 3"
+      },
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/d3-path": {
+      "version": "3.1.0",
+      "resolved": "https://registry.npmjs.org/d3-path/-/d3-path-3.1.0.tgz",
+      "integrity": "sha512-p3KP5HCf/bvjBSSKuXid6Zqijx7wIfNW+J/maPs+iwR35at5JCbLUT0LzF1cnjbCHWhqzQTIN2Jpe8pRebIEFQ==",
+      "license": "ISC",
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/d3-scale": {
+      "version": "4.0.2",
+      "resolved": "https://registry.npmjs.org/d3-scale/-/d3-scale-4.0.2.tgz",
+      "integrity": "sha512-GZW464g1SH7ag3Y7hXjf8RoUuAFIqklOAq3MRl4OaWabTFJY9PN/E1YklhXLh+OQ3fM9yS2nOkCoS+WLZ6kvxQ==",
+      "license": "ISC",
+      "dependencies": {
+        "d3-array": "2.10.0 - 3",
+        "d3-format": "1 - 3",
+        "d3-interpolate": "1.2.0 - 3",
+        "d3-time": "2.1.1 - 3",
+        "d3-time-format": "2 - 4"
+      },
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/d3-shape": {
+      "version": "3.2.0",
+      "resolved": "https://registry.npmjs.org/d3-shape/-/d3-shape-3.2.0.tgz",
+      "integrity": "sha512-SaLBuwGm3MOViRq2ABk3eLoxwZELpH6zhl3FbAoJ7Vm1gofKx6El1Ib5z23NUEhF9AsGl7y+dzLe5Cw2AArGTA==",
+      "license": "ISC",
+      "dependencies": {
+        "d3-path": "^3.1.0"
+      },
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/d3-time": {
+      "version": "3.1.0",
+      "resolved": "https://registry.npmjs.org/d3-time/-/d3-time-3.1.0.tgz",
+      "integrity": "sha512-VqKjzBLejbSMT4IgbmVgDjpkYrNWUYJnbCGo874u7MMKIWsILRX+OpX/gTk8MqjpT1A/c6HY2dCA77ZN0lkQ2Q==",
+      "license": "ISC",
+      "dependencies": {
+        "d3-array": "2 - 3"
+      },
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/d3-time-format": {
+      "version": "4.1.0",
+      "resolved": "https://registry.npmjs.org/d3-time-format/-/d3-time-format-4.1.0.tgz",
+      "integrity": "sha512-dJxPBlzC7NugB2PDLwo9Q8JiTR3M3e4/XANkreKSUxF8vvXKqm1Yfq4Q5dl8budlunRVlUUaDUgFt7eA8D6NLg==",
+      "license": "ISC",
+      "dependencies": {
+        "d3-time": "1 - 3"
+      },
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/d3-timer": {
+      "version": "3.0.1",
+      "resolved": "https://registry.npmjs.org/d3-timer/-/d3-timer-3.0.1.tgz",
+      "integrity": "sha512-ndfJ/JxxMd3nw31uyKoY2naivF+r29V+Lc0svZxe1JvvIRmi8hUsrMvdOwgS1o6uBHmiz91geQ0ylPP0aj1VUA==",
+      "license": "ISC",
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/date-fns": {
+      "version": "4.4.0",
+      "resolved": "https://registry.npmjs.org/date-fns/-/date-fns-4.4.0.tgz",
+      "integrity": "sha512-+1UMbeh68lH1SegH83CGWwpb6OHHbpSgr3+s5Eww5M4CAgswBpoWS0AjTOfEJ33HiYKz1hdj/KTFprzXHmq/6w==",
+      "license": "MIT",
+      "funding": {
+        "type": "github",
+        "url": "https://github.com/sponsors/kossnocorp"
+      }
     },
     "node_modules/debounce-fn": {
       "version": "4.0.0",
@@ -4141,6 +5465,12 @@ Lines: 7505
           "optional": true
         }
       }
+    },
+    "node_modules/decimal.js-light": {
+      "version": "2.5.1",
+      "resolved": "https://registry.npmjs.org/decimal.js-light/-/decimal.js-light-2.5.1.tgz",
+      "integrity": "sha512-qIMFpTMZmny+MMIitAB6D7iVPEorVw6YQRWkvarTkT4tBeSLLiHzcwj6q0MmYSFCiVpiqPJTJEYIrpcPzVEIvg==",
+      "license": "MIT"
     },
     "node_modules/dedent": {
       "version": "1.7.2",
@@ -4420,6 +5750,16 @@ Lines: 7505
         "node": ">= 0.4"
       }
     },
+    "node_modules/es-toolkit": {
+      "version": "1.49.0",
+      "resolved": "https://registry.npmjs.org/es-toolkit/-/es-toolkit-1.49.0.tgz",
+      "integrity": "sha512-G5iZ6Pc/FNRY/soKZHC+TxGDD83rHUDXxzaWhGCX44vAv/tMs56WMusnm/KMNK+luUPsgA9U28cGr4RDlSzL2g==",
+      "license": "MIT",
+      "workspaces": [
+        "docs",
+        "benchmarks"
+      ]
+    },
     "node_modules/escalade": {
       "version": "3.2.0",
       "resolved": "https://registry.npmjs.org/escalade/-/escalade-3.2.0.tgz",
@@ -4460,6 +5800,12 @@ Lines: 7505
       "engines": {
         "node": ">= 0.6"
       }
+    },
+    "node_modules/eventemitter3": {
+      "version": "5.0.4",
+      "resolved": "https://registry.npmjs.org/eventemitter3/-/eventemitter3-5.0.4.tgz",
+      "integrity": "sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==",
+      "license": "MIT"
     },
     "node_modules/eventsource": {
       "version": "3.0.7",
@@ -4667,6 +6013,7 @@ Lines: 7505
       "version": "6.5.0",
       "resolved": "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz",
       "integrity": "sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==",
+      "dev": true,
       "license": "MIT",
       "engines": {
         "node": ">=12.0.0"
@@ -4819,6 +6166,7 @@ Lines: 7505
       "version": "2.3.3",
       "resolved": "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz",
       "integrity": "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==",
+      "dev": true,
       "hasInstallScript": true,
       "license": "MIT",
       "optional": true,
@@ -5095,6 +6443,16 @@ Lines: 7505
         "node": ">= 4"
       }
     },
+    "node_modules/immer": {
+      "version": "11.1.15",
+      "resolved": "https://registry.npmjs.org/immer/-/immer-11.1.15.tgz",
+      "integrity": "sha512-VrNANlmnWQnh5COXIIOQXM9oOJw7naGKlBT74ZOOR6lpVXc3gFEu9FJLDFcpCJ2j+NWr8TIwtWD//T6ZX6TKiQ==",
+      "license": "MIT",
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/immer"
+      }
+    },
     "node_modules/import-fresh": {
       "version": "3.3.1",
       "resolved": "https://registry.npmjs.org/import-fresh/-/import-fresh-3.3.1.tgz",
@@ -5118,6 +6476,15 @@ Lines: 7505
       "integrity": "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==",
       "dev": true,
       "license": "ISC"
+    },
+    "node_modules/internmap": {
+      "version": "2.0.3",
+      "resolved": "https://registry.npmjs.org/internmap/-/internmap-2.0.3.tgz",
+      "integrity": "sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg==",
+      "license": "ISC",
+      "engines": {
+        "node": ">=12"
+      }
     },
     "node_modules/ip-address": {
       "version": "10.2.0",
@@ -5458,6 +6825,7 @@ Lines: 7505
       "version": "1.33.0",
       "resolved": "https://registry.npmjs.org/lightningcss/-/lightningcss-1.33.0.tgz",
       "integrity": "sha512-WkUDrojuJs0xkgGf2udWxa3yGBRxPtxUkB79i6aCZLRgc7PM8fZe9TosfPDcvEpQZbuFASnHYmRLBLUbmLOIIA==",
+      "dev": true,
       "license": "MPL-2.0",
       "dependencies": {
         "detect-libc": "^2.0.3"
@@ -5490,6 +6858,7 @@ Lines: 7505
       "cpu": [
         "arm64"
       ],
+      "dev": true,
       "license": "MPL-2.0",
       "optional": true,
       "os": [
@@ -5510,6 +6879,7 @@ Lines: 7505
       "cpu": [
         "arm64"
       ],
+      "dev": true,
       "license": "MPL-2.0",
       "optional": true,
       "os": [
@@ -5530,6 +6900,7 @@ Lines: 7505
       "cpu": [
         "x64"
       ],
+      "dev": true,
       "license": "MPL-2.0",
       "optional": true,
       "os": [
@@ -5550,6 +6921,7 @@ Lines: 7505
       "cpu": [
         "x64"
       ],
+      "dev": true,
       "license": "MPL-2.0",
       "optional": true,
       "os": [
@@ -5570,6 +6942,7 @@ Lines: 7505
       "cpu": [
         "arm"
       ],
+      "dev": true,
       "license": "MPL-2.0",
       "optional": true,
       "os": [
@@ -5590,6 +6963,7 @@ Lines: 7505
       "cpu": [
         "arm64"
       ],
+      "dev": true,
       "libc": [
         "glibc"
       ],
@@ -5613,6 +6987,7 @@ Lines: 7505
       "cpu": [
         "arm64"
       ],
+      "dev": true,
       "libc": [
         "musl"
       ],
@@ -5636,6 +7011,7 @@ Lines: 7505
       "cpu": [
         "x64"
       ],
+      "dev": true,
       "libc": [
         "glibc"
       ],
@@ -5659,6 +7035,7 @@ Lines: 7505
       "cpu": [
         "x64"
       ],
+      "dev": true,
       "libc": [
         "musl"
       ],
@@ -5682,6 +7059,7 @@ Lines: 7505
       "cpu": [
         "arm64"
       ],
+      "dev": true,
       "license": "MPL-2.0",
       "optional": true,
       "os": [
@@ -5702,6 +7080,7 @@ Lines: 7505
       "cpu": [
         "x64"
       ],
+      "dev": true,
       "license": "MPL-2.0",
       "optional": true,
       "os": [
@@ -5950,6 +7329,7 @@ Lines: 7505
       "version": "3.3.16",
       "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.16.tgz",
       "integrity": "sha512-bzlKTyNJ7+LdGIIwy8ijFpIqEQIvafahV7eYykJ8Cvh42EdJeODoJ6gUJXpQJvej1BddH8OqTXZNE/KfbWAu8Q==",
+      "dev": true,
       "funding": [
         {
           "type": "github",
@@ -6365,12 +7745,14 @@ Lines: 7505
       "version": "1.1.1",
       "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
       "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==",
+      "dev": true,
       "license": "ISC"
     },
     "node_modules/picomatch": {
       "version": "4.0.5",
       "resolved": "https://registry.npmjs.org/picomatch/-/picomatch-4.0.5.tgz",
       "integrity": "sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==",
+      "dev": true,
       "license": "MIT",
       "engines": {
         "node": ">=12"
@@ -6406,6 +7788,7 @@ Lines: 7505
       "version": "8.5.22",
       "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.22.tgz",
       "integrity": "sha512-KBDEIpLrvpv16pp3K0Fw+UCoZfopFjjgeB+0tA/aaThfEE74kKDLrgg603YvOWJyg3+WYtyq3xYsQWsIyZlPqQ==",
+      "dev": true,
       "funding": [
         {
           "type": "opencollective",
@@ -6558,6 +7941,83 @@ Lines: 7505
       ],
       "license": "MIT"
     },
+    "node_modules/radix-ui": {
+      "version": "1.6.7",
+      "resolved": "https://registry.npmjs.org/radix-ui/-/radix-ui-1.6.7.tgz",
+      "integrity": "sha512-QBdhh1arIEUvPC0dQ5+nwWAxt7+N+oP/9jPwjJkGFoSk/sqxg32gJtSXGtFh8frAIcS6oC9cx2Q+7KYCQLOAeA==",
+      "license": "MIT",
+      "dependencies": {
+        "@radix-ui/primitive": "1.1.7",
+        "@radix-ui/react-accessible-icon": "1.1.15",
+        "@radix-ui/react-accordion": "1.2.20",
+        "@radix-ui/react-alert-dialog": "1.1.23",
+        "@radix-ui/react-arrow": "1.1.15",
+        "@radix-ui/react-aspect-ratio": "1.1.15",
+        "@radix-ui/react-avatar": "1.2.6",
+        "@radix-ui/react-checkbox": "1.3.11",
+        "@radix-ui/react-collapsible": "1.1.20",
+        "@radix-ui/react-collection": "1.1.15",
+        "@radix-ui/react-compose-refs": "1.1.5",
+        "@radix-ui/react-context": "1.2.2",
+        "@radix-ui/react-context-menu": "2.3.7",
+        "@radix-ui/react-dialog": "1.1.23",
+        "@radix-ui/react-direction": "1.1.4",
+        "@radix-ui/react-dismissable-layer": "1.1.19",
+        "@radix-ui/react-dropdown-menu": "2.1.24",
+        "@radix-ui/react-focus-guards": "1.1.6",
+        "@radix-ui/react-focus-scope": "1.1.16",
+        "@radix-ui/react-form": "0.1.16",
+        "@radix-ui/react-hover-card": "1.1.23",
+        "@radix-ui/react-label": "2.1.15",
+        "@radix-ui/react-menu": "2.1.24",
+        "@radix-ui/react-menubar": "1.1.24",
+        "@radix-ui/react-navigation-menu": "1.2.22",
+        "@radix-ui/react-one-time-password-field": "0.1.16",
+        "@radix-ui/react-password-toggle-field": "0.1.11",
+        "@radix-ui/react-popover": "1.1.23",
+        "@radix-ui/react-popper": "1.3.7",
+        "@radix-ui/react-portal": "1.1.17",
+        "@radix-ui/react-presence": "1.1.10",
+        "@radix-ui/react-primitive": "2.1.10",
+        "@radix-ui/react-progress": "1.1.16",
+        "@radix-ui/react-radio-group": "1.4.7",
+        "@radix-ui/react-roving-focus": "1.1.19",
+        "@radix-ui/react-scroll-area": "1.2.18",
+        "@radix-ui/react-select": "2.3.7",
+        "@radix-ui/react-separator": "1.1.15",
+        "@radix-ui/react-slider": "1.4.7",
+        "@radix-ui/react-slot": "1.3.3",
+        "@radix-ui/react-switch": "1.3.7",
+        "@radix-ui/react-tabs": "1.1.21",
+        "@radix-ui/react-toast": "1.2.23",
+        "@radix-ui/react-toggle": "1.1.18",
+        "@radix-ui/react-toggle-group": "1.1.19",
+        "@radix-ui/react-toolbar": "1.1.19",
+        "@radix-ui/react-tooltip": "1.2.16",
+        "@radix-ui/react-use-callback-ref": "1.1.4",
+        "@radix-ui/react-use-controllable-state": "1.2.6",
+        "@radix-ui/react-use-effect-event": "0.0.5",
+        "@radix-ui/react-use-escape-keydown": "1.1.5",
+        "@radix-ui/react-use-is-hydrated": "0.1.3",
+        "@radix-ui/react-use-layout-effect": "1.1.4",
+        "@radix-ui/react-use-size": "1.1.4",
+        "@radix-ui/react-visually-hidden": "1.2.11"
+      },
+      "peerDependencies": {
+        "@types/react": "*",
+        "@types/react-dom": "*",
+        "react": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc",
+        "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "@types/react-dom": {
+          "optional": true
+        }
+      }
+    },
     "node_modules/range-parser": {
       "version": "1.3.0",
       "resolved": "https://registry.npmjs.org/range-parser/-/range-parser-1.3.0.tgz",
@@ -6597,6 +8057,45 @@ Lines: 7505
         "node": ">=0.10.0"
       }
     },
+    "node_modules/react-aria": {
+      "version": "3.50.0",
+      "resolved": "https://registry.npmjs.org/react-aria/-/react-aria-3.50.0.tgz",
+      "integrity": "sha512-S0Os6QZk33fzUAKu1QLT9afoUaCBt1ZNdoiq0n2YMVgKIdNIQS8zxiZ8O9hYE6QyDkHKjD6q39LQZ+qaSAIgjw==",
+      "license": "Apache-2.0",
+      "dependencies": {
+        "@internationalized/date": "^3.12.2",
+        "@internationalized/number": "^3.6.7",
+        "@internationalized/string": "^3.2.9",
+        "@react-types/shared": "^3.36.0",
+        "@swc/helpers": "^0.5.0",
+        "aria-hidden": "^1.2.3",
+        "clsx": "^2.0.0",
+        "react-stately": "3.48.0",
+        "use-sync-external-store": "^1.6.0"
+      },
+      "peerDependencies": {
+        "react": "^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1",
+        "react-dom": "^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1"
+      }
+    },
+    "node_modules/react-aria-components": {
+      "version": "1.19.0",
+      "resolved": "https://registry.npmjs.org/react-aria-components/-/react-aria-components-1.19.0.tgz",
+      "integrity": "sha512-2smSS5nqJ8cGYMQezuUXveZm7eMyHCqTN6mDpylQBYLYbdF5dxCCuW1DHn1VKLe1DybSfPvX/cZtJlDmvFfn8A==",
+      "license": "Apache-2.0",
+      "dependencies": {
+        "@internationalized/date": "^3.12.2",
+        "@react-types/shared": "^3.36.0",
+        "@swc/helpers": "^0.5.0",
+        "client-only": "^0.0.1",
+        "react-aria": "3.50.0",
+        "react-stately": "3.48.0"
+      },
+      "peerDependencies": {
+        "react": "^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1",
+        "react-dom": "^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1"
+      }
+    },
     "node_modules/react-dom": {
       "version": "19.2.8",
       "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-19.2.8.tgz",
@@ -6610,9 +8109,9 @@ Lines: 7505
       }
     },
     "node_modules/react-hook-form": {
-      "version": "7.82.0",
-      "resolved": "https://registry.npmjs.org/react-hook-form/-/react-hook-form-7.82.0.tgz",
-      "integrity": "sha512-Zw/uFZ2dO+02GHlBn7JFGn8kZJ7LdM33B/0BXOovzFay+CMhf94JMw5BVu+F1tVkUKjNvBuaE3fz5BJhga10Tg==",
+      "version": "7.83.0",
+      "resolved": "https://registry.npmjs.org/react-hook-form/-/react-hook-form-7.83.0.tgz",
+      "integrity": "sha512-AXt8cMCmx5a7u4uvpb2uRFVrWQhllI4pV+LSykxIac/hjt44TnQkmX9BKuQi2i+LDC62esmiLpilkav+kjVf/A==",
       "license": "MIT",
       "engines": {
         "node": ">=18.0.0"
@@ -6623,6 +8122,29 @@ Lines: 7505
       },
       "peerDependencies": {
         "react": "^16.8.0 || ^17 || ^18 || ^19"
+      }
+    },
+    "node_modules/react-redux": {
+      "version": "9.3.0",
+      "resolved": "https://registry.npmjs.org/react-redux/-/react-redux-9.3.0.tgz",
+      "integrity": "sha512-KQopgqFo/p/fgmAs5qz6p5RWaNAzq40WAu7fJIXnQpYxFPbJYtsJPWvGeF2rOBaY/kEuV77AVsX8TsQzKm+A/g==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/use-sync-external-store": "^0.0.6",
+        "use-sync-external-store": "^1.4.0"
+      },
+      "peerDependencies": {
+        "@types/react": "^18.2.25 || ^19",
+        "react": "^18.0 || ^19",
+        "redux": "^5.0.0"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        },
+        "redux": {
+          "optional": true
+        }
       }
     },
     "node_modules/react-remove-scroll": {
@@ -6710,6 +8232,23 @@ Lines: 7505
         "react-dom": ">=18"
       }
     },
+    "node_modules/react-stately": {
+      "version": "3.48.0",
+      "resolved": "https://registry.npmjs.org/react-stately/-/react-stately-3.48.0.tgz",
+      "integrity": "sha512-ImicSAG+lTotAe5izcs1fz49Zk48w7pDusqYg04WaPhCoej8BJ24soMu3iLXIrsi273s4P1gZrYGrqReMfgEEA==",
+      "license": "Apache-2.0",
+      "dependencies": {
+        "@internationalized/date": "^3.12.2",
+        "@internationalized/number": "^3.6.7",
+        "@internationalized/string": "^3.2.9",
+        "@react-types/shared": "^3.36.0",
+        "@swc/helpers": "^0.5.0",
+        "use-sync-external-store": "^1.6.0"
+      },
+      "peerDependencies": {
+        "react": "^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1"
+      }
+    },
     "node_modules/react-style-singleton": {
       "version": "2.2.3",
       "resolved": "https://registry.npmjs.org/react-style-singleton/-/react-style-singleton-2.2.3.tgz",
@@ -6747,6 +8286,51 @@ Lines: 7505
       },
       "engines": {
         "node": ">= 4"
+      }
+    },
+    "node_modules/recharts": {
+      "version": "3.10.0",
+      "resolved": "https://registry.npmjs.org/recharts/-/recharts-3.10.0.tgz",
+      "integrity": "sha512-wulMvfncpIlmu2uFtRU/mE5/+NiVtASXkw2KdwJTdHs3WsASX0WxZlX+rpKgyn5BDbIhkPtCpUKkB9XNK5KE0w==",
+      "license": "MIT",
+      "workspaces": [
+        "www"
+      ],
+      "dependencies": {
+        "@reduxjs/toolkit": "^1.9.0 || 2.x.x",
+        "clsx": "^2.1.1",
+        "decimal.js-light": "^2.5.1",
+        "es-toolkit": "^1.39.3",
+        "eventemitter3": "^5.0.1",
+        "immer": "^11.1.8",
+        "react-redux": "8.x.x || 9.x.x",
+        "reselect": "5.2.0",
+        "tiny-invariant": "^1.3.3",
+        "use-sync-external-store": "^1.2.2",
+        "victory-vendor": "^37.0.2"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "peerDependencies": {
+        "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
+        "react-dom": "^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
+        "react-is": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+      }
+    },
+    "node_modules/redux": {
+      "version": "5.0.1",
+      "resolved": "https://registry.npmjs.org/redux/-/redux-5.0.1.tgz",
+      "integrity": "sha512-M9/ELqF6fy8FwmkpnF0S3YKOqMyoWJ4+CS5Efg2ct3oY9daQvd/Pc71FpGZsVsbl3Cpb+IIcjBDUnnyBdQbq4w==",
+      "license": "MIT"
+    },
+    "node_modules/redux-thunk": {
+      "version": "3.1.0",
+      "resolved": "https://registry.npmjs.org/redux-thunk/-/redux-thunk-3.1.0.tgz",
+      "integrity": "sha512-NW2r5T6ksUKXCabzhL9z+h206HQw/NJkcLm1GPImRQ8IzfXwRGqjVhKJGauHirT0DAuyy6hjdnMZaRoAcy0Klw==",
+      "license": "MIT",
+      "peerDependencies": {
+        "redux": "^5.0.0"
       }
     },
     "node_modules/require-from-string": {
@@ -6823,6 +8407,7 @@ Lines: 7505
       "version": "1.1.5",
       "resolved": "https://registry.npmjs.org/rolldown/-/rolldown-1.1.5.tgz",
       "integrity": "sha512-t9z29cJjXf/vxQ8dyhCSpt6H6aSwHTk8cT5I3iy6SMXuFpk5mB6PL6XfC8PCwrPTx93udwKUm9HRteAlTGBLiA==",
+      "dev": true,
       "license": "MIT",
       "dependencies": {
         "@oxc-project/types": "=0.139.0",
@@ -7017,9 +8602,9 @@ Lines: 7505
       "license": "ISC"
     },
     "node_modules/shadcn": {
-      "version": "4.14.0",
-      "resolved": "https://registry.npmjs.org/shadcn/-/shadcn-4.14.0.tgz",
-      "integrity": "sha512-WSSMmB9ERauwy0SQwE0NlSfeaoBANHtzgSjAfoEsIHpRQwVkQBiiLV8Y9yAYOj9Wf3mbCIdQt3oLGzkH7NQFiQ==",
+      "version": "4.14.1",
+      "resolved": "https://registry.npmjs.org/shadcn/-/shadcn-4.14.1.tgz",
+      "integrity": "sha512-Xb4r150oGNexMBxUnWPG1emcaUlFbhzMOJubdA+k0NTkmhgBBycFZjTz9Aw2yQbpDR6QnIZbk234N20s/s7s9A==",
       "dev": true,
       "license": "MIT",
       "dependencies": {
@@ -7418,13 +9003,13 @@ Lines: 7505
       "version": "1.3.3",
       "resolved": "https://registry.npmjs.org/tiny-invariant/-/tiny-invariant-1.3.3.tgz",
       "integrity": "sha512-+FbBPE1o9QAYvviau/qC5SE3caw21q3xkvWKBtja5vgqOWIHHJ3ioaq1VPfn/Szqctz2bU/oYeKd9/z5BL+PVg==",
-      "dev": true,
       "license": "MIT"
     },
     "node_modules/tinyglobby": {
       "version": "0.2.17",
       "resolved": "https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.17.tgz",
       "integrity": "sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==",
+      "dev": true,
       "license": "MIT",
       "dependencies": {
         "fdir": "^6.5.0",
@@ -7589,7 +9174,7 @@ Lines: 7505
       "version": "7.18.2",
       "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-7.18.2.tgz",
       "integrity": "sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==",
-      "devOptional": true,
+      "dev": true,
       "license": "MIT"
     },
     "node_modules/unicorn-magic": {
@@ -7735,10 +9320,33 @@ Lines: 7505
         "node": ">= 0.8"
       }
     },
+    "node_modules/victory-vendor": {
+      "version": "37.3.6",
+      "resolved": "https://registry.npmjs.org/victory-vendor/-/victory-vendor-37.3.6.tgz",
+      "integrity": "sha512-SbPDPdDBYp+5MJHhBCAyI7wKM3d5ivekigc2Dk2s7pgbZ9wIgIBYGVw4zGHBml/qTFbexrofXW6Gu4noGxrOwQ==",
+      "license": "MIT AND ISC",
+      "dependencies": {
+        "@types/d3-array": "^3.0.3",
+        "@types/d3-ease": "^3.0.0",
+        "@types/d3-interpolate": "^3.0.1",
+        "@types/d3-scale": "^4.0.2",
+        "@types/d3-shape": "^3.1.0",
+        "@types/d3-time": "^3.0.0",
+        "@types/d3-timer": "^3.0.0",
+        "d3-array": "^3.1.6",
+        "d3-ease": "^3.0.1",
+        "d3-interpolate": "^3.0.1",
+        "d3-scale": "^4.0.2",
+        "d3-shape": "^3.1.0",
+        "d3-time": "^3.0.0",
+        "d3-timer": "^3.0.1"
+      }
+    },
     "node_modules/vite": {
       "version": "8.1.5",
       "resolved": "https://registry.npmjs.org/vite/-/vite-8.1.5.tgz",
       "integrity": "sha512-7ULLwsCdYx/nRyrpiEwvqb5TFHrMVZyBt+rg/OAXT7rgj/z+DtTDyKFeLAdDkubDVDKD8jOsndmy7m55XcfUsw==",
+      "dev": true,
       "license": "MIT",
       "dependencies": {
         "lightningcss": "^1.32.0",
@@ -8309,11 +9917,19 @@ export default App
 ----------------------------------------
 FILE: index.css
 Path: \src\index.css
-Size: 1 KB
+Size: 6 KB
 ----------------------------------------
-Lines: 49
+Lines: 177
 
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/noto-sans";
+@import "@fontsource-variable/playfair-display";
+@import "@fontsource-variable/figtree";
+
+@custom-variant dark (&:is(.dark *));
 
 @layer base {
   :root {
@@ -8360,8 +9976,128 @@ Lines: 49
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
   }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }
 
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: 'Geist Variable', sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
 
 ----------------------------------------
 FILE: main.tsx
@@ -8546,7 +10282,7 @@ FILE: Header.tsx
 Path: \src\components\layout\Header.tsx
 Size: 2 KB
 ----------------------------------------
-Lines: 63
+Lines: 65
 
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -8579,15 +10315,17 @@ export function Header() {
           Guarantee Management System
         </h2>
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center space-x-3 hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors cursor-pointer">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-primary text-white">
-                {admin?.fullName ? getInitials(admin.fullName) : 'A'}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium text-gray-700">
-              {admin?.fullName || 'Admin'}
-            </span>
+          <DropdownMenuTrigger asChild>
+            <div className="flex items-center space-x-3 hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors cursor-pointer">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary text-white">
+                  {admin?.fullName ? getInitials(admin.fullName) : 'A'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium text-gray-700">
+                {admin?.fullName || 'Admin'}
+              </span>
+            </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
@@ -8779,9 +10517,7 @@ FILE: alert-dialog.tsx
 Path: \src\components\ui\alert-dialog.tsx
 Size: 5 KB
 ----------------------------------------
-Lines: 188
-
-"use client"
+Lines: 186
 
 import * as React from "react"
 import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog"
@@ -8900,7 +10636,7 @@ function AlertDialogTitle({
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
       className={cn(
-        "text-base font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
+        "font-heading text-base font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
         className
       )}
       {...props}
@@ -8975,9 +10711,7 @@ FILE: avatar.tsx
 Path: \src\components\ui\avatar.tsx
 Size: 3 KB
 ----------------------------------------
-Lines: 110
-
-"use client"
+Lines: 108
 
 import * as React from "react"
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar"
@@ -9152,65 +10886,69 @@ export { Badge, badgeVariants }
 ----------------------------------------
 FILE: button.tsx
 Path: \src\components\ui\button.tsx
-Size: 2 KB
+Size: 3 KB
 ----------------------------------------
-Lines: 55
+Lines: 59
 
-import * as React from 'react'
-import { Slot } from '@radix-ui/react-slot'
-import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@/lib/utils'
+import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        destructive:
-          'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        default: "bg-primary text-primary-foreground hover:bg-primary/80",
         outline:
-          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+        ghost:
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        destructive:
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-9 rounded-md px-3',
-        lg: 'h-11 rounded-md px-8',
-        icon: 'h-10 w-10',
+        default:
+          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        icon: "size-8",
+        "icon-xs":
+          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm":
+          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+        "icon-lg": "size-9",
       },
     },
     defaultVariants: {
-      variant: 'default',
-      size: 'default',
+      variant: "default",
+      size: "default",
     },
   }
 )
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  ...props
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  return (
+    <ButtonPrimitive
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button'
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
-    )
-  }
-)
-Button.displayName = 'Button'
-
 export { Button, buttonVariants }
+
 
 ----------------------------------------
 FILE: card.tsx
@@ -9259,7 +10997,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+        "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
         className
       )}
       {...props}
@@ -9498,7 +11236,9 @@ FILE: dropdown-menu.tsx
 Path: \src\components\ui\dropdown-menu.tsx
 Size: 9 KB
 ----------------------------------------
-Lines: 267
+Lines: 269
+
+"use client"
 
 import * as React from "react"
 import { Menu as MenuPrimitive } from "@base-ui/react/menu"
@@ -9769,6 +11509,192 @@ export {
 
 
 ----------------------------------------
+FILE: form.tsx
+Path: \src\components\ui\form.tsx
+Size: 4 KB
+----------------------------------------
+Lines: 178
+
+"use client"
+
+import * as React from "react"
+import * as LabelPrimitive from "@radix-ui/react-label"
+import { Slot } from "@radix-ui/react-slot"
+import {
+  Controller,
+  ControllerProps,
+  FieldPath,
+  FieldValues,
+  FormProvider,
+  useFormContext,
+} from "react-hook-form"
+
+import { cn } from "@/lib/utils"
+import { Label } from "@/components/ui/label"
+
+const Form = FormProvider
+
+type FormFieldContextValue<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+> = {
+  name: TName
+}
+
+const FormFieldContext = React.createContext<FormFieldContextValue>(
+  {} as FormFieldContextValue
+)
+
+const FormField = <
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+>({
+  ...props
+}: ControllerProps<TFieldValues, TName>) => {
+  return (
+    <FormFieldContext.Provider value={{ name: props.name }}>
+      <Controller {...props} />
+    </FormFieldContext.Provider>
+  )
+}
+
+const useFormField = () => {
+  const fieldContext = React.useContext(FormFieldContext)
+  const itemContext = React.useContext(FormItemContext)
+  const { getFieldState, formState } = useFormContext()
+
+  const fieldState = getFieldState(fieldContext.name, formState)
+
+  if (!fieldContext) {
+    throw new Error("useFormField should be used within <FormField>")
+  }
+
+  const { id } = itemContext
+
+  return {
+    id,
+    name: fieldContext.name,
+    formItemId: `${id}-form-item`,
+    formDescriptionId: `${id}-form-item-description`,
+    formMessageId: `${id}-form-item-message`,
+    ...fieldState,
+  }
+}
+
+type FormItemContextValue = {
+  id: string
+}
+
+const FormItemContext = React.createContext<FormItemContextValue>(
+  {} as FormItemContextValue
+)
+
+const FormItem = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const id = React.useId()
+
+  return (
+    <FormItemContext.Provider value={{ id }}>
+      <div ref={ref} className={cn("space-y-2", className)} {...props} />
+    </FormItemContext.Provider>
+  )
+})
+FormItem.displayName = "FormItem"
+
+const FormLabel = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
+>(({ className, ...props }, ref) => {
+  const { error, formItemId } = useFormField()
+
+  return (
+    <Label
+      ref={ref}
+      className={cn(error && "text-destructive", className)}
+      htmlFor={formItemId}
+      {...props}
+    />
+  )
+})
+FormLabel.displayName = "FormLabel"
+
+const FormControl = React.forwardRef<
+  React.ElementRef<typeof Slot>,
+  React.ComponentPropsWithoutRef<typeof Slot>
+>(({ ...props }, ref) => {
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
+
+  return (
+    <Slot
+      ref={ref}
+      id={formItemId}
+      aria-describedby={
+        !error
+          ? `${formDescriptionId}`
+          : `${formDescriptionId} ${formMessageId}`
+      }
+      aria-invalid={!!error}
+      {...props}
+    />
+  )
+})
+FormControl.displayName = "FormControl"
+
+const FormDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => {
+  const { formDescriptionId } = useFormField()
+
+  return (
+    <p
+      ref={ref}
+      id={formDescriptionId}
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  )
+})
+FormDescription.displayName = "FormDescription"
+
+const FormMessage = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, children, ...props }, ref) => {
+  const { error, formMessageId } = useFormField()
+  const body = error ? String(error?.message) : children
+
+  if (!body) {
+    return null
+  }
+
+  return (
+    <p
+      ref={ref}
+      id={formMessageId}
+      className={cn("text-sm font-medium text-destructive", className)}
+      {...props}
+    >
+      {body}
+    </p>
+  )
+})
+FormMessage.displayName = "FormMessage"
+
+export {
+  useFormField,
+  Form,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  FormField,
+}
+
+----------------------------------------
 FILE: input.tsx
 Path: \src\components\ui\input.tsx
 Size: 1 KB
@@ -9795,6 +11721,171 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
 }
 
 export { Input }
+
+
+----------------------------------------
+FILE: input-group.tsx
+Path: \src\components\ui\input-group.tsx
+Size: 5 KB
+----------------------------------------
+Lines: 157
+
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+
+function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="input-group"
+      role="group"
+      className={cn(
+        "group/input-group relative flex h-8 w-full min-w-0 items-center rounded-lg border border-input transition-colors outline-none in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-disabled:bg-input/50 has-disabled:opacity-50 has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-3 has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:ring-3 has-[[data-slot][aria-invalid=true]]:ring-destructive/20 has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto dark:bg-input/30 dark:has-disabled:bg-input/80 dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40 has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+const inputGroupAddonVariants = cva(
+  "flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-[calc(var(--radius)-5px)] [&>svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      align: {
+        "inline-start":
+          "order-first pl-2 has-[>button]:ml-[-0.3rem] has-[>kbd]:ml-[-0.15rem]",
+        "inline-end":
+          "order-last pr-2 has-[>button]:mr-[-0.3rem] has-[>kbd]:mr-[-0.15rem]",
+        "block-start":
+          "order-first w-full justify-start px-2.5 pt-2 group-has-[>input]/input-group:pt-2 [.border-b]:pb-2",
+        "block-end":
+          "order-last w-full justify-start px-2.5 pb-2 group-has-[>input]/input-group:pb-2 [.border-t]:pt-2",
+      },
+    },
+    defaultVariants: {
+      align: "inline-start",
+    },
+  }
+)
+
+function InputGroupAddon({
+  className,
+  align = "inline-start",
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
+  return (
+    <div
+      role="group"
+      data-slot="input-group-addon"
+      data-align={align}
+      className={cn(inputGroupAddonVariants({ align }), className)}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest("button")) {
+          return
+        }
+        e.currentTarget.parentElement?.querySelector("input")?.focus()
+      }}
+      {...props}
+    />
+  )
+}
+
+const inputGroupButtonVariants = cva(
+  "flex items-center gap-2 text-sm shadow-none",
+  {
+    variants: {
+      size: {
+        xs: "h-6 gap-1 rounded-[calc(var(--radius)-3px)] px-1.5 [&>svg:not([class*='size-'])]:size-3.5",
+        sm: "",
+        "icon-xs":
+          "size-6 rounded-[calc(var(--radius)-3px)] p-0 has-[>svg]:p-0",
+        "icon-sm": "size-8 p-0 has-[>svg]:p-0",
+      },
+    },
+    defaultVariants: {
+      size: "xs",
+    },
+  }
+)
+
+function InputGroupButton({
+  className,
+  type = "button",
+  variant = "ghost",
+  size = "xs",
+  ...props
+}: Omit<React.ComponentProps<typeof Button>, "size" | "type"> &
+  VariantProps<typeof inputGroupButtonVariants> & {
+    type?: "button" | "submit" | "reset"
+  }) {
+  return (
+    <Button
+      type={type}
+      data-size={size}
+      variant={variant}
+      className={cn(inputGroupButtonVariants({ size }), className)}
+      {...props}
+    />
+  )
+}
+
+function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-2 text-sm text-muted-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function InputGroupInput({
+  className,
+  ...props
+}: React.ComponentProps<"input">) {
+  return (
+    <Input
+      data-slot="input-group-control"
+      className={cn(
+        "flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function InputGroupTextarea({
+  className,
+  ...props
+}: React.ComponentProps<"textarea">) {
+  return (
+    <Textarea
+      data-slot="input-group-control"
+      className={cn(
+        "flex-1 resize-none rounded-none border-0 bg-transparent py-2 shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupText,
+  InputGroupInput,
+  InputGroupTextarea,
+}
 
 
 ----------------------------------------
@@ -9921,9 +12012,7 @@ FILE: select.tsx
 Path: \src\components\ui\select.tsx
 Size: 6 KB
 ----------------------------------------
-Lines: 202
-
-"use client"
+Lines: 200
 
 import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
@@ -10131,7 +12220,9 @@ FILE: separator.tsx
 Path: \src\components\ui\separator.tsx
 Size: 1 KB
 ----------------------------------------
-Lines: 24
+Lines: 26
+
+"use client"
 
 import { Separator as SeparatorPrimitive } from "@base-ui/react/separator"
 
@@ -10241,7 +12332,9 @@ FILE: table.tsx
 Path: \src\components\ui\table.tsx
 Size: 2 KB
 ----------------------------------------
-Lines: 115
+Lines: 117
+
+"use client"
 
 import * as React from "react"
 
@@ -10359,6 +12452,33 @@ export {
 }
 
 
+----------------------------------------
+FILE: textarea.tsx
+Path: \src\components\ui\textarea.tsx
+Size: 1 KB
+----------------------------------------
+Lines: 19
+
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
+  return (
+    <textarea
+      data-slot="textarea"
+      className={cn(
+        "flex field-sizing-content min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Textarea }
+
+
 ============================================
 DIRECTORY: \src\features\auth\contexts
 ============================================
@@ -10443,6 +12563,761 @@ export function useAuth() {
 }
 
 ============================================
+DIRECTORY: \src\features\customers\api
+============================================
+
+----------------------------------------
+FILE: customers.ts
+Path: \src\features\customers\api\customers.ts
+Size: 2 KB
+----------------------------------------
+Lines: 49
+
+import { api } from '@/api/axios'
+import { Customer, CustomerFormData, CustomerListResponse } from '@/features/customers/types'
+
+export const customerService = {
+  // List customers with pagination and search
+  async list(page: number = 1, limit: number = 10, search: string = ''): Promise<CustomerListResponse> {
+    const response = await api.get('/customers', {
+      params: { page, limit, search },
+    })
+    return {
+      customers: response.data.data,
+      total: response.data.meta.total,
+      page: response.data.meta.current_page,
+      limit: response.data.meta.per_page,
+      last_page: response.data.meta.last_page,
+    }
+  },
+
+  // Get single customer by ID
+  async getById(id: number): Promise<Customer> {
+    const response = await api.get(`/customers/${id}`)
+    return response.data.data
+  },
+
+  // Create new customer
+  async create(data: CustomerFormData): Promise<Customer> {
+    const response = await api.post('/customers', data)
+    return response.data.data
+  },
+
+  // Update existing customer
+  async update(id: number, data: Partial<CustomerFormData>): Promise<Customer> {
+    const response = await api.put(`/customers/${id}`, data)
+    return response.data.data
+  },
+
+  // Delete customer
+  async delete(id: number): Promise<void> {
+    await api.delete(`/customers/${id}`)
+  },
+
+  // Search customers
+  async search(query: string): Promise<Customer[]> {
+    const response = await api.get('/customers/search', {
+      params: { q: query },
+    })
+    return response.data.data
+  },
+}
+
+============================================
+DIRECTORY: \src\features\customers\components
+============================================
+
+----------------------------------------
+FILE: CustomerDeleteDialog.tsx
+Path: \src\features\customers\components\CustomerDeleteDialog.tsx
+Size: 1 KB
+----------------------------------------
+Lines: 51
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Customer } from '../types'
+
+interface CustomerDeleteDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  customer: Customer | null
+  onConfirm: () => Promise<void>
+  isLoading?: boolean
+}
+
+export function CustomerDeleteDialog({
+  open,
+  onOpenChange,
+  customer,
+  onConfirm,
+  isLoading,
+}: CustomerDeleteDialogProps) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the customer "{customer?.full_name}".
+            This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isLoading ? 'Deleting...' : 'Delete'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+----------------------------------------
+FILE: CustomerForm.tsx
+Path: \src\features\customers\components\CustomerForm.tsx
+Size: 6 KB
+----------------------------------------
+Lines: 201
+
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Button } from '@/components/ui/button'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { customerSchema, CustomerFormValues } from '../schemas/customerSchema'
+import { Customer } from '../types'
+
+interface CustomerFormProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  customer?: Customer | null
+  onSubmit: (data: CustomerFormValues) => Promise<void>
+  isLoading?: boolean
+}
+
+export function CustomerForm({
+  open,
+  onOpenChange,
+  customer,
+  onSubmit,
+  isLoading,
+}: CustomerFormProps) {
+  const form = useForm<CustomerFormValues>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: {
+      full_name: '',
+      phone: '',
+      national_id: '',
+      province: '',
+      city: '',
+      address: '',
+    },
+  })
+
+  useEffect(() => {
+    if (customer) {
+      form.reset({
+        full_name: customer.full_name,
+        phone: customer.phone,
+        national_id: customer.national_id,
+        province: customer.province || '',
+        city: customer.city || '',
+        address: customer.address || '',
+      })
+    } else {
+      form.reset({
+        full_name: '',
+        phone: '',
+        national_id: '',
+        province: '',
+        city: '',
+        address: '',
+      })
+    }
+  }, [customer, form])
+
+  const handleSubmit = async (data: CustomerFormValues) => {
+    await onSubmit(data)
+    if (!isLoading) {
+      form.reset()
+      onOpenChange(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>
+            {customer ? 'Edit Customer' : 'Add New Customer'}
+          </DialogTitle>
+          <DialogDescription>
+            {customer
+              ? 'Update the customer information below.'
+              : 'Fill in the details to add a new customer.'}
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="full_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter full name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter phone number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="national_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>National ID *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter national ID" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="province"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Province</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter province" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>City</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter city" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Address</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter address"
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Saving...' : customer ? 'Update' : 'Create'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+----------------------------------------
+FILE: CustomerTable.tsx
+Path: \src\features\customers\components\CustomerTable.tsx
+Size: 4 KB
+----------------------------------------
+Lines: 114
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react'
+import { Customer } from '../types'
+import { format } from 'date-fns'
+
+interface CustomerTableProps {
+  customers: Customer[]
+  onView: (customer: Customer) => void
+  onEdit: (customer: Customer) => void
+  onDelete: (customer: Customer) => void
+  isLoading?: boolean
+}
+
+export function CustomerTable({
+  customers,
+  onView,
+  onEdit,
+  onDelete,
+  isLoading,
+}: CustomerTableProps) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    )
+  }
+
+  if (customers.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        No customers found
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>ID</TableHead>
+            <TableHead>Full Name</TableHead>
+            <TableHead>Phone</TableHead>
+            <TableHead>National ID</TableHead>
+            <TableHead>Province</TableHead>
+            <TableHead>City</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {customers.map((customer) => (
+            <TableRow key={customer.id}>
+              <TableCell className="font-medium">#{customer.id}</TableCell>
+              <TableCell>{customer.full_name}</TableCell>
+              <TableCell>{customer.phone}</TableCell>
+              <TableCell>
+                <Badge variant="outline">{customer.national_id}</Badge>
+              </TableCell>
+              <TableCell>{customer.province || '-'}</TableCell>
+              <TableCell>{customer.city || '-'}</TableCell>
+              <TableCell>
+                {format(new Date(customer.created_at), 'MMM d, yyyy')}
+              </TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onView(customer)}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      View
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onEdit(customer)}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onDelete(customer)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+============================================
+DIRECTORY: \src\features\customers\pages
+============================================
+
+----------------------------------------
+FILE: CustomersPage.tsx
+Path: \src\features\customers\pages\CustomersPage.tsx
+Size: 7 KB
+----------------------------------------
+Lines: 211
+
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Plus, Search, RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
+import { CustomerTable } from '../components/CustomerTable'
+import { CustomerForm } from '../components/CustomerForm'
+import { CustomerDeleteDialog } from '../components/CustomerDeleteDialog'
+import { customerService } from '../api/customers'
+import { Customer } from '../types'
+
+export function CustomersPage() {
+  const queryClient = useQueryClient()
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(1)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Fetch customers
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['customers', page, limit, debouncedSearch],
+    queryFn: () => customerService.list(page, limit, debouncedSearch),
+  })
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: customerService.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      toast.success('Customer created successfully')
+      setIsFormOpen(false)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create customer')
+    },
+  })
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      customerService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      toast.success('Customer updated successfully')
+      setIsFormOpen(false)
+      setSelectedCustomer(null)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update customer')
+    },
+  })
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: customerService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      toast.success('Customer deleted successfully')
+      setIsDeleteOpen(false)
+      setSelectedCustomer(null)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete customer')
+    },
+  })
+
+  const handleCreate = async (data: any) => {
+    await createMutation.mutateAsync(data)
+  }
+
+  const handleUpdate = async (data: any) => {
+    if (selectedCustomer) {
+      await updateMutation.mutateAsync({ id: selectedCustomer.id, data })
+    }
+  }
+
+  const handleDelete = async () => {
+    if (selectedCustomer) {
+      await deleteMutation.mutateAsync(selectedCustomer.id)
+    }
+  }
+
+  const handleEdit = (customer: Customer) => {
+    setSelectedCustomer(customer)
+    setIsFormOpen(true)
+  }
+
+  const handleDeleteClick = (customer: Customer) => {
+    setSelectedCustomer(customer)
+    setIsDeleteOpen(true)
+  }
+
+  const handleView = (customer: Customer) => {
+    // TODO: Implement view details modal/page
+    toast.info(`Viewing customer: ${customer.full_name}`)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
+        <Button onClick={() => setIsFormOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Customer
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Input
+            placeholder="Search by name, phone, or national ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select
+          value={String(limit)}
+          onValueChange={(value) => {
+            setLimit(Number(value))
+            setPage(1)
+          }}
+        >
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="25">25</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" onClick={() => refetch()}>
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <CustomerTable
+        customers={data?.customers || []}
+        onView={handleView}
+        onEdit={handleEdit}
+        onDelete={handleDeleteClick}
+        isLoading={isLoading}
+      />
+
+      {data && data.total > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-500">
+            Showing {((data.page - 1) * data.limit) + 1} to{' '}
+            {Math.min(data.page * data.limit, data.total)} of {data.total} customers
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={data.page <= 1}
+              onClick={() => setPage(data.page - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              disabled={data.page >= data.last_page}
+              onClick={() => setPage(data.page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <CustomerForm
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        customer={selectedCustomer}
+        onSubmit={selectedCustomer ? handleUpdate : handleCreate}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+      />
+
+      <CustomerDeleteDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        customer={selectedCustomer}
+        onConfirm={handleDelete}
+        isLoading={deleteMutation.isPending}
+      />
+    </div>
+  )
+}
+
+============================================
+DIRECTORY: \src\features\customers\schemas
+============================================
+
+----------------------------------------
+FILE: customerSchema.ts
+Path: \src\features\customers\schemas\customerSchema.ts
+Size: 1 KB
+----------------------------------------
+Lines: 19
+
+import { z } from 'zod'
+
+export const customerSchema = z.object({
+  full_name: z.string()
+    .min(2, 'Full name must be at least 2 characters')
+    .max(100, 'Full name must be less than 100 characters'),
+  phone: z.string()
+    .min(10, 'Phone number must be at least 10 characters')
+    .max(20, 'Phone number must be less than 20 characters')
+    .regex(/^[0-9+\-\s()]+$/, 'Invalid phone number format'),
+  national_id: z.string()
+    .min(6, 'National ID must be at least 6 characters')
+    .max(20, 'National ID must be less than 20 characters'),
+  province: z.string().max(50, 'Province must be less than 50 characters').optional(),
+  city: z.string().max(50, 'City must be less than 50 characters').optional(),
+  address: z.string().optional(),
+})
+
+export type CustomerFormValues = z.infer<typeof customerSchema>
+
+============================================
+DIRECTORY: \src\features\customers\types
+============================================
+
+----------------------------------------
+FILE: index.ts
+Path: \src\features\customers\types\index.ts
+Size: 1 KB
+----------------------------------------
+Lines: 34
+
+export interface Customer {
+  id: number
+  full_name: string
+  phone: string
+  national_id: string
+  province: string
+  city: string
+  address: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomerFormData {
+  full_name: string
+  phone: string
+  national_id: string
+  province: string
+  city: string
+  address: string
+}
+
+export interface CustomerListResponse {
+  customers: Customer[]
+  total: number
+  page: number
+  limit: number
+  last_page: number
+}
+
+export interface CustomerFilters {
+  page?: number
+  limit?: number
+  search?: string
+}
+
+============================================
 DIRECTORY: \src\layouts
 ============================================
 
@@ -10480,14 +13355,15 @@ FILE: utils.ts
 Path: \src\lib\utils.ts
 Size: 0 KB
 ----------------------------------------
-Lines: 6
+Lines: 7
 
-import { type ClassValue, clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
 
 ============================================
 DIRECTORY: \src\pages
@@ -10765,7 +13641,7 @@ FILE: index.tsx
 Path: \src\routes\index.tsx
 Size: 1 KB
 ----------------------------------------
-Lines: 44
+Lines: 46
 
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
@@ -10776,6 +13652,7 @@ import { PublicRoute } from '@/components/common/PublicRoute'
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { CustomersPage } from '@/features/customers/pages/CustomersPage' // Add this import
 
 // Layouts
 import { MainLayout } from '@/layouts/MainLayout'
@@ -10804,6 +13681,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="customers" element={<CustomersPage />} /> {/* Add this route */}
         {/* Add other protected routes here */}
       </Route>
 
@@ -10850,6 +13728,48 @@ export type AuthResponse = {
   message?: string
 }
 
+----------------------------------------
+FILE: customer.ts
+Path: \src\types\customer.ts
+Size: 1 KB
+----------------------------------------
+Lines: 34
+
+export interface Customer {
+  id: number
+  full_name: string
+  phone: string
+  national_id: string
+  province: string
+  city: string
+  address: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomerFormData {
+  full_name: string
+  phone: string
+  national_id: string
+  province: string
+  city: string
+  address: string
+}
+
+export interface CustomerListResponse {
+  customers: Customer[]
+  total: number
+  page: number
+  limit: number
+  last_page: number
+}
+
+export interface CustomerFilters {
+  page?: number
+  limit?: number
+  search?: string
+}
+
 ============================================
   STATISTICS
 ============================================
@@ -10859,15 +13779,15 @@ File Types:
   .html : 1 files
   .json : 7 files
   .md : 1 files
-  .ps1 : 1 files
-  .ts : 6 files
-  .tsx : 28 files
+  .ps1 : 2 files
+  .ts : 10 files
+  .tsx : 35 files
 
 Languages:
   CSS : 2 files
   HTML : 1 files
   JSON : 7 files
   Markdown : 1 files
-  PowerShell : 1 files
-  TypeScript : 34 files
+  PowerShell : 2 files
+  TypeScript : 45 files
 

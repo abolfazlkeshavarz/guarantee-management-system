@@ -27,8 +27,8 @@ func (m *CustomerModule) RegisterRoutes(router *gin.RouterGroup) {
 	customers := router.Group("/customers")
 	customers.Use(middleware.AuthMiddleware())
 	{
-		customers.POST("/", m.handler.Create)
-		customers.GET("/", m.handler.List)
+		customers.POST("", m.handler.Create)
+		customers.GET("", m.handler.List)
 		customers.GET("/search", m.handler.Search)
 		customers.GET("/:id", m.handler.Get)
 		customers.PUT("/:id", m.handler.Update)
