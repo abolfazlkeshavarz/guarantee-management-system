@@ -23,11 +23,11 @@ type CreateCustomerRequest struct {
 }
 
 type UpdateCustomerRequest struct {
-	FullName   string `json:"full_name" binding:"min=2,max=100"`
-	Phone      string `json:"phone" binding:"min=10,max=20"`
-	NationalID string `json:"national_id" binding:"min=6,max=20"`
-	Province   string `json:"province" binding:"max=50"`
-	City       string `json:"city" binding:"max=50"`
+	FullName   string `json:"full_name" binding:"omitempty,min=2,max=100"`
+	Phone      string `json:"phone" binding:"omitempty,min=10,max=20"`
+	NationalID string `json:"national_id" binding:"omitempty,min=6,max=20"`
+	Province   string `json:"province" binding:"omitempty,max=50"`
+	City       string `json:"city" binding:"omitempty,max=50"`
 	Address    string `json:"address"`
 }
 
