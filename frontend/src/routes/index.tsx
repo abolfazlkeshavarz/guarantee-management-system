@@ -2,7 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/common/ProtectedRoute'
 import { PublicRoute } from '@/components/common/PublicRoute'
-
+import { CategoriesPage } from '@/features/categories/pages/CategoriesPage'
+import { ProductsPage } from '@/features/products/pages/ProductsPage'
 // Pages
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -36,8 +37,9 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="customers" element={<CustomersPage />} /> {/* Add this route */}
-        {/* Add other protected routes here */}
+        <Route path="customers" element={<CustomersPage />} /> 
+        <Route path="catalog/categories" element={<CategoriesPage />} />
+        <Route path="catalog/products" element={<ProductsPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
