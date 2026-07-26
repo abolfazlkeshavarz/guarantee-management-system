@@ -13,6 +13,8 @@ import (
 	"guarantee-management-system/internal/modules/customers"
 	"guarantee-management-system/internal/modules/dashboard" // Add this
 	"guarantee-management-system/internal/shared/storage"
+	"guarantee-management-system/internal/modules/categories"
+	"guarantee-management-system/internal/modules/products"
 
 	"github.com/gin-gonic/gin"
 )
@@ -66,6 +68,14 @@ func main() {
 		// Initialize dashboard module
 		dashboardModule := dashboard.NewDashboardModule()
 		dashboardModule.RegisterRoutes(v1)
+
+		// Initialize product categories module
+		categoriesModule := categories.NewCategoryModule(database.GetDB())
+		categoriesModule.RegisterRoutes(v1)
+
+		// Initialize products module
+		productsModule := products.NewProductModule(database.GetDB())
+		productsModule.RegisterRoutes(v1)
 	}
 
 	// Start server
