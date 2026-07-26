@@ -106,7 +106,7 @@ export function ProductsPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <Input placeholder="Search by name or description..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
-        <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); setPage(1) }}>
+        <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value ?? 'all'); setPage(1) }}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
