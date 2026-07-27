@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@/components/common/ProtectedRoute'
 import { PublicRoute } from '@/components/common/PublicRoute'
 import { CategoriesPage } from '@/features/categories/pages/CategoriesPage'
 import { ProductsPage } from '@/features/products/pages/ProductsPage'
+import { GuaranteesPage } from '@/features/guarantees/pages/GuaranteesPage'
 // Pages
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -40,6 +41,7 @@ export function AppRoutes() {
         <Route path="customers" element={<CustomersPage />} /> 
         <Route path="catalog/categories" element={<CategoriesPage />} />
         <Route path="catalog/products" element={<ProductsPage />} />
+        <Route path="guarantees" element={<GuaranteesPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
