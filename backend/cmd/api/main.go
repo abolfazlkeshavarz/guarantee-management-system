@@ -15,7 +15,7 @@ import (
 	"guarantee-management-system/internal/shared/storage"
 	"guarantee-management-system/internal/modules/categories"
 	"guarantee-management-system/internal/modules/products"
-	"guarantee-management-system/internal/modules/guarantees" // Add this import
+	"guarantee-management-system/internal/modules/guarantees"
 
 	"github.com/gin-gonic/gin"
 )
