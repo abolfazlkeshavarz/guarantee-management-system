@@ -20,12 +20,61 @@ func (r *GuaranteeRepository) Create(guarantee *Guarantee) error {
 
 func (r *GuaranteeRepository) FindByID(id uint) (*Guarantee, error) {
 	var guarantee Guarantee
-	err := r.db.Preload("Customer").Preload("Product").Preload("CreatedByAdmin").Preload("ApprovedByAdmin").
-		Where("id = ?", id).First(&guarantee).Error
+	err := r.db.
+		Preload("Customer").
+		Preload("Product").
+		Preload("CreatedByAdmin").
+		Preload("ApprovedByAdmin").
+		Where("id = ?", id).
+		First(&guarantee).Error
 	if err != nil {
 		return nil, err
 	}
 	return &guarantee, nil
+}
+
+func (r *GuaranteeRepository) FindAll(page, limit int, search string, status string, customerID, productID *uint) ([]Guarantee, int64, error) {
+	var guarantees []Guarantee
+	var total int64
+
+	query := r.db.Model(&Guarantee{})
+
+	if search != "" {
+		query = query.
+			Joins("LEFT JOIN customers ON customers.id = guarantees.customer_id").
+			Joins("LEFT JOIN products ON products.id = guarantees.product_id").
+			Where("guarantees.code ILIKE ? OR customers.full_name ILIKE ? OR products.name ILIKE ?",
+				"%"+search+"%", "%"+search+"%", "%"+search+"%")
+	}
+
+	if status != "" && status != "all" {
+		query = query.Where("guarantees.status = ?", status)
+	}
+
+	if customerID != nil && *customerID > 0 {
+		query = query.Where("guarantees.customer_id = ?", customerID)
+	}
+
+	if productID != nil && *productID > 0 {
+		query = query.Where("guarantees.product_id = ?", productID)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	err := query.
+		Preload("Customer").
+		Preload("Product").
+		Preload("CreatedByAdmin").
+		Preload("ApprovedByAdmin").
+		Offset(offset).
+		Limit(limit).
+		Order("guarantees.created_at DESC").
+		Find(&guarantees).Error
+
+	return guarantees, total, err
 }
 
 func (r *GuaranteeRepository) FindByCode(code string) (*Guarantee, error) {
@@ -40,40 +89,6 @@ func (r *GuaranteeRepository) FindByCode(code string) (*Guarantee, error) {
 	return &guarantee, nil
 }
 
-func (r *GuaranteeRepository) FindAll(page, limit int, search string, status string, customerID, productID *uint) ([]Guarantee, int64, error) {
-	var guarantees []Guarantee
-	var total int64
-
-	query := r.db.Model(&Guarantee{})
-
-	if search != "" {
-		query = query.Joins("JOIN customers ON customers.id = guarantees.customer_id").
-			Joins("JOIN products ON products.id = guarantees.product_id").
-			Where("guarantees.code ILIKE ? OR customers.full_name ILIKE ? OR products.name ILIKE ?",
-				"%"+search+"%", "%"+search+"%", "%"+search+"%")
-	}
-
-	if status != "" && status != "all" {
-		query = query.Where("status = ?", status)
-	}
-
-	if customerID != nil && *customerID > 0 {
-		query = query.Where("customer_id = ?", customerID)
-	}
-
-	if productID != nil && *productID > 0 {
-		query = query.Where("product_id = ?", productID)
-	}
-
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	offset := (page - 1) * limit
-	err := query.Preload("Customer").Preload("Product").Preload("CreatedByAdmin").Preload("ApprovedByAdmin").
-		Offset(offset).Limit(limit).Order("created_at DESC").Find(&guarantees).Error
-	return guarantees, total, err
-}
 
 func (r *GuaranteeRepository) Update(guarantee *Guarantee) error {
 	return r.db.Save(guarantee).Error

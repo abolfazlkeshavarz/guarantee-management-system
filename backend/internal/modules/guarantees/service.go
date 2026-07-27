@@ -357,34 +357,51 @@ func (s *GuaranteeService) GetExpiringSoon(days int) ([]GuaranteeDTO, error) {
 
 func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
 	dto := &GuaranteeDTO{
-		ID:          guarantee.ID,
-		Code:        guarantee.Code,
-		CustomerID:  guarantee.CustomerID,
-		ProductID:   guarantee.ProductID,
-		Status:      guarantee.Status,
-		InvoiceImage: guarantee.InvoiceImage,
-		GuaranteeCardImage: guarantee.GuaranteeCardImage,
-		Notes:       guarantee.Notes,
-		CreatedAt:   guarantee.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:   guarantee.UpdatedAt.Format(time.RFC3339),
-		PurchaseDate: guarantee.PurchaseDate.Format("2006-01-02"),
-		ExpiryDate:   guarantee.ExpiryDate.Format("2006-01-02"),
+		ID:                  guarantee.ID,
+		Code:                guarantee.Code,
+		CustomerID:          guarantee.CustomerID,
+		ProductID:           guarantee.ProductID,
+		Status:              guarantee.Status,
+		InvoiceImage:        guarantee.InvoiceImage,
+		GuaranteeCardImage:  guarantee.GuaranteeCardImage,
+		Notes:               guarantee.Notes,
+		CreatedAt:           guarantee.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:           guarantee.UpdatedAt.Format(time.RFC3339),
+		PurchaseDate:        guarantee.PurchaseDate.Format("2006-01-02"),
+		ExpiryDate:          guarantee.ExpiryDate.Format("2006-01-02"),
 	}
 
+	// Check if Customer is loaded (ID > 0 means it was preloaded)
 	if guarantee.Customer.ID > 0 {
 		dto.CustomerName = guarantee.Customer.FullName
+	} else {
+		// If not preloaded, try to get the name from a separate query
+		// This is a fallback - the repository should preload the relations
+		var customer Customer
+		if err := s.db.Table("customers").Where("id = ?", guarantee.CustomerID).Select("full_name").Scan(&customer).Error; err == nil {
+			dto.CustomerName = customer.FullName
+		}
 	}
+
 	if guarantee.Product.ID > 0 {
 		dto.ProductName = guarantee.Product.Name
+	} else {
+		var product Product
+		if err := s.db.Table("products").Where("id = ?", guarantee.ProductID).Select("name").Scan(&product).Error; err == nil {
+			dto.ProductName = product.Name
+		}
 	}
+
 	if guarantee.CreatedByAdmin.ID > 0 {
 		dto.CreatedBy = &guarantee.CreatedByAdmin.ID
 		dto.CreatedByUsername = guarantee.CreatedByAdmin.Username
 	}
+
 	if guarantee.ApprovedByAdmin.ID > 0 {
 		dto.ApprovedBy = &guarantee.ApprovedByAdmin.ID
 		dto.ApprovedByUsername = guarantee.ApprovedByAdmin.Username
 	}
+
 	if guarantee.ApprovedAt != nil {
 		formatted := guarantee.ApprovedAt.Format(time.RFC3339)
 		dto.ApprovedAt = &formatted
