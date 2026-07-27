@@ -37,6 +37,7 @@ func (m *AuthModule) RegisterRoutes(router *gin.RouterGroup) {
 		// Admin management
 		protected.POST("/admins", m.handler.CreateAdmin)
 		protected.GET("/admins", m.handler.ListAdmins)
+		protected.GET("/admins/:id", m.handler.GetAdmin)
 		protected.PUT("/admins/:id", m.handler.UpdateAdmin)
 		protected.DELETE("/admins/:id", m.handler.DeleteAdmin)
 	}

@@ -130,6 +130,17 @@ func (s *AuthService) CreateAdmin(req *AdminCreateRequest) (*AdminDTO, error) {
 	return s.mapToDTO(admin), nil
 }
 
+func (s *AuthService) GetAdminByID(id uint) (*AdminDTO, error) {
+	admin, err := s.repo.FindAdminByID(id)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find admin", 500)
+	}
+	if admin == nil {
+		return nil, errors.NewAppError(errors.ErrNotFound, "Admin not found", 404)
+	}
+	return s.mapToDTO(admin), nil
+}
+
 func (s *AuthService) UpdateAdmin(adminID uint, req *AdminUpdateRequest) (*AdminDTO, error) {
 	admin, err := s.repo.FindAdminByID(adminID)
 	if err != nil {
