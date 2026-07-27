@@ -146,15 +146,15 @@ export function GuaranteeForm({
                       onValueChange={(value) => field.onChange(Number(value))}
                       disabled={isDisabled}
                     >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a customer" />
-                        </SelectTrigger>
-                      </FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a customer">
+                          {field.value ? customers.find(c => c.id === field.value)?.full_name : ''}
+                        </SelectValue>
+                      </SelectTrigger>
                       <SelectContent>
                         {customers.map((c) => (
                           <SelectItem key={c.id} value={String(c.id)}>
-                            {c.full_name}
+                            {c.full_name} (ID: {c.id})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -174,15 +174,15 @@ export function GuaranteeForm({
                       onValueChange={(value) => field.onChange(Number(value))}
                       disabled={isDisabled}
                     >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a product" />
-                        </SelectTrigger>
-                      </FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a product">
+                          {field.value ? products.find(p => p.id === field.value)?.name : ''}
+                        </SelectValue>
+                      </SelectTrigger>
                       <SelectContent>
                         {products.map((p) => (
                           <SelectItem key={p.id} value={String(p.id)}>
-                            {p.name}
+                            {p.name} (ID: {p.id})
                           </SelectItem>
                         ))}
                       </SelectContent>

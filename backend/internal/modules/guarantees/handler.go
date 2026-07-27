@@ -3,11 +3,16 @@ package guarantees
 import (
 	"net/http"
 	"strconv"
-
+	"path/filepath"
 	"guarantee-management-system/internal/shared/errors"
 	"guarantee-management-system/internal/shared/responses"
-
+	"fmt"
+	"time"
+	"os"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"io"
+	"bytes"
 )
 
 type GuaranteeHandler struct {
@@ -207,4 +212,112 @@ func handleError(c *gin.Context, err error) {
 		return
 	}
 	responses.InternalError(c, err)
+}
+
+// Add these methods to GuaranteeHandler
+
+// PublicRegister handles public guarantee registration without authentication
+// PublicRegister handles public guarantee registration without authentication
+func (h *GuaranteeHandler) PublicRegister(c *gin.Context) {
+	var req PublicRegisterRequest
+	
+	// Log the request body for debugging
+	body, _ := c.GetRawData()
+	fmt.Println("Received request body:", string(body))
+	
+	// Restore the body since GetRawData consumes it
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
+		return
+	}
+
+	response, err := h.service.PublicRegister(&req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Guarantee registered successfully", response)
+}
+
+// GetGuaranteePeriods returns available guarantee periods
+func (h *GuaranteeHandler) GetGuaranteePeriods(c *gin.Context) {
+	periods := h.service.GetGuaranteePeriods()
+	responses.Success(c, periods)
+}
+
+// CheckGuaranteeStatus allows public checking of guarantee status by code
+func (h *GuaranteeHandler) CheckGuaranteeStatus(c *gin.Context) {
+	code := c.Query("code")
+	if code == "" {
+		responses.Error(c, http.StatusBadRequest, "Guarantee code is required")
+		return
+	}
+
+	guarantee, err := h.service.GetByCode(code)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.Success(c, guarantee)
+}
+
+// Add this method for file upload
+func (h *GuaranteeHandler) UploadFile(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "No file uploaded")
+		return
+	}
+
+	// Validate file type
+	allowedTypes := map[string]bool{
+		"image/jpeg": true,
+		"image/png":  true,
+		"image/gif":  true,
+		"image/webp": true,
+		"application/pdf": true,
+	}
+	
+	contentType := file.Header.Get("Content-Type")
+	if !allowedTypes[contentType] {
+		responses.Error(c, http.StatusBadRequest, "Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF")
+		return
+	}
+
+	// Validate file size (max 10MB)
+	if file.Size > 10*1024*1024 {
+		responses.Error(c, http.StatusBadRequest, "File size exceeds 10MB limit")
+		return
+	}
+
+	// Generate unique filename
+	ext := filepath.Ext(file.Filename)
+	filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), uuid.New().String()[:8], ext)
+	
+	// Create uploads directory if not exists
+	uploadDir := "./uploads/guarantees"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		responses.InternalError(c, err)
+		return
+	}
+
+	// Save file
+	filePath := filepath.Join(uploadDir, filename)
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		responses.InternalError(c, err)
+		return
+	}
+
+	// Return the file URL
+	fileURL := fmt.Sprintf("/uploads/guarantees/%s", filename)
+	responses.Success(c, gin.H{
+		"url":      fileURL,
+		"filename": filename,
+		"size":     file.Size,
+		"type":     contentType,
+	})
 }

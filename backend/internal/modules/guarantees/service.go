@@ -409,3 +409,179 @@ func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
 
 	return dto
 }
+
+// Add this method to GuaranteeService
+
+func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRegisterResponse, error) {
+	// Start a transaction
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1. Check if customer exists by National ID or Phone
+	var existingCustomer Customer
+	var customerID uint
+	
+	err := tx.Table("customers").
+		Where("national_id = ? OR phone = ?", req.NationalID, req.Phone).
+		First(&existingCustomer).Error
+	
+	if err == nil {
+		// Customer exists
+		customerID = existingCustomer.ID
+	} else if err == gorm.ErrRecordNotFound {
+		// Create new customer
+		customer := map[string]interface{}{
+			"full_name":   req.FullName,
+			"phone":       req.Phone,
+			"national_id": req.NationalID,
+			"province":    req.Province,
+			"city":        req.City,
+			"address":     req.Address,
+		}
+		
+		if err := tx.Table("customers").Create(&customer).Error; err != nil {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
+		}
+		
+		// Get the created customer ID
+		var newCustomer Customer
+		if err := tx.Table("customers").Where("national_id = ?", req.NationalID).First(&newCustomer).Error; err != nil {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created customer", 500)
+		}
+		customerID = newCustomer.ID
+	} else {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check customer existence", 500)
+	}
+
+	// 2. Create or get product
+	var productID uint
+	var product Product
+	
+	// Check if product exists by name
+	err = tx.Table("products").Where("name = ?", req.ProductName).First(&product).Error
+	if err == nil {
+		productID = product.ID
+	} else if err == gorm.ErrRecordNotFound {
+		// Create new product (inactive by default, admin can activate later)
+		newProduct := map[string]interface{}{
+			"name":        req.ProductName,
+			"description": "Auto-created from guarantee registration",
+			"category_id": 1, // Default category, admin can change later
+			"is_active":   false,
+		}
+		
+		if err := tx.Table("products").Create(&newProduct).Error; err != nil {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create product", 500)
+		}
+		
+		// Get the created product ID
+		var newProductRecord Product
+		if err := tx.Table("products").Where("name = ?", req.ProductName).First(&newProductRecord).Error; err != nil {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created product", 500)
+		}
+		productID = newProductRecord.ID
+	} else {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check product existence", 500)
+	}
+
+	// 3. Parse dates
+	purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
+	if err != nil {
+		tx.Rollback()
+		return nil, ErrInvalidDate
+	}
+	
+	// Calculate expiry date based on guarantee period (in months)
+	expiryDate := purchaseDate.AddDate(0, req.GuaranteePeriod, 0)
+	
+	if err := s.validateDates(purchaseDate, expiryDate); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// 4. Check if guarantee code already exists
+	existingGuarantee, err := s.repo.FindByCode(req.GuaranteeCode)
+	if err != nil {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check guarantee code", 500)
+	}
+	if existingGuarantee != nil {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Guarantee code already registered", 409)
+	}
+
+	// 5. Create guarantee
+	guarantee := &Guarantee{
+		Code:               req.GuaranteeCode,
+		CustomerID:         customerID,
+		ProductID:          productID,
+		PurchaseDate:       purchaseDate,
+		ExpiryDate:         expiryDate,
+		Status:             StatusPending,
+		InvoiceImage:       req.InvoiceImage,
+		GuaranteeCardImage: req.GuaranteeCardImage,
+		Notes:              req.Notes,
+		// CreatedBy remains nil for public registration
+	}
+
+	if err := tx.Create(guarantee).Error; err != nil {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create guarantee", 500)
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to commit transaction", 500)
+	}
+
+	// Return response
+	return &PublicRegisterResponse{
+		GuaranteeID:   guarantee.ID,
+		GuaranteeCode: guarantee.Code,
+		CustomerID:    customerID,
+		CustomerName:  req.FullName,
+		ExpiryDate:    expiryDate.Format("2006-01-02"),
+		Status:        StatusPending,
+		Message:       "Guarantee registered successfully. Waiting for admin approval.",
+	}, nil
+}
+
+// GetGuaranteePeriods returns available guarantee periods
+func (s *GuaranteeService) GetGuaranteePeriods() []GuaranteePeriodOption {
+	return []GuaranteePeriodOption{
+		{Value: 3, Label: "3 Months", Months: 3},
+		{Value: 6, Label: "6 Months", Months: 6},
+		{Value: 9, Label: "9 Months", Months: 9},
+		{Value: 12, Label: "12 Months (1 Year)", Months: 12},
+		{Value: 15, Label: "15 Months", Months: 15},
+		{Value: 18, Label: "18 Months", Months: 18},
+		{Value: 21, Label: "21 Months", Months: 21},
+		{Value: 24, Label: "24 Months (2 Years)", Months: 24},
+		{Value: 30, Label: "30 Months", Months: 30},
+		{Value: 36, Label: "36 Months (3 Years)", Months: 36},
+	}
+}
+// Add this method to GuaranteeService
+func (s *GuaranteeService) GetByCode(code string) (*GuaranteeDTO, error) {
+	guarantee, err := s.repo.FindByCode(code)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrGuaranteeNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
+	}
+	if guarantee == nil {
+		return nil, ErrGuaranteeNotFound
+	}
+	return s.mapToDTO(guarantee), nil
+}

@@ -21,17 +21,27 @@ func NewGuaranteeModule(db *gorm.DB) *GuaranteeModule {
 }
 
 func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
-	guarantees := router.Group("/guarantees")
-	guarantees.Use(middleware.AuthMiddleware())
+
+	public := router.Group("/guarantees/public")
 	{
-		guarantees.POST("", m.handler.Create)
-		guarantees.GET("", m.handler.List)
-		guarantees.GET("/expiring", m.handler.GetExpiringSoon)
-		guarantees.GET("/:id", m.handler.Get)
-		guarantees.PUT("/:id", m.handler.Update)
-		guarantees.POST("/:id/approve", m.handler.Approve)
-		guarantees.POST("/:id/renew", m.handler.Renew)
-		guarantees.POST("/:id/cancel", m.handler.Cancel)
-		guarantees.DELETE("/:id", m.handler.Delete)
+		public.POST("/register", m.handler.PublicRegister)
+		public.GET("/periods", m.handler.GetGuaranteePeriods)
+		public.GET("/check", m.handler.CheckGuaranteeStatus)
+		public.POST("/upload", m.handler.UploadFile)
+	}
+
+	// Protected routes (authentication required)
+	protected := router.Group("/guarantees")
+	protected.Use(middleware.AuthMiddleware())
+	{
+		protected.POST("", m.handler.Create)
+		protected.GET("", m.handler.List)
+		protected.GET("/expiring", m.handler.GetExpiringSoon)
+		protected.GET("/:id", m.handler.Get)
+		protected.PUT("/:id", m.handler.Update)
+		protected.POST("/:id/approve", m.handler.Approve)
+		protected.POST("/:id/renew", m.handler.Renew)
+		protected.POST("/:id/cancel", m.handler.Cancel)
+		protected.DELETE("/:id", m.handler.Delete)
 	}
 }

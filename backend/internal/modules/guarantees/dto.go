@@ -60,3 +60,40 @@ type ListGuaranteesResponse struct {
 	Limit      int            `json:"limit"`
 	LastPage   int            `json:"last_page"`
 }
+
+// Add these to the existing dto.go file
+
+type PublicRegisterRequest struct {
+	// Customer Information
+	FullName   string `json:"full_name" binding:"required,min=2,max=100"`
+	Phone      string `json:"phone" binding:"required,min=10,max=20"`
+	NationalID string `json:"national_id" binding:"required,min=6,max=20"`
+	Province   string `json:"province" binding:"required,max=50"`
+	City       string `json:"city" binding:"required,max=50"`
+	Address    string `json:"address" binding:"required"`
+	
+	// Guarantee Information
+	GuaranteeCode      string `json:"guarantee_code" binding:"required,min=3,max=50"`
+	ProductName        string `json:"product_name" binding:"required,min=2,max=100"`
+	PurchaseDate       string `json:"purchase_date" binding:"required"`
+	GuaranteePeriod    int    `json:"guarantee_period" binding:"required,oneof=3 6 9 12 15 18 21 24 30 36"`
+	InvoiceImage       string `json:"invoice_image"`
+	GuaranteeCardImage string `json:"guarantee_card_image"`
+	Notes              string `json:"notes"`
+}
+
+type PublicRegisterResponse struct {
+	GuaranteeID   uint   `json:"guarantee_id"`
+	GuaranteeCode string `json:"guarantee_code"`
+	CustomerID    uint   `json:"customer_id"`
+	CustomerName  string `json:"customer_name"`
+	ExpiryDate    string `json:"expiry_date"`
+	Status        string `json:"status"`
+	Message       string `json:"message"`
+}
+
+type GuaranteePeriodOption struct {
+	Value  int    `json:"value"`
+	Label  string `json:"label"`
+	Months int    `json:"months"`
+}

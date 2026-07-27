@@ -5,6 +5,8 @@ import { PublicRoute } from '@/components/common/PublicRoute'
 import { CategoriesPage } from '@/features/categories/pages/CategoriesPage'
 import { ProductsPage } from '@/features/products/pages/ProductsPage'
 import { GuaranteesPage } from '@/features/guarantees/pages/GuaranteesPage'
+import { PublicRegisterPage } from '@/features/guarantees/pages/PublicRegisterPage'
+import { CheckGuaranteePage } from '@/features/guarantees/pages/CheckGuaranteePage'
 // Pages
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -19,6 +21,9 @@ export function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/register-guarantee" element={<PublicRegisterPage />} />
+      <Route path="/check-guarantee" element={<CheckGuaranteePage />} />
+      
       <Route
         path="/login"
         element={
