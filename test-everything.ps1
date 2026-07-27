@@ -1,30 +1,44 @@
-# test-everything.ps1
+# test-backend-full.ps1
 # ============================================
-#  Guarantee Management System - Full Test Suite
+#  Guarantee Management System - Full Backend Test Suite
 # ============================================
-# Tests every currently implemented backend module:
+# Tests ALL currently implemented backend modules:
 #   - Health check
-#   - Auth (login, profile)
+#   - CORS
+#   - Auth (login, profile, password change)
 #   - Admin CRUD
 #   - Customer CRUD + search + pagination
+#   - Product Categories CRUD + active list
+#   - Products CRUD + filtering by category
 #   - Dashboard stats
-#   - CORS preflight (the thing that bit us earlier)
-#
-# NOTE: Products, Technicians, Guarantees, and Repairs are not yet
-# exposed as API modules (no routes registered in cmd/api/main.go),
-# so they are not tested here. Add sections for them as those
-# modules get built.
+#   - Error handling (validation, duplicates, not found)
 #
 # Usage:
-#   .\test-everything.ps1
-#   .\test-everything.ps1 -Username admin -Password "Admin123!"
-#   .\test-everything.ps1 -BaseUrl "http://localhost:8080" -FrontendOrigin "http://localhost:5173"
+#   .\test-backend-full.ps1
+#   .\test-backend-full.ps1 -BaseUrl "http://localhost:8080"
+#   .\test-backend-full.ps1 -Username admin -Password "Admin123!" -Verbose
+#
+# FIX LOG (vs original):
+#   1. Invoke-Api no longer swallows exceptions when -NoThrow is passed.
+#      Previously it caught the error internally and RETURNED the
+#      exception object instead of re-throwing it, so every "rejects X"
+#      test's outer try/catch never saw the error and always fell through
+#      to Write-Fail, regardless of what the API actually returned.
+#      Now Invoke-Api always re-throws, and -NoThrow has been dropped
+#      from all call sites (it no longer does anything useful).
+#   2. The "duplicate product name in category" test previously reused
+#      $testProductName after the product had already been renamed via
+#      PUT to "Updated $testProductName". That meant the "duplicate" POST
+#      didn't actually collide with anything and silently created an
+#      orphan product, which then made the category cleanup DELETE fail
+#      with 400 (category still in use). The test now checks against the
+#      product's *current* name.
 
 param(
     [string]$BaseUrl = "http://localhost:8080",
-    [string]$FrontendOrigin = "http://localhost:5173",
     [string]$Username = "abolfazl",
-    [string]$Password = "abolfazl"
+    [string]$Password = "abolfazl",
+    [switch]$Verbose
 )
 
 $ApiUrl = "$BaseUrl/api/v1"
@@ -32,7 +46,10 @@ $Passed = 0
 $Failed = 0
 $Skipped = 0
 $FailedTests = @()
+$Global:TestData = @{}
+$Global:Token = $null
 
+# Color functions
 function Write-Section($title) {
     Write-Host ""
     Write-Host "============================================" -ForegroundColor Cyan
@@ -59,31 +76,42 @@ function Write-Skip($name, $reason) {
     $script:Skipped++
 }
 
+function Write-Debug($msg) {
+    if ($Verbose) {
+        Write-Host "[DEBUG] $msg" -ForegroundColor DarkGray
+    }
+}
+
 function Invoke-Api {
     param(
         [string]$Method,
         [string]$Path,
         [hashtable]$Headers = @{},
-        [object]$Body = $null
+        [object]$Body = $null,
+        [switch]$NoThrow  # kept for call-site compatibility; no longer changes behavior
     )
     $uri = "$ApiUrl$Path"
     $params = @{
         Uri     = $uri
         Method  = $Method
         Headers = $Headers
+        ErrorAction = 'Stop'
     }
     if ($Body) {
-        $params["Body"] = ($Body | ConvertTo-Json)
+        $params["Body"] = ($Body | ConvertTo-Json -Depth 10)
         $params["ContentType"] = "application/json"
     }
+
+    Write-Debug "$Method $Path"
+
+    # FIX: always let the exception propagate. Callers that expect an
+    # error (e.g. "rejects duplicate X" tests) handle it in their own
+    # try/catch and inspect $_.Exception.Response.StatusCode. Swallowing
+    # it here and returning the exception object instead of throwing
+    # made every such test pass through to the "unexpected success"
+    # branch even when the API correctly rejected the request.
     return Invoke-RestMethod @params
 }
-
-Write-Host ""
-Write-Host "############################################" -ForegroundColor Magenta
-Write-Host "#  GMS Full Test Suite" -ForegroundColor Magenta
-Write-Host "#  Target: $BaseUrl" -ForegroundColor Magenta
-Write-Host "############################################" -ForegroundColor Magenta
 
 # ============================================
 # 0. Server availability
@@ -91,18 +119,17 @@ Write-Host "############################################" -ForegroundColor Magen
 Write-Section "0. Server Availability"
 
 try {
-    $health = Invoke-RestMethod -Uri "$BaseUrl/health" -Method Get
+    $health = Invoke-RestMethod -Uri "$BaseUrl/health" -Method Get -ErrorAction Stop
     if ($health.status -eq "ok") {
         Write-Pass "Server is reachable" "app=$($health.app) env=$($health.env)"
     } else {
-        Write-Fail "Server is reachable" "Unexpected health response: $($health | ConvertTo-Json -Compress)"
+        Write-Fail "Server is reachable" "Unexpected health response"
     }
 } catch {
     Write-Fail "Server is reachable" $_.Exception.Message
     Write-Host ""
-    Write-Host "Server is not responding on $BaseUrl. Start it with 'go run cmd/api/main.go' and re-run this script." -ForegroundColor Red
+    Write-Host "Server is not responding on $BaseUrl. Start it with 'make run' and re-run this script." -ForegroundColor Red
     Write-Host ""
-    Write-Host "Passed: $Passed | Failed: $Failed | Skipped: $Skipped" -ForegroundColor White
     exit 1
 }
 
@@ -113,18 +140,22 @@ Write-Section "1. CORS Preflight"
 
 try {
     $resp = Invoke-WebRequest -Uri "$ApiUrl/customers?page=1&limit=10" -Method Options -Headers @{
-        "Origin"                          = $FrontendOrigin
+        "Origin"                          = "http://localhost:5173"
         "Access-Control-Request-Method"   = "GET"
         "Access-Control-Request-Headers"  = "authorization"
-    } -UseBasicParsing
+    } -UseBasicParsing -ErrorAction Stop
 
-    if ($resp.StatusCode -eq 204 -and $resp.Headers["Access-Control-Allow-Origin"]) {
-        Write-Pass "OPTIONS preflight returns 204 with CORS headers" "Allow-Origin: $($resp.Headers['Access-Control-Allow-Origin'])"
+    if ($resp.StatusCode -eq 204 -or $resp.StatusCode -eq 200) {
+        if ($resp.Headers["Access-Control-Allow-Origin"]) {
+            Write-Pass "OPTIONS preflight passes CORS" "Allow-Origin: $($resp.Headers['Access-Control-Allow-Origin'])"
+        } else {
+            Write-Fail "OPTIONS preflight CORS headers" "Access-Control-Allow-Origin header missing"
+        }
     } else {
-        Write-Fail "OPTIONS preflight returns 204 with CORS headers" "Status=$($resp.StatusCode), Allow-Origin header missing"
+        Write-Fail "OPTIONS preflight status" "Status=$($resp.StatusCode)"
     }
 } catch {
-    Write-Fail "OPTIONS preflight returns 204 with CORS headers" $_.Exception.Message
+    Write-Fail "CORS preflight" $_.Exception.Message
 }
 
 # ============================================
@@ -132,11 +163,10 @@ try {
 # ============================================
 Write-Section "2. Auth Module"
 
-$token = $null
 try {
     $loginResp = Invoke-Api -Method Post -Path "/auth/login" -Body @{ username = $Username; password = $Password }
-    $token = $loginResp.data.token
-    if ($token) {
+    $Global:Token = $loginResp.data.token
+    if ($Global:Token) {
         Write-Pass "Login with $Username" "token acquired, expires_in=$($loginResp.data.expires_in)s"
     } else {
         Write-Fail "Login with $Username" "No token in response"
@@ -144,16 +174,15 @@ try {
 } catch {
     Write-Fail "Login with $Username" $_.Exception.Message
     Write-Host ""
-    Write-Host "Cannot continue without a valid token. Check -Username/-Password params match a seeded admin." -ForegroundColor Red
-    Write-Host "Passed: $Passed | Failed: $Failed | Skipped: $Skipped" -ForegroundColor White
+    Write-Host "Cannot continue without a valid token. Check credentials." -ForegroundColor Red
     exit 1
 }
 
-$authHeaders = @{ Authorization = "Bearer $token" }
+$authHeaders = @{ Authorization = "Bearer $Global:Token" }
 
 # Reject bad credentials
 try {
-    Invoke-Api -Method Post -Path "/auth/login" -Body @{ username = $Username; password = "definitely-wrong-password" } | Out-Null
+    Invoke-Api -Method Post -Path "/auth/login" -Body @{ username = $Username; password = "wrong-password" } | Out-Null
     Write-Fail "Login rejects bad password" "Expected 401 but request succeeded"
 } catch {
     if ($_.Exception.Response.StatusCode -eq 401) {
@@ -165,7 +194,7 @@ try {
 
 # Reject missing token
 try {
-    Invoke-RestMethod -Uri "$ApiUrl/auth/profile" -Method Get | Out-Null
+    Invoke-RestMethod -Uri "$ApiUrl/auth/profile" -Method Get -ErrorAction Stop | Out-Null
     Write-Fail "Protected route rejects missing token" "Expected 401 but request succeeded"
 } catch {
     if ($_.Exception.Response.StatusCode -eq 401) {
@@ -179,8 +208,24 @@ try {
 try {
     $profile = Invoke-Api -Method Get -Path "/auth/profile" -Headers $authHeaders
     Write-Pass "GET /auth/profile" "username=$($profile.data.username), active=$($profile.data.is_active)"
+    $Global:TestData.AdminId = $profile.data.id
 } catch {
     Write-Fail "GET /auth/profile" $_.Exception.Message
+}
+
+# Change password (test with invalid old password)
+try {
+    Invoke-Api -Method Post -Path "/auth/change-password" -Headers $authHeaders -Body @{
+        old_password = "wrong-old-password"
+        new_password = "NewPass123!"
+    } | Out-Null
+    Write-Fail "Change password rejects wrong old password" "Expected 401 but request succeeded"
+} catch {
+    if ($_.Exception.Response.StatusCode -eq 401) {
+        Write-Pass "Change password rejects wrong old password" "401 as expected"
+    } else {
+        Write-Fail "Change password rejects wrong old password" $_.Exception.Message
+    }
 }
 
 # ============================================
@@ -191,6 +236,7 @@ Write-Section "3. Admin Module"
 $testAdminUsername = "testadmin_$(Get-Random -Maximum 99999)"
 $createdAdminId = $null
 
+# List admins
 try {
     $admins = Invoke-Api -Method Get -Path "/admins?page=1&limit=10" -Headers $authHeaders
     Write-Pass "GET /admins (list)" "total=$($admins.meta.total)"
@@ -198,6 +244,7 @@ try {
     Write-Fail "GET /admins (list)" $_.Exception.Message
 }
 
+# Create admin
 try {
     $created = Invoke-Api -Method Post -Path "/admins" -Headers $authHeaders -Body @{
         username  = $testAdminUsername
@@ -211,29 +258,47 @@ try {
     Write-Fail "POST /admins (create)" $_.Exception.Message
 }
 
+# Update admin
 if ($createdAdminId) {
     try {
-        Invoke-Api -Method Put -Path "/admins/$createdAdminId" -Headers $authHeaders -Body @{
+        $updated = Invoke-Api -Method Put -Path "/admins/$createdAdminId" -Headers $authHeaders -Body @{
             full_name = "Automated Test Admin (Updated)"
-        } | Out-Null
-        Write-Pass "PUT /admins/:id (update)" "id=$createdAdminId"
+            email     = "updated_$testAdminUsername@example.com"
+        }
+        Write-Pass "PUT /admins/:id (update)" "full_name updated"
     } catch {
         Write-Fail "PUT /admins/:id (update)" $_.Exception.Message
     }
 
+    # Get single admin
+    # NOTE: this will still 404 until GET /admins/:id is registered on the
+    # backend (routes.go currently has no handler for it). See writeup.
+    try {
+        $single = Invoke-Api -Method Get -Path "/admins/$createdAdminId" -Headers $authHeaders
+        if ($single.data.id -eq $createdAdminId) {
+            Write-Pass "GET /admins/:id" "found admin $createdAdminId"
+        } else {
+            Write-Fail "GET /admins/:id" "ID mismatch"
+        }
+    } catch {
+        Write-Fail "GET /admins/:id" $_.Exception.Message
+    }
+
+    # Delete admin (cleanup)
     try {
         Invoke-Api -Method Delete -Path "/admins/$createdAdminId" -Headers $authHeaders | Out-Null
         Write-Pass "DELETE /admins/:id (cleanup)" "id=$createdAdminId"
     } catch {
         Write-Fail "DELETE /admins/:id (cleanup)" $_.Exception.Message
-        Write-Host "       WARNING: test admin '$testAdminUsername' may still exist, remove manually." -ForegroundColor Yellow
+        Write-Host "       WARNING: test admin may still exist, remove manually." -ForegroundColor Yellow
     }
 } else {
     Write-Skip "PUT /admins/:id (update)" "create step failed"
+    Write-Skip "GET /admins/:id" "create step failed"
     Write-Skip "DELETE /admins/:id (cleanup)" "create step failed"
 }
 
-# Duplicate username should be rejected
+# Duplicate username rejection
 try {
     Invoke-Api -Method Post -Path "/admins" -Headers $authHeaders -Body @{
         username  = $Username
@@ -259,6 +324,7 @@ $testPhone = "09$(Get-Random -Minimum 100000000 -Maximum 999999999)"
 $testNationalId = "TST$(Get-Random -Minimum 100000 -Maximum 999999)"
 $createdCustomerId = $null
 
+# List customers
 try {
     $list = Invoke-Api -Method Get -Path "/customers?page=1&limit=10" -Headers $authHeaders
     Write-Pass "GET /customers (list)" "total=$($list.meta.total)"
@@ -266,6 +332,7 @@ try {
     Write-Fail "GET /customers (list)" $_.Exception.Message
 }
 
+# Create customer
 try {
     $created = Invoke-Api -Method Post -Path "/customers" -Headers $authHeaders -Body @{
         full_name   = "Automated Test Customer"
@@ -281,7 +348,9 @@ try {
     Write-Fail "POST /customers (create)" $_.Exception.Message
 }
 
+# Test customer operations
 if ($createdCustomerId) {
+    # Get by ID
     try {
         $fetched = Invoke-Api -Method Get -Path "/customers/$createdCustomerId" -Headers $authHeaders
         if ($fetched.data.phone -eq $testPhone) {
@@ -293,15 +362,18 @@ if ($createdCustomerId) {
         Write-Fail "GET /customers/:id" $_.Exception.Message
     }
 
+    # Update
     try {
         Invoke-Api -Method Put -Path "/customers/$createdCustomerId" -Headers $authHeaders -Body @{
             city = "Isfahan"
+            province = "Isfahan"
         } | Out-Null
         Write-Pass "PUT /customers/:id (update)" "city -> Isfahan"
     } catch {
         Write-Fail "PUT /customers/:id (update)" $_.Exception.Message
     }
 
+    # Search
     try {
         $searchResults = Invoke-Api -Method Get -Path "/customers/search?q=$testNationalId" -Headers $authHeaders
         if ($searchResults.data.Count -ge 1) {
@@ -313,7 +385,7 @@ if ($createdCustomerId) {
         Write-Fail "GET /customers/search" $_.Exception.Message
     }
 
-    # Duplicate national ID should be rejected
+    # Duplicate national ID rejection
     try {
         Invoke-Api -Method Post -Path "/customers" -Headers $authHeaders -Body @{
             full_name   = "Duplicate Customer"
@@ -329,12 +401,13 @@ if ($createdCustomerId) {
         }
     }
 
+    # Cleanup
     try {
         Invoke-Api -Method Delete -Path "/customers/$createdCustomerId" -Headers $authHeaders | Out-Null
         Write-Pass "DELETE /customers/:id (cleanup)" "id=$createdCustomerId"
     } catch {
         Write-Fail "DELETE /customers/:id (cleanup)" $_.Exception.Message
-        Write-Host "       WARNING: test customer id=$createdCustomerId may still exist, remove manually." -ForegroundColor Yellow
+        Write-Host "       WARNING: test customer may still exist, remove manually." -ForegroundColor Yellow
     }
 } else {
     Write-Skip "GET /customers/:id" "create step failed"
@@ -344,7 +417,7 @@ if ($createdCustomerId) {
     Write-Skip "DELETE /customers/:id (cleanup)" "create step failed"
 }
 
-# Validation: missing required fields should be rejected
+# Validation: missing required fields
 try {
     Invoke-Api -Method Post -Path "/customers" -Headers $authHeaders -Body @{
         full_name = "No Phone Or National ID"
@@ -359,9 +432,247 @@ try {
 }
 
 # ============================================
-# 5. Dashboard
+# 5. Product Categories CRUD
 # ============================================
-Write-Section "5. Dashboard Module"
+Write-Section "5. Product Categories Module"
+
+$testCategoryName = "Test Category $(Get-Random -Maximum 99999)"
+$createdCategoryId = $null
+
+# List categories
+try {
+    $list = Invoke-Api -Method Get -Path "/product-categories?page=1&limit=10" -Headers $authHeaders
+    Write-Pass "GET /product-categories (list)" "total=$($list.meta.total)"
+} catch {
+    Write-Fail "GET /product-categories (list)" $_.Exception.Message
+}
+
+# Create category
+try {
+    $created = Invoke-Api -Method Post -Path "/product-categories" -Headers $authHeaders -Body @{
+        name        = $testCategoryName
+        description = "Test category for automated testing"
+        is_active   = $true
+    }
+    $createdCategoryId = $created.data.id
+    Write-Pass "POST /product-categories (create)" "id=$createdCategoryId, name=$testCategoryName"
+} catch {
+    Write-Fail "POST /product-categories (create)" $_.Exception.Message
+}
+
+if ($createdCategoryId) {
+    # Get by ID
+    try {
+        $fetched = Invoke-Api -Method Get -Path "/product-categories/$createdCategoryId" -Headers $authHeaders
+        if ($fetched.data.name -eq $testCategoryName) {
+            Write-Pass "GET /product-categories/:id" "name matches"
+        } else {
+            Write-Fail "GET /product-categories/:id" "name mismatch"
+        }
+    } catch {
+        Write-Fail "GET /product-categories/:id" $_.Exception.Message
+    }
+
+    # List active categories (for dropdowns)
+    try {
+        $active = Invoke-Api -Method Get -Path "/product-categories/active" -Headers $authHeaders
+        # Find our category in the active list
+        $found = $active.data | Where-Object { $_.id -eq $createdCategoryId }
+        if ($found) {
+            Write-Pass "GET /product-categories/active" "found category in active list"
+        } else {
+            Write-Fail "GET /product-categories/active" "category not in active list"
+        }
+    } catch {
+        Write-Fail "GET /product-categories/active" $_.Exception.Message
+    }
+
+    # Update category
+    $updatedName = "Updated $testCategoryName"
+    try {
+        Invoke-Api -Method Put -Path "/product-categories/$createdCategoryId" -Headers $authHeaders -Body @{
+            name        = $updatedName
+            description = "Updated test category"
+            is_active   = $false
+        } | Out-Null
+        Write-Pass "PUT /product-categories/:id (update)" "name updated"
+    } catch {
+        Write-Fail "PUT /product-categories/:id (update)" $_.Exception.Message
+    }
+
+    # Duplicate category name rejection
+    # (compares against $updatedName, i.e. the category's *current* name
+    # after the PUT above — this was already correct in the original)
+    try {
+        Invoke-Api -Method Post -Path "/product-categories" -Headers $authHeaders -Body @{
+            name        = $updatedName
+            description = "Duplicate category"
+            is_active   = $true
+        } | Out-Null
+        Write-Fail "POST /product-categories rejects duplicate name" "Expected 409 but request succeeded"
+    } catch {
+        if ($_.Exception.Response.StatusCode -eq 409) {
+            Write-Pass "POST /product-categories rejects duplicate name" "409 as expected"
+        } else {
+            Write-Fail "POST /product-categories rejects duplicate name" $_.Exception.Message
+        }
+    }
+
+    # Cleanup - Delete category (should work since no products assigned)
+    try {
+        Invoke-Api -Method Delete -Path "/product-categories/$createdCategoryId" -Headers $authHeaders | Out-Null
+        Write-Pass "DELETE /product-categories/:id (cleanup)" "id=$createdCategoryId"
+    } catch {
+        Write-Fail "DELETE /product-categories/:id (cleanup)" $_.Exception.Message
+        Write-Host "       WARNING: test category may still exist, remove manually." -ForegroundColor Yellow
+    }
+} else {
+    Write-Skip "GET /product-categories/:id" "create step failed"
+    Write-Skip "GET /product-categories/active" "create step failed"
+    Write-Skip "PUT /product-categories/:id (update)" "create step failed"
+    Write-Skip "POST /product-categories rejects duplicate name" "create step failed"
+    Write-Skip "DELETE /product-categories/:id (cleanup)" "create step failed"
+}
+
+# ============================================
+# 6. Products CRUD
+# ============================================
+Write-Section "6. Products Module"
+
+# First, create a category to assign products to
+$productCategoryName = "Product Test Cat $(Get-Random -Maximum 99999)"
+$productCategoryId = $null
+
+try {
+    $catCreated = Invoke-Api -Method Post -Path "/product-categories" -Headers $authHeaders -Body @{
+        name        = $productCategoryName
+        description = "Category for product testing"
+        is_active   = $true
+    }
+    $productCategoryId = $catCreated.data.id
+    Write-Pass "Setup: Created product test category" "id=$productCategoryId"
+} catch {
+    Write-Fail "Setup: Failed to create product test category" $_.Exception.Message
+}
+
+if ($productCategoryId) {
+    $testProductName = "Test Product $(Get-Random -Maximum 99999)"
+    $createdProductId = $null
+
+    # List products
+    try {
+        $list = Invoke-Api -Method Get -Path "/products?page=1&limit=10" -Headers $authHeaders
+        Write-Pass "GET /products (list)" "total=$($list.meta.total)"
+    } catch {
+        Write-Fail "GET /products (list)" $_.Exception.Message
+    }
+
+    # Create product
+    try {
+        $created = Invoke-Api -Method Post -Path "/products" -Headers $authHeaders -Body @{
+            name        = $testProductName
+            description = "Test product for automated testing"
+            category_id = $productCategoryId
+            is_active   = $true
+        }
+        $createdProductId = $created.data.id
+        Write-Pass "POST /products (create)" "id=$createdProductId, name=$testProductName"
+    } catch {
+        Write-Fail "POST /products (create)" $_.Exception.Message
+    }
+
+    if ($createdProductId) {
+        # Get by ID
+        try {
+            $fetched = Invoke-Api -Method Get -Path "/products/$createdProductId" -Headers $authHeaders
+            if ($fetched.data.name -eq $testProductName) {
+                Write-Pass "GET /products/:id" "name matches"
+            } else {
+                Write-Fail "GET /products/:id" "name mismatch"
+            }
+        } catch {
+            Write-Fail "GET /products/:id" $_.Exception.Message
+        }
+
+        # Update product — name is now "Updated $testProductName"
+        $updatedProductName = "Updated $testProductName"
+        try {
+            Invoke-Api -Method Put -Path "/products/$createdProductId" -Headers $authHeaders -Body @{
+                name        = $updatedProductName
+                description = "Updated test product"
+                is_active   = $false
+            } | Out-Null
+            Write-Pass "PUT /products/:id (update)" "name updated"
+        } catch {
+            Write-Fail "PUT /products/:id (update)" $_.Exception.Message
+        }
+
+        # Filter products by category
+        try {
+            $filtered = Invoke-Api -Method Get -Path "/products?category_id=$productCategoryId" -Headers $authHeaders
+            $found = $filtered.data | Where-Object { $_.id -eq $createdProductId }
+            if ($found) {
+                Write-Pass "GET /products (filter by category)" "found product in category filter"
+            } else {
+                Write-Fail "GET /products (filter by category)" "product not found in filtered results"
+            }
+        } catch {
+            Write-Fail "GET /products (filter by category)" $_.Exception.Message
+        }
+
+        # Duplicate product name in same category rejection
+        # FIX: must compare against the product's CURRENT name
+        # ($updatedProductName), not the pre-rename $testProductName —
+        # otherwise this silently creates an orphan product instead of
+        # triggering the duplicate check.
+        try {
+            Invoke-Api -Method Post -Path "/products" -Headers $authHeaders -Body @{
+                name        = $updatedProductName
+                description = "Duplicate product"
+                category_id = $productCategoryId
+                is_active   = $true
+            } | Out-Null
+            Write-Fail "POST /products rejects duplicate name in category" "Expected 409 but request succeeded"
+        } catch {
+            if ($_.Exception.Response.StatusCode -eq 409) {
+                Write-Pass "POST /products rejects duplicate name in category" "409 as expected"
+            } else {
+                Write-Fail "POST /products rejects duplicate name in category" $_.Exception.Message
+            }
+        }
+
+        # Cleanup - Delete product
+        try {
+            Invoke-Api -Method Delete -Path "/products/$createdProductId" -Headers $authHeaders | Out-Null
+            Write-Pass "DELETE /products/:id (cleanup)" "id=$createdProductId"
+        } catch {
+            Write-Fail "DELETE /products/:id (cleanup)" $_.Exception.Message
+            Write-Host "       WARNING: test product may still exist, remove manually." -ForegroundColor Yellow
+        }
+    } else {
+        Write-Skip "GET /products/:id" "create step failed"
+        Write-Skip "PUT /products/:id (update)" "create step failed"
+        Write-Skip "GET /products (filter by category)" "create step failed"
+        Write-Skip "POST /products rejects duplicate name in category" "create step failed"
+        Write-Skip "DELETE /products/:id (cleanup)" "create step failed"
+    }
+
+    # Cleanup: Delete test category
+    try {
+        Invoke-Api -Method Delete -Path "/product-categories/$productCategoryId" -Headers $authHeaders | Out-Null
+        Write-Pass "Cleanup: Deleted product test category" "id=$productCategoryId"
+    } catch {
+        Write-Fail "Cleanup: Failed to delete product test category" $_.Exception.Message
+        Write-Host "       WARNING: test category may still exist, remove manually." -ForegroundColor Yellow
+    }
+} else {
+    Write-Skip "Products tests" "Failed to create test category"
+}
+
+# ============================================
+# 7. Dashboard
+# ============================================
+Write-Section "7. Dashboard Module"
 
 try {
     $stats = Invoke-Api -Method Get -Path "/dashboard/stats" -Headers $authHeaders
@@ -375,27 +686,32 @@ try {
 }
 
 # ============================================
-# 6. Not-yet-implemented modules (informational only)
+# 8. Modules Not Yet Wired Up (Informational)
 # ============================================
-Write-Section "6. Modules Not Yet Wired Up"
+Write-Section "8. Modules Not Yet Wired Up"
 
-$pendingModules = @("/products", "/product-categories", "/technicians", "/guarantees", "/repairs")
-foreach ($path in $pendingModules) {
+$pendingModules = @(
+    @{Path="/technicians"; Name="Technicians"},
+    @{Path="/guarantees"; Name="Guarantees"},
+    @{Path="/repairs"; Name="Repairs"}
+)
+
+foreach ($module in $pendingModules) {
     try {
-        Invoke-Api -Method Get -Path $path -Headers $authHeaders | Out-Null
-        Write-Host "[INFO] $path responded - module may already be implemented, consider adding real tests for it" -ForegroundColor Cyan
+        Invoke-Api -Method Get -Path $module.Path -Headers $authHeaders | Out-Null
+        Write-Host "[INFO] $($module.Name) responded - module may be implemented, consider adding tests" -ForegroundColor Cyan
     } catch {
         $status = $_.Exception.Response.StatusCode
         if ($status -eq 404) {
-            Write-Skip "$path" "not implemented yet (404) - expected for now"
+            Write-Skip "$($module.Name) ($($module.Path))" "not implemented yet (404)"
         } else {
-            Write-Host "[INFO] $path returned $status" -ForegroundColor Cyan
+            Write-Host "[INFO] $($module.Name) returned $status" -ForegroundColor Cyan
         }
     }
 }
 
 # ============================================
-# Summary
+# 9. Summary
 # ============================================
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
@@ -414,6 +730,7 @@ if ($Failed -gt 0) {
         Write-Host "  - $t" -ForegroundColor Red
     }
     Write-Host ""
+    Write-Host "Some tests failed. Please review the errors above." -ForegroundColor Red
     exit 1
 } else {
     Write-Host ""

@@ -20,8 +20,40 @@ guarantee-management-system/
 │   │   │   ├── cors.go
 │   │   │   └── logger.go
 │   │   ├── modules/
-│   │   │   └── auth/
+│   │   │   ├── auth/
+│   │   │   │   ├── dto.go
+│   │   │   │   ├── handler.go
+│   │   │   │   ├── model.go
+│   │   │   │   ├── repository.go
+│   │   │   │   ├── routes.go
+│   │   │   │   ├── service.go
+│   │   │   │   └── validator.go
+│   │   │   ├── categories/
+│   │   │   │   ├── dto.go
+│   │   │   │   ├── errors.go
+│   │   │   │   ├── handler.go
+│   │   │   │   ├── model.go
+│   │   │   │   ├── repository.go
+│   │   │   │   ├── routes.go
+│   │   │   │   ├── service.go
+│   │   │   │   └── validator.go
+│   │   │   ├── customers/
+│   │   │   │   ├── constants.go
+│   │   │   │   ├── dto.go
+│   │   │   │   ├── errors.go
+│   │   │   │   ├── handler.go
+│   │   │   │   ├── model.go
+│   │   │   │   ├── permissions.go
+│   │   │   │   ├── repository.go
+│   │   │   │   ├── routes.go
+│   │   │   │   ├── service.go
+│   │   │   │   └── validator.go
+│   │   │   ├── dashboard/
+│   │   │   │   ├── handler.go
+│   │   │   │   └── routes.go
+│   │   │   └── products/
 │   │   │       ├── dto.go
+│   │   │       ├── errors.go
 │   │   │       ├── handler.go
 │   │   │       ├── model.go
 │   │   │       ├── repository.go
@@ -61,7 +93,9 @@ guarantee-management-system/
 │   │   └── reports/
 │   ├── .env
 │   ├── .env.example
+│   ├── code-summary.txt
 │   ├── Dockerfile
+│   ├── generate-code-summary.ps1
 │   ├── go.mod
 │   ├── go.sum
 │   ├── health-check.ps1
@@ -101,6 +135,8 @@ guarantee-management-system/
 │   │   │       ├── card.tsx
 │   │   │       ├── dialog.tsx
 │   │   │       ├── dropdown-menu.tsx
+│   │   │       ├── form.tsx
+│   │   │       ├── input-group.tsx
 │   │   │       ├── input.tsx
 │   │   │       ├── label.tsx
 │   │   │       ├── progress.tsx
@@ -108,11 +144,51 @@ guarantee-management-system/
 │   │   │       ├── separator.tsx
 │   │   │       ├── skeleton.tsx
 │   │   │       ├── sonner.tsx
-│   │   │       └── table.tsx
+│   │   │       ├── table.tsx
+│   │   │       └── textarea.tsx
 │   │   ├── features/
-│   │   │   └── auth/
-│   │   │       └── contexts/
-│   │   │           └── AuthContext.tsx
+│   │   │   ├── auth/
+│   │   │   │   └── contexts/
+│   │   │   │       └── AuthContext.tsx
+│   │   │   ├── categories/
+│   │   │   │   ├── api/
+│   │   │   │   │   └── categories.ts
+│   │   │   │   ├── components/
+│   │   │   │   │   ├── CategoryDeleteDialog.tsx
+│   │   │   │   │   ├── CategoryForm.tsx
+│   │   │   │   │   └── CategoryTable.tsx
+│   │   │   │   ├── pages/
+│   │   │   │   │   └── CategoriesPage.tsx
+│   │   │   │   ├── schemas/
+│   │   │   │   │   └── categorySchema.ts
+│   │   │   │   └── types/
+│   │   │   │       └── index.ts
+│   │   │   ├── customers/
+│   │   │   │   ├── api/
+│   │   │   │   │   └── customers.ts
+│   │   │   │   ├── components/
+│   │   │   │   │   ├── CustomerDeleteDialog.tsx
+│   │   │   │   │   ├── CustomerForm.tsx
+│   │   │   │   │   └── CustomerTable.tsx
+│   │   │   │   ├── pages/
+│   │   │   │   │   └── CustomersPage.tsx
+│   │   │   │   ├── schemas/
+│   │   │   │   │   └── customerSchema.ts
+│   │   │   │   └── types/
+│   │   │   │       └── index.ts
+│   │   │   └── products/
+│   │   │       ├── api/
+│   │   │       │   └── products.ts
+│   │   │       ├── components/
+│   │   │       │   ├── ProductDeleteDialog.tsx
+│   │   │       │   ├── ProductForm.tsx
+│   │   │       │   └── ProductTable.tsx
+│   │   │       ├── pages/
+│   │   │       │   └── ProductsPage.tsx
+│   │   │       ├── schemas/
+│   │   │       │   └── productSchema.ts
+│   │   │       └── types/
+│   │   │           └── index.ts
 │   │   ├── layouts/
 │   │   │   └── MainLayout.tsx
 │   │   ├── lib/
@@ -124,7 +200,8 @@ guarantee-management-system/
 │   │   ├── routes/
 │   │   │   └── index.tsx
 │   │   ├── types/
-│   │   │   └── auth.ts
+│   │   │   ├── auth.ts
+│   │   │   └── customer.ts
 │   │   ├── App.css
 │   │   ├── App.tsx
 │   │   ├── index.css
@@ -134,6 +211,7 @@ guarantee-management-system/
 │   ├── .oxlintrc.json
 │   ├── code-summary.txt
 │   ├── components.json
+│   ├── fix-all-issues.ps1
 │   ├── generate-code-summary.ps1
 │   ├── index.html
 │   ├── package-lock.json
@@ -148,6 +226,8 @@ guarantee-management-system/
 ├── .gitignore
 ├── code-summary.txt
 ├── docker-compose.yml
+├── folder_structure.txt
 ├── generate-code-summary.ps1
 ├── generate_tree.py
-└── README.md
+├── README.md
+└── test-everything.ps1

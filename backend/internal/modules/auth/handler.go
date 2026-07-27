@@ -204,6 +204,26 @@ func (h *AuthHandler) ListAdmins(c *gin.Context) {
 	})
 }
 
+func (h *AuthHandler) GetAdmin(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid admin ID")
+		return
+	}
+	admin, err := h.service.GetAdminByID(uint(id))
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+	responses.Success(c, admin)
+}
+
+
+
 // UpdateAdmin updates an admin
 // @Summary Update admin
 // @Tags Auth
