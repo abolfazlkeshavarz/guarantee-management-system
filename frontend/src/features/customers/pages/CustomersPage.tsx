@@ -16,6 +16,7 @@ import { CustomerForm } from '../components/CustomerForm'
 import { CustomerDeleteDialog } from '../components/CustomerDeleteDialog'
 import { customerService } from '../api/customers'
 import { Customer } from '../types'
+import { queryClient, invalidateDashboard } from '@/lib/query-client'
 
 export function CustomersPage() {
   const queryClient = useQueryClient()
@@ -48,6 +49,7 @@ export function CustomersPage() {
     mutationFn: customerService.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
+      invalidateDashboard()
       toast.success('Customer created successfully')
       setIsFormOpen(false)
     },
@@ -62,6 +64,7 @@ export function CustomersPage() {
       customerService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
+      invalidateDashboard()
       toast.success('Customer updated successfully')
       setIsFormOpen(false)
       setSelectedCustomer(null)
@@ -76,6 +79,7 @@ export function CustomersPage() {
     mutationFn: customerService.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
+      invalidateDashboard()
       toast.success('Customer deleted successfully')
       setIsDeleteOpen(false)
       setSelectedCustomer(null)

@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react'
 import { Customer } from '../types'
-import { format } from 'date-fns'
+import { FormattedDate } from '@/components/common/FormattedDate'
 
 interface CustomerTableProps {
   customers: Customer[]
@@ -76,7 +76,7 @@ export function CustomerTable({
               <TableCell>{customer.province || '-'}</TableCell>
               <TableCell>{customer.city || '-'}</TableCell>
               <TableCell>
-                {format(new Date(customer.created_at), 'MMM d, yyyy')}
+                <FormattedDate date={customer.created_at} format="MMM DD, YYYY" />
               </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>

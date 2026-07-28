@@ -8,7 +8,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Guarantee } from '../types'
 import { GuaranteeStatusBadge } from './GuaranteeStatusBadge'
-import { format } from 'date-fns'
+import { FormattedDate } from '@/components/common/FormattedDate'
 import { Calendar, User, Package, FileText, Image, Clock, CheckCircle2, XCircle } from 'lucide-react'
 
 interface GuaranteeViewDialogProps {
@@ -33,6 +33,8 @@ export function GuaranteeViewDialog({
       </div>
     </div>
   )
+
+  const isExpired = new Date(guarantee.expiry_date) < new Date()
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,15 +68,15 @@ export function GuaranteeViewDialog({
           <div className="grid grid-cols-2 gap-4">
             <DetailRow 
               label="Purchase Date" 
-              value={format(new Date(guarantee.purchase_date), 'MMMM d, yyyy')} 
+              value={<FormattedDate date={guarantee.purchase_date} format="full" />}
               icon={Calendar}
             />
             <DetailRow 
               label="Expiry Date" 
               value={
-                <span className={new Date(guarantee.expiry_date) < new Date() ? 'text-red-600 font-medium' : ''}>
-                  {format(new Date(guarantee.expiry_date), 'MMMM d, yyyy')}
-                  {new Date(guarantee.expiry_date) < new Date() && ' (Expired)'}
+                <span className={isExpired ? 'text-red-600 font-medium' : ''}>
+                  <FormattedDate date={guarantee.expiry_date} format="full" />
+                  {isExpired && ' (Expired)'}
                 </span>
               } 
               icon={Clock}
@@ -153,7 +155,7 @@ export function GuaranteeViewDialog({
               </div>
               {guarantee.approved_at && (
                 <p className="text-xs text-muted-foreground">
-                  Approved on: {format(new Date(guarantee.approved_at), 'MMMM d, yyyy h:mm a')}
+                  Approved on: <FormattedDate date={guarantee.approved_at} format="full" />
                 </p>
               )}
             </>

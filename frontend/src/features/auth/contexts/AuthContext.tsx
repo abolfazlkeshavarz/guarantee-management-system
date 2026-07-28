@@ -20,12 +20,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadAdmin = async () => {
       const token = localStorage.getItem('token')
+      console.log('Loading admin, token exists:', !!token) // Debug log
+      
       if (token) {
         try {
-          const response = await authService.getProfile()
-          setAdmin(response.data)
+          // Set the token in axios headers for all requests
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+          
+          const profile = await authService.getProfile()
+          console.log('Profile loaded:', profile) // Debug log
+          setAdmin(profile)
         } catch (error) {
+          console.error('Failed to load profile:', error)
           localStorage.removeItem('token')
+          delete api.defaults.headers.common['Authorization']
           setAdmin(null)
         }
       }
@@ -39,11 +47,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const response = await authService.login(credentials)
     const { token, admin } = response.data
     localStorage.setItem('token', token)
+    // Set the token in axios headers
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`
     setAdmin(admin)
   }
 
   const logout = () => {
     localStorage.removeItem('token')
+    delete api.defaults.headers.common['Authorization']
     setAdmin(null)
   }
 

@@ -21,6 +21,7 @@ import { guaranteeService } from '../api/guarantees'
 import { Guarantee, GUARANTEE_STATUSES } from '../types'
 import { customerService } from '@/features/customers/api/customers'
 import { productService } from '@/features/products/api/products'
+import { queryClient, invalidateDashboard } from '@/lib/query-client'
 
 export function GuaranteesPage() {
   const queryClient = useQueryClient()
@@ -78,6 +79,7 @@ export function GuaranteesPage() {
     mutationFn: guaranteeService.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guarantees'] })
+      invalidateDashboard()
       toast.success('Guarantee created successfully')
       setIsFormOpen(false)
     },
@@ -88,6 +90,7 @@ export function GuaranteesPage() {
     mutationFn: ({ id, data }: { id: number; data: any }) => guaranteeService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guarantees'] })
+      invalidateDashboard()
       toast.success('Guarantee updated successfully')
       setIsFormOpen(false)
       setSelectedGuarantee(null)
@@ -100,6 +103,7 @@ export function GuaranteesPage() {
       guaranteeService.approve(id, status, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guarantees'] })
+      invalidateDashboard()
       toast.success(`Guarantee ${approveAction === 'approve' ? 'approved' : 'rejected'} successfully`)
       setIsApproveOpen(false)
       setSelectedGuarantee(null)
@@ -112,6 +116,7 @@ export function GuaranteesPage() {
       guaranteeService.renew(id, newExpiryDate, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guarantees'] })
+      invalidateDashboard()
       toast.success('Guarantee renewed successfully')
       setIsRenewOpen(false)
       setSelectedGuarantee(null)
@@ -123,6 +128,7 @@ export function GuaranteesPage() {
     mutationFn: guaranteeService.cancel,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guarantees'] })
+      invalidateDashboard()
       toast.success('Guarantee cancelled successfully')
       setSelectedGuarantee(null)
     },
@@ -133,6 +139,7 @@ export function GuaranteesPage() {
     mutationFn: guaranteeService.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guarantees'] })
+      invalidateDashboard()
       toast.success('Guarantee deleted successfully')
       setIsDeleteOpen(false)
       setSelectedGuarantee(null)

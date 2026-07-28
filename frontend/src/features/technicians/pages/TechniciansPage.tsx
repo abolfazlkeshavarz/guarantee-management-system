@@ -1,0 +1,234 @@
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Plus, Search, RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
+import { TechnicianTable } from '../components/TechnicianTable'
+import { TechnicianForm } from '../components/TechnicianForm'
+import { TechnicianDeleteDialog } from '../components/TechnicianDeleteDialog'
+import { technicianService } from '../api/technicians'
+import { Technician } from '../types'
+import { TechnicianFormValues } from '../schemas/technicianSchema'
+import { queryClient, invalidateDashboard } from '@/lib/query-client'
+
+export function TechniciansPage() {
+  const queryClient = useQueryClient()
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [selectedTechnician, setSelectedTechnician] = useState<Technician | null>(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(1)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['technicians', page, limit, debouncedSearch],
+    queryFn: () => technicianService.list(page, limit, debouncedSearch),
+  })
+
+  const createMutation = useMutation({
+    mutationFn: technicianService.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] })
+      invalidateDashboard()
+      toast.success('Technician created successfully')
+      setIsFormOpen(false)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create technician')
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      technicianService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] })
+      invalidateDashboard()
+      toast.success('Technician updated successfully')
+      setIsFormOpen(false)
+      setSelectedTechnician(null)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update technician')
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: technicianService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] })
+      invalidateDashboard()
+      toast.success('Technician deleted successfully')
+      setIsDeleteOpen(false)
+      setSelectedTechnician(null)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete technician')
+    },
+  })
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      technicianService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] })
+      invalidateDashboard()
+      toast.success('Technician status updated')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update status')
+    },
+  })
+
+  const handleCreate = async (data: TechnicianFormValues) => {
+    // Ensure password is provided for creation
+    if (!data.password) {
+      toast.error('Password is required')
+      return
+    }
+    await createMutation.mutateAsync(data as any)
+  }
+
+  const handleUpdate = async (data: TechnicianFormValues) => {
+    if (selectedTechnician) {
+      // Remove username from update data
+      const { username, ...updateData } = data
+      await updateMutation.mutateAsync({ 
+        id: selectedTechnician.id, 
+        data: updateData 
+      })
+    }
+  }
+
+  const handleDelete = async () => {
+    if (selectedTechnician) {
+      await deleteMutation.mutateAsync(selectedTechnician.id)
+    }
+  }
+
+  const handleToggleStatus = async (tech: Technician) => {
+    await toggleStatusMutation.mutateAsync({
+      id: tech.id,
+      data: { is_active: !tech.is_active },
+    })
+  }
+
+  const handleEdit = (technician: Technician) => {
+    setSelectedTechnician(technician)
+    setIsFormOpen(true)
+  }
+
+  const handleDeleteClick = (technician: Technician) => {
+    setSelectedTechnician(technician)
+    setIsDeleteOpen(true)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">Technicians</h1>
+        <Button onClick={() => setIsFormOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Technician
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Input
+            placeholder="Search by name or username..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select
+          value={String(limit)}
+          onValueChange={(value) => {
+            setLimit(Number(value))
+            setPage(1)
+          }}
+        >
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="25">25</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" onClick={() => refetch()}>
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <TechnicianTable
+        technicians={data?.technicians || []}
+        onEdit={handleEdit}
+        onToggleStatus={handleToggleStatus}
+        onDelete={handleDeleteClick}
+        isLoading={isLoading}
+      />
+
+      {data && data.total > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-500">
+            Showing {Math.min((data.page - 1) * data.limit + 1, data.total)} to{' '}
+            {Math.min(data.page * data.limit, data.total)} of {data.total} technicians
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={data.page <= 1}
+              onClick={() => setPage(data.page - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              disabled={data.page >= data.last_page}
+              onClick={() => setPage(data.page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <TechnicianForm
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        technician={selectedTechnician}
+        onSubmit={selectedTechnician ? handleUpdate : handleCreate}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+      />
+
+      <TechnicianDeleteDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        technician={selectedTechnician}
+        onConfirm={handleDelete}
+        isLoading={deleteMutation.isPending}
+      />
+    </div>
+  )
+}

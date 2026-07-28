@@ -16,7 +16,8 @@ import (
 	"guarantee-management-system/internal/modules/categories"
 	"guarantee-management-system/internal/modules/products"
 	"guarantee-management-system/internal/modules/guarantees"
-
+	"guarantee-management-system/internal/modules/technicians"
+	"guarantee-management-system/internal/modules/repairs"
 	"github.com/gin-gonic/gin"
 )
 
@@ -67,8 +68,8 @@ func main() {
 		customersModule.RegisterRoutes(v1)
 
 		// Initialize dashboard module
-		dashboardModule := dashboard.NewDashboardModule()
-		dashboardModule.RegisterRoutes(v1)
+		dashboardModule := dashboard.NewDashboardModule(database.GetDB())
+    	dashboardModule.RegisterRoutes(v1)
 
 		// Initialize product categories module
 		categoriesModule := categories.NewCategoryModule(database.GetDB())
@@ -82,6 +83,12 @@ func main() {
 		guaranteesModule := guarantees.NewGuaranteeModule(database.GetDB())
 		guaranteesModule.RegisterRoutes(v1)
 		
+		techniciansModule := technicians.NewTechnicianModule(database.GetDB())
+        techniciansModule.RegisterRoutes(v1)
+
+		repairsModule := repairs.NewRepairModule(database.GetDB())
+        repairsModule.RegisterRoutes(v1)
+
 		log.Println("✅ Guarantees module registered successfully")
 	}
 

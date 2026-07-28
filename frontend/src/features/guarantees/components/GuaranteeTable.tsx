@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import { Guarantee } from '../types'
 import { GuaranteeStatusBadge } from './GuaranteeStatusBadge'
-import { format } from 'date-fns'
+import { FormattedDate } from '@/components/common/FormattedDate'
 
 interface GuaranteeTableProps {
   guarantees: Guarantee[]
@@ -101,10 +101,12 @@ export function GuaranteeTable({
               <TableCell className="font-medium">{guarantee.code}</TableCell>
               <TableCell>{guarantee.customer_name}</TableCell>
               <TableCell>{guarantee.product_name}</TableCell>
-              <TableCell>{format(new Date(guarantee.purchase_date), 'MMM d, yyyy')}</TableCell>
+              <TableCell>
+                <FormattedDate date={guarantee.purchase_date} format="MMM DD, YYYY" />
+              </TableCell>
               <TableCell>
                 <span className={isExpired(guarantee) ? 'text-red-600 font-medium' : ''}>
-                  {format(new Date(guarantee.expiry_date), 'MMM d, yyyy')}
+                  <FormattedDate date={guarantee.expiry_date} format="MMM DD, YYYY" />
                   {isExpired(guarantee) && ' (Expired)'}
                 </span>
               </TableCell>

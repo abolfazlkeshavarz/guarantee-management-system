@@ -2,10 +2,10 @@
   GUARANTEE MANAGEMENT SYSTEM - CODE SUMMARY
 ============================================
 
-Generated: 2026-07-25 10:43:52
+Generated: 2026-07-28 15:55:51
 Project Root: D:\Abolfazl Keshavarz\guarantee-management-system\backend
-Total Files: 53
-Total Directories: 17
+Total Files: 92
+Total Directories: 22
 
 ============================================
   FILE CONTENTS
@@ -1567,9 +1567,9 @@ DIRECTORY: \cmd\api
 ----------------------------------------
 FILE: main.go
 Path: \cmd\api\main.go
-Size: 2 KB
+Size: 3 KB
 ----------------------------------------
-Lines: 88
+Lines: 118
 
 package main
 
@@ -1584,9 +1584,13 @@ import (
 	"guarantee-management-system/internal/middleware"
 	"guarantee-management-system/internal/modules/auth"
 	"guarantee-management-system/internal/modules/customers"
-	"guarantee-management-system/internal/modules/dashboard" // Add this
+	"guarantee-management-system/internal/modules/dashboard"
 	"guarantee-management-system/internal/shared/storage"
-
+	"guarantee-management-system/internal/modules/categories"
+	"guarantee-management-system/internal/modules/products"
+	"guarantee-management-system/internal/modules/guarantees"
+	"guarantee-management-system/internal/modules/technicians"
+	"guarantee-management-system/internal/modules/repairs"
 	"github.com/gin-gonic/gin"
 )
 
@@ -1637,14 +1641,40 @@ func main() {
 		customersModule.RegisterRoutes(v1)
 
 		// Initialize dashboard module
-		dashboardModule := dashboard.NewDashboardModule()
-		dashboardModule.RegisterRoutes(v1)
+		dashboardModule := dashboard.NewDashboardModule(database.GetDB())
+    	dashboardModule.RegisterRoutes(v1)
+
+		// Initialize product categories module
+		categoriesModule := categories.NewCategoryModule(database.GetDB())
+		categoriesModule.RegisterRoutes(v1)
+
+		// Initialize products module
+		productsModule := products.NewProductModule(database.GetDB())
+		productsModule.RegisterRoutes(v1)
+
+		// Initialize guarantees module - MAKE SURE THIS IS HERE
+		guaranteesModule := guarantees.NewGuaranteeModule(database.GetDB())
+		guaranteesModule.RegisterRoutes(v1)
+		
+		techniciansModule := technicians.NewTechnicianModule(database.GetDB())
+        techniciansModule.RegisterRoutes(v1)
+
+		repairsModule := repairs.NewRepairModule(database.GetDB())
+        repairsModule.RegisterRoutes(v1)
+
+		log.Println("âœ… Guarantees module registered successfully")
+	}
+
+	// Log all routes for debugging
+	log.Println("ðŸ“‹ Registered routes:")
+	for _, route := range router.Routes() {
+		log.Printf("  %s %s", route.Method, route.Path)
 	}
 
 	// Start server
 	port := cfg.AppPort
-	log.Printf("Server starting on port %s", port)
-	log.Printf("Environment: %s", cfg.AppEnv)
+	log.Printf("ðŸš€ Server starting on port %s", port)
+	log.Printf("ðŸŒ Environment: %s", cfg.AppEnv)
 
 	go func() {
 		if err := router.Run(":" + port); err != nil {
@@ -1657,7 +1687,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	log.Println("ðŸ›‘ Shutting down server...")
 }
 
 ============================================
@@ -2321,7 +2351,7 @@ FILE: dto.go
 Path: \internal\modules\auth\dto.go
 Size: 1 KB
 ----------------------------------------
-Lines: 41
+Lines: 40
 
 package auth
 
@@ -2359,18 +2389,17 @@ type AdminCreateRequest struct {
 }
 
 type AdminUpdateRequest struct {
-	FullName string `json:"full_name" binding:"max=100"`
-	Email    string `json:"email" binding:"email"`
+	FullName string `json:"full_name" binding:"omitempty,max=100"`
+	Email    string `json:"email" binding:"omitempty,email"`
 	IsActive *bool  `json:"is_active"`
 }
-
 
 ----------------------------------------
 FILE: handler.go
 Path: \internal\modules\auth\handler.go
-Size: 7 KB
+Size: 8 KB
 ----------------------------------------
-Lines: 273
+Lines: 295
 
 package auth
 
@@ -2578,6 +2607,28 @@ func (h *AuthHandler) ListAdmins(c *gin.Context) {
 	})
 }
 
+// ... (inside the AuthHandler struct) ...
+
+func (h *AuthHandler) GetAdmin(c *gin.Context) {
+    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+    if err != nil {
+        responses.Error(c, http.StatusBadRequest, "Invalid admin ID")
+        return
+    }
+    admin, err := h.service.GetAdminByID(uint(id))
+    if err != nil {
+        if appErr, ok := err.(*errors.AppError); ok {
+            responses.Error(c, appErr.Code, appErr.Message)
+            return
+        }
+        responses.InternalError(c, err)
+        return
+    }
+    responses.Success(c, admin)
+}
+
+
+
 // UpdateAdmin updates an admin
 // @Summary Update admin
 // @Tags Auth
@@ -2762,7 +2813,7 @@ FILE: routes.go
 Path: \internal\modules\auth\routes.go
 Size: 1 KB
 ----------------------------------------
-Lines: 44
+Lines: 45
 
 package auth
 
@@ -2803,6 +2854,7 @@ func (m *AuthModule) RegisterRoutes(router *gin.RouterGroup) {
 		// Admin management
 		protected.POST("/admins", m.handler.CreateAdmin)
 		protected.GET("/admins", m.handler.ListAdmins)
+		protected.GET("/admins/:id", m.handler.GetAdmin)
 		protected.PUT("/admins/:id", m.handler.UpdateAdmin)
 		protected.DELETE("/admins/:id", m.handler.DeleteAdmin)
 	}
@@ -2814,7 +2866,7 @@ FILE: service.go
 Path: \internal\modules\auth\service.go
 Size: 6 KB
 ----------------------------------------
-Lines: 204
+Lines: 215
 
 package auth
 
@@ -2945,6 +2997,17 @@ func (s *AuthService) CreateAdmin(req *AdminCreateRequest) (*AdminDTO, error) {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create admin", 500)
 	}
 
+	return s.mapToDTO(admin), nil
+}
+
+func (s *AuthService) GetAdminByID(id uint) (*AdminDTO, error) {
+	admin, err := s.repo.FindAdminByID(id)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find admin", 500)
+	}
+	if admin == nil {
+		return nil, errors.NewAppError(errors.ErrNotFound, "Admin not found", 404)
+	}
 	return s.mapToDTO(admin), nil
 }
 
@@ -3084,6 +3147,562 @@ func (v *AuthValidator) ValidateAdminCreateRequest(c *gin.Context) (*AdminCreate
 
 
 ============================================
+DIRECTORY: \internal\modules\categories
+============================================
+
+----------------------------------------
+FILE: dto.go
+Path: \internal\modules\categories\dto.go
+Size: 1 KB
+----------------------------------------
+Lines: 30
+
+package categories
+
+type CategoryDTO struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	IsActive    bool   `json:"is_active"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
+type CreateCategoryRequest struct {
+	Name        string `json:"name" binding:"required,min=2,max=100"`
+	Description string `json:"description"`
+	IsActive    *bool  `json:"is_active"`
+}
+
+type UpdateCategoryRequest struct {
+	Name        string `json:"name" binding:"omitempty,min=2,max=100"`
+	Description string `json:"description"`
+	IsActive    *bool  `json:"is_active"`
+}
+
+type ListCategoriesResponse struct {
+	Categories []CategoryDTO `json:"categories"`
+	Total      int64         `json:"total"`
+	Page       int           `json:"page"`
+	Limit      int           `json:"limit"`
+	LastPage   int           `json:"last_page"`
+}
+
+----------------------------------------
+FILE: errors.go
+Path: \internal\modules\categories\errors.go
+Size: 0 KB
+----------------------------------------
+Lines: 9
+
+package categories
+
+import "guarantee-management-system/internal/shared/errors"
+
+var (
+	ErrCategoryNotFound  = errors.NewAppError(errors.ErrNotFound, "Product category not found", 404)
+	ErrCategoryDuplicate = errors.NewAppError(errors.ErrDuplicateEntry, "A category with this name already exists", 409)
+	ErrCategoryInUse     = errors.NewAppError(errors.ErrValidation, "Cannot delete category: products are still assigned to it", 400)
+)
+
+----------------------------------------
+FILE: handler.go
+Path: \internal\modules\categories\handler.go
+Size: 3 KB
+----------------------------------------
+Lines: 116
+
+package categories
+
+import (
+	"net/http"
+	"strconv"
+
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/responses"
+
+	"github.com/gin-gonic/gin"
+)
+
+type CategoryHandler struct {
+	service   *CategoryService
+	validator *CategoryValidator
+}
+
+func NewCategoryHandler(service *CategoryService, validator *CategoryValidator) *CategoryHandler {
+	return &CategoryHandler{service: service, validator: validator}
+}
+
+func (h *CategoryHandler) Create(c *gin.Context) {
+	req, err := h.validator.ValidateCreateRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	category, err := h.service.Create(req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.SuccessWithMessage(c, "Category created successfully", category)
+}
+
+func (h *CategoryHandler) Get(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid category ID")
+		return
+	}
+	category, err := h.service.GetByID(uint(id))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.Success(c, category)
+}
+
+func (h *CategoryHandler) List(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	search := c.DefaultQuery("search", "")
+
+	result, err := h.service.List(page, limit, search)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.SuccessWithMeta(c, result.Categories, responses.PaginationMeta{
+		CurrentPage: result.Page,
+		PerPage:     result.Limit,
+		Total:       result.Total,
+		LastPage:    result.LastPage,
+	})
+}
+
+// ListActive returns all active categories with no pagination, for use in <select> dropdowns.
+func (h *CategoryHandler) ListActive(c *gin.Context) {
+	categories, err := h.service.ListActive()
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.Success(c, categories)
+}
+
+func (h *CategoryHandler) Update(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid category ID")
+		return
+	}
+	req, err := h.validator.ValidateUpdateRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	category, err := h.service.Update(uint(id), req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.SuccessWithMessage(c, "Category updated successfully", category)
+}
+
+func (h *CategoryHandler) Delete(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid category ID")
+		return
+	}
+	if err := h.service.Delete(uint(id)); err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.SuccessWithMessage(c, "Category deleted successfully", nil)
+}
+
+func handleError(c *gin.Context, err error) {
+	if appErr, ok := err.(*errors.AppError); ok {
+		responses.Error(c, appErr.Code, appErr.Message)
+		return
+	}
+	responses.InternalError(c, err)
+}
+
+----------------------------------------
+FILE: model.go
+Path: \internal\modules\categories\model.go
+Size: 1 KB
+----------------------------------------
+Lines: 21
+
+package categories
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+type ProductCategory struct {
+	ID          uint           `gorm:"primaryKey" json:"id"`
+	Name        string         `gorm:"size:100;not null" json:"name"`
+	Description string         `gorm:"type:text" json:"description"`
+	IsActive    bool           `gorm:"default:true" json:"is_active"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (ProductCategory) TableName() string {
+	return "product_categories"
+}
+
+----------------------------------------
+FILE: repository.go
+Path: \internal\modules\categories\repository.go
+Size: 2 KB
+----------------------------------------
+Lines: 75
+
+package categories
+
+import "gorm.io/gorm"
+
+type CategoryRepository struct {
+	db *gorm.DB
+}
+
+func NewCategoryRepository(db *gorm.DB) *CategoryRepository {
+	return &CategoryRepository{db: db}
+}
+
+func (r *CategoryRepository) Create(category *ProductCategory) error {
+	return r.db.Create(category).Error
+}
+
+func (r *CategoryRepository) FindByID(id uint) (*ProductCategory, error) {
+	var category ProductCategory
+	err := r.db.Where("id = ?", id).First(&category).Error
+	if err != nil {
+		return nil, err
+	}
+	return &category, nil
+}
+
+func (r *CategoryRepository) FindByName(name string) (*ProductCategory, error) {
+	var category ProductCategory
+	err := r.db.Where("name = ?", name).First(&category).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &category, nil
+}
+
+func (r *CategoryRepository) FindAll(page, limit int, search string) ([]ProductCategory, int64, error) {
+	var categories []ProductCategory
+	var total int64
+
+	query := r.db.Model(&ProductCategory{})
+
+	if search != "" {
+		query = query.Where("name ILIKE ?", "%"+search+"%")
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	err := query.Offset(offset).Limit(limit).Order("name ASC").Find(&categories).Error
+	return categories, total, err
+}
+
+func (r *CategoryRepository) FindAllActive() ([]ProductCategory, error) {
+	var categories []ProductCategory
+	err := r.db.Where("is_active = ?", true).Order("name ASC").Find(&categories).Error
+	return categories, err
+}
+
+func (r *CategoryRepository) Update(category *ProductCategory) error {
+	return r.db.Save(category).Error
+}
+
+func (r *CategoryRepository) Delete(id uint) error {
+	return r.db.Delete(&ProductCategory{}, id).Error
+}
+
+func (r *CategoryRepository) CountProductsInCategory(categoryID uint) (int64, error) {
+	var count int64
+	err := r.db.Table("products").Where("category_id = ? AND deleted_at IS NULL", categoryID).Count(&count).Error
+	return count, err
+}
+
+----------------------------------------
+FILE: routes.go
+Path: \internal\modules\categories\routes.go
+Size: 1 KB
+----------------------------------------
+Lines: 34
+
+package categories
+
+import (
+	"guarantee-management-system/internal/middleware"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+type CategoryModule struct {
+	handler *CategoryHandler
+}
+
+func NewCategoryModule(db *gorm.DB) *CategoryModule {
+	repo := NewCategoryRepository(db)
+	service := NewCategoryService(repo)
+	validator := NewCategoryValidator()
+	handler := NewCategoryHandler(service, validator)
+
+	return &CategoryModule{handler: handler}
+}
+
+func (m *CategoryModule) RegisterRoutes(router *gin.RouterGroup) {
+	categories := router.Group("/product-categories")
+	categories.Use(middleware.AuthMiddleware())
+	{
+		categories.POST("", m.handler.Create)
+		categories.GET("", m.handler.List)
+		categories.GET("/active", m.handler.ListActive)
+		categories.GET("/:id", m.handler.Get)
+		categories.PUT("/:id", m.handler.Update)
+		categories.DELETE("/:id", m.handler.Delete)
+	}
+}
+
+----------------------------------------
+FILE: service.go
+Path: \internal\modules\categories\service.go
+Size: 4 KB
+----------------------------------------
+Lines: 167
+
+package categories
+
+import (
+	"time"
+
+	"guarantee-management-system/internal/shared/errors"
+
+	"gorm.io/gorm"
+)
+
+type CategoryService struct {
+	repo *CategoryRepository
+}
+
+func NewCategoryService(repo *CategoryRepository) *CategoryService {
+	return &CategoryService{repo: repo}
+}
+
+func (s *CategoryService) Create(req *CreateCategoryRequest) (*CategoryDTO, error) {
+	existing, err := s.repo.FindByName(req.Name)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check existing category", 500)
+	}
+	if existing != nil {
+		return nil, ErrCategoryDuplicate
+	}
+
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	category := &ProductCategory{
+		Name:        req.Name,
+		Description: req.Description,
+		IsActive:    isActive,
+	}
+
+	if err := s.repo.Create(category); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create category", 500)
+	}
+
+	return s.mapToDTO(category), nil
+}
+
+func (s *CategoryService) GetByID(id uint) (*CategoryDTO, error) {
+	category, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrCategoryNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find category", 500)
+	}
+	return s.mapToDTO(category), nil
+}
+
+func (s *CategoryService) List(page, limit int, search string) (*ListCategoriesResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	categories, total, err := s.repo.FindAll(page, limit, search)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list categories", 500)
+	}
+
+	dtos := make([]CategoryDTO, len(categories))
+	for i, category := range categories {
+		dtos[i] = *s.mapToDTO(&category)
+	}
+
+	lastPage := int(total) / limit
+	if int(total)%limit != 0 {
+		lastPage++
+	}
+
+	return &ListCategoriesResponse{
+		Categories: dtos,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		LastPage:   lastPage,
+	}, nil
+}
+
+func (s *CategoryService) ListActive() ([]CategoryDTO, error) {
+	categories, err := s.repo.FindAllActive()
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list active categories", 500)
+	}
+
+	dtos := make([]CategoryDTO, len(categories))
+	for i, category := range categories {
+		dtos[i] = *s.mapToDTO(&category)
+	}
+	return dtos, nil
+}
+
+func (s *CategoryService) Update(id uint, req *UpdateCategoryRequest) (*CategoryDTO, error) {
+	category, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrCategoryNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find category", 500)
+	}
+
+	if req.Name != "" && req.Name != category.Name {
+		existing, err := s.repo.FindByName(req.Name)
+		if err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check category name", 500)
+		}
+		if existing != nil && existing.ID != id {
+			return nil, ErrCategoryDuplicate
+		}
+		category.Name = req.Name
+	}
+	if req.Description != "" {
+		category.Description = req.Description
+	}
+	if req.IsActive != nil {
+		category.IsActive = *req.IsActive
+	}
+
+	if err := s.repo.Update(category); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update category", 500)
+	}
+
+	return s.mapToDTO(category), nil
+}
+
+func (s *CategoryService) Delete(id uint) error {
+	_, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrCategoryNotFound
+		}
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to find category", 500)
+	}
+
+	count, err := s.repo.CountProductsInCategory(id)
+	if err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to check category usage", 500)
+	}
+	if count > 0 {
+		return ErrCategoryInUse
+	}
+
+	if err := s.repo.Delete(id); err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to delete category", 500)
+	}
+	return nil
+}
+
+func (s *CategoryService) mapToDTO(category *ProductCategory) *CategoryDTO {
+	return &CategoryDTO{
+		ID:          category.ID,
+		Name:        category.Name,
+		Description: category.Description,
+		IsActive:    category.IsActive,
+		CreatedAt:   category.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   category.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+----------------------------------------
+FILE: validator.go
+Path: \internal\modules\categories\validator.go
+Size: 1 KB
+----------------------------------------
+Lines: 36
+
+package categories
+
+import (
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/validator"
+
+	"github.com/gin-gonic/gin"
+)
+
+type CategoryValidator struct{}
+
+func NewCategoryValidator() *CategoryValidator {
+	return &CategoryValidator{}
+}
+
+func (v *CategoryValidator) ValidateCreateRequest(c *gin.Context) (*CreateCategoryRequest, error) {
+	var req CreateCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+	return &req, nil
+}
+
+func (v *CategoryValidator) ValidateUpdateRequest(c *gin.Context) (*UpdateCategoryRequest, error) {
+	var req UpdateCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+	return &req, nil
+}
+
+============================================
 DIRECTORY: \internal\modules\customers
 ============================================
 
@@ -3150,11 +3769,11 @@ type CreateCustomerRequest struct {
 }
 
 type UpdateCustomerRequest struct {
-	FullName   string `json:"full_name" binding:"min=2,max=100"`
-	Phone      string `json:"phone" binding:"min=10,max=20"`
-	NationalID string `json:"national_id" binding:"min=6,max=20"`
-	Province   string `json:"province" binding:"max=50"`
-	City       string `json:"city" binding:"max=50"`
+	FullName   string `json:"full_name" binding:"omitempty,min=2,max=100"`
+	Phone      string `json:"phone" binding:"omitempty,min=10,max=20"`
+	NationalID string `json:"national_id" binding:"omitempty,min=6,max=20"`
+	Province   string `json:"province" binding:"omitempty,max=50"`
+	City       string `json:"city" binding:"omitempty,max=50"`
 	Address    string `json:"address"`
 }
 
@@ -3599,8 +4218,8 @@ func (m *CustomerModule) RegisterRoutes(router *gin.RouterGroup) {
 	customers := router.Group("/customers")
 	customers.Use(middleware.AuthMiddleware())
 	{
-		customers.POST("/", m.handler.Create)
-		customers.GET("/", m.handler.List)
+		customers.POST("", m.handler.Create)
+		customers.GET("", m.handler.List)
 		customers.GET("/search", m.handler.Search)
 		customers.GET("/:id", m.handler.Get)
 		customers.PUT("/:id", m.handler.Update)
@@ -3853,9 +4472,9 @@ DIRECTORY: \internal\modules\dashboard
 ----------------------------------------
 FILE: handler.go
 Path: \internal\modules\dashboard\handler.go
-Size: 1 KB
+Size: 3 KB
 ----------------------------------------
-Lines: 29
+Lines: 95
 
 package dashboard
 
@@ -3863,36 +4482,102 @@ import (
 	"guarantee-management-system/internal/shared/responses"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-type DashboardHandler struct{}
+type DashboardHandler struct {
+	db *gorm.DB
+}
 
-func NewDashboardHandler() *DashboardHandler {
-	return &DashboardHandler{}
+func NewDashboardHandler(db *gorm.DB) *DashboardHandler {
+	return &DashboardHandler{db: db}
 }
 
 func (h *DashboardHandler) GetStats(c *gin.Context) {
+	var totalGuarantees, pendingGuarantees, approvedGuarantees, rejectedGuarantees int64
+	var totalCustomers, totalTechnicians, totalProducts int64
+	var totalRepairs, pendingRepairs, completedRepairs int64
+	var expiredGuarantees, activeGuarantees int64
+
+	// Get counts from the database using the connection
+	// Total Guarantees
+	h.db.Model(&guaranteeModel{}).Count(&totalGuarantees)
+	
+	// Pending Guarantees
+	h.db.Model(&guaranteeModel{}).Where("status = ?", "Pending").Count(&pendingGuarantees)
+	
+	// Approved Guarantees
+	h.db.Model(&guaranteeModel{}).Where("status = ?", "Approved").Count(&approvedGuarantees)
+	
+	// Rejected Guarantees
+	h.db.Model(&guaranteeModel{}).Where("status = ?", "Rejected").Count(&rejectedGuarantees)
+	
+	// Total Customers
+	h.db.Model(&customerModel{}).Count(&totalCustomers)
+	
+	// Total Technicians
+	h.db.Model(&technicianModel{}).Count(&totalTechnicians)
+	
+	// Total Products
+	h.db.Model(&productModel{}).Count(&totalProducts)
+	
+	// Total Repairs
+	h.db.Model(&repairModel{}).Count(&totalRepairs)
+	
+	// Pending Repairs
+	h.db.Model(&repairModel{}).Where("status = ?", "Pending").Count(&pendingRepairs)
+	
+	// Completed Repairs
+	h.db.Model(&repairModel{}).Where("status = ?", "Completed").Count(&completedRepairs)
+	
+	// Expired Guarantees (Approved or Renewed but expiry_date < now)
+	h.db.Model(&guaranteeModel{}).
+		Where("status IN (?) AND expiry_date < NOW()", []string{"Approved", "Renewed"}).
+		Count(&expiredGuarantees)
+	
+	// Active Guarantees (Approved or Renewed and expiry_date >= now)
+	h.db.Model(&guaranteeModel{}).
+		Where("status IN (?) AND expiry_date >= NOW()", []string{"Approved", "Renewed"}).
+		Count(&activeGuarantees)
+
 	stats := gin.H{
-		"total_guarantees":    1234,
-		"pending_guarantees":  45,
-		"approved_guarantees": 567,
-		"rejected_guarantees": 12,
-		"total_customers":     856,
-		"total_technicians":   23,
-		"total_products":      342,
-		"total_repairs":       89,
-		"pending_repairs":     12,
-		"completed_repairs":   77,
+		"total_guarantees":    totalGuarantees,
+		"pending_guarantees":  pendingGuarantees,
+		"approved_guarantees": approvedGuarantees,
+		"rejected_guarantees": rejectedGuarantees,
+		"total_customers":     totalCustomers,
+		"total_technicians":   totalTechnicians,
+		"total_products":      totalProducts,
+		"total_repairs":       totalRepairs,
+		"pending_repairs":     pendingRepairs,
+		"completed_repairs":   completedRepairs,
+		"expired_guarantees":  expiredGuarantees,
+		"active_guarantees":   activeGuarantees,
 	}
+	
 	responses.Success(c, stats)
 }
+
+// Define lightweight models for counting
+type guaranteeModel struct{}
+type customerModel struct{}
+type technicianModel struct{}
+type productModel struct{}
+type repairModel struct{}
+
+// TableName overrides for GORM
+func (guaranteeModel) TableName() string   { return "guarantees" }
+func (customerModel) TableName() string    { return "customers" }
+func (technicianModel) TableName() string  { return "technicians" }
+func (productModel) TableName() string     { return "products" }
+func (repairModel) TableName() string      { return "repairs" }
 
 ----------------------------------------
 FILE: routes.go
 Path: \internal\modules\dashboard\routes.go
 Size: 1 KB
 ----------------------------------------
-Lines: 26
+Lines: 27
 
 package dashboard
 
@@ -3900,14 +4585,15 @@ import (
 	"guarantee-management-system/internal/middleware"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type DashboardModule struct {
 	handler *DashboardHandler
 }
 
-func NewDashboardModule() *DashboardModule {
-	handler := NewDashboardHandler()
+func NewDashboardModule(db *gorm.DB) *DashboardModule {
+	handler := NewDashboardHandler(db)
 	return &DashboardModule{
 		handler: handler,
 	}
@@ -3919,6 +4605,3019 @@ func (m *DashboardModule) RegisterRoutes(router *gin.RouterGroup) {
 	{
 		dashboard.GET("/stats", m.handler.GetStats)
 	}
+}
+
+============================================
+DIRECTORY: \internal\modules\guarantees
+============================================
+
+----------------------------------------
+FILE: dto.go
+Path: \internal\modules\guarantees\dto.go
+Size: 4 KB
+----------------------------------------
+Lines: 99
+
+package guarantees
+
+
+type GuaranteeDTO struct {
+	ID                  uint      `json:"id"`
+	Code                string    `json:"code"`
+	CustomerID          uint      `json:"customer_id"`
+	CustomerName        string    `json:"customer_name"`
+	ProductID           uint      `json:"product_id"`
+	ProductName         string    `json:"product_name"`
+	PurchaseDate        string    `json:"purchase_date"`
+	ExpiryDate          string    `json:"expiry_date"`
+	Status              string    `json:"status"`
+	InvoiceImage        string    `json:"invoice_image"`
+	GuaranteeCardImage  string    `json:"guarantee_card_image"`
+	Notes               string    `json:"notes"`
+	CreatedBy           *uint     `json:"created_by"`
+	CreatedByUsername   string    `json:"created_by_username"`
+	ApprovedBy          *uint     `json:"approved_by"`
+	ApprovedByUsername  string    `json:"approved_by_username"`
+	ApprovedAt          *string   `json:"approved_at,omitempty"`
+	CreatedAt           string    `json:"created_at"`
+	UpdatedAt           string    `json:"updated_at"`
+}
+
+type CreateGuaranteeRequest struct {
+	CustomerID         uint      `json:"customer_id" binding:"required"`
+	ProductID          uint      `json:"product_id" binding:"required"`
+	PurchaseDate       string    `json:"purchase_date" binding:"required"`
+	ExpiryDate         string    `json:"expiry_date" binding:"required"`
+	InvoiceImage       string    `json:"invoice_image"`
+	GuaranteeCardImage string    `json:"guarantee_card_image"`
+	Notes              string    `json:"notes"`
+}
+
+type UpdateGuaranteeRequest struct {
+	CustomerID         uint      `json:"customer_id" binding:"omitempty"`
+	ProductID          uint      `json:"product_id" binding:"omitempty"`
+	PurchaseDate       string    `json:"purchase_date" binding:"omitempty"`
+	ExpiryDate         string    `json:"expiry_date" binding:"omitempty"`
+	InvoiceImage       string    `json:"invoice_image"`
+	GuaranteeCardImage string    `json:"guarantee_card_image"`
+	Notes              string    `json:"notes"`
+}
+
+type ApproveGuaranteeRequest struct {
+	Status string `json:"status" binding:"required,oneof=Approved Rejected"`
+	Notes  string `json:"notes"`
+}
+
+type RenewGuaranteeRequest struct {
+	NewExpiryDate string `json:"new_expiry_date" binding:"required"`
+	Notes         string `json:"notes"`
+}
+
+type ListGuaranteesResponse struct {
+	Guarantees []GuaranteeDTO `json:"guarantees"`
+	Total      int64          `json:"total"`
+	Page       int            `json:"page"`
+	Limit      int            `json:"limit"`
+	LastPage   int            `json:"last_page"`
+}
+
+// Add these to the existing dto.go file
+
+type PublicRegisterRequest struct {
+	// Customer Information
+	FullName   string `json:"full_name" binding:"required,min=2,max=100"`
+	Phone      string `json:"phone" binding:"required,min=10,max=20"`
+	NationalID string `json:"national_id" binding:"required,min=6,max=20"`
+	Province   string `json:"province" binding:"required,max=50"`
+	City       string `json:"city" binding:"required,max=50"`
+	Address    string `json:"address" binding:"required"`
+	
+	// Guarantee Information
+	GuaranteeCode      string `json:"guarantee_code" binding:"required,min=3,max=50"`
+	ProductName        string `json:"product_name" binding:"required,min=2,max=100"`
+	PurchaseDate       string `json:"purchase_date" binding:"required"`
+	GuaranteePeriod    int    `json:"guarantee_period" binding:"required,oneof=3 6 9 12 15 18 21 24 30 36"`
+	InvoiceImage       string `json:"invoice_image"`
+	GuaranteeCardImage string `json:"guarantee_card_image"`
+	Notes              string `json:"notes"`
+}
+
+type PublicRegisterResponse struct {
+	GuaranteeID   uint   `json:"guarantee_id"`
+	GuaranteeCode string `json:"guarantee_code"`
+	CustomerID    uint   `json:"customer_id"`
+	CustomerName  string `json:"customer_name"`
+	ExpiryDate    string `json:"expiry_date"`
+	Status        string `json:"status"`
+	Message       string `json:"message"`
+}
+
+type GuaranteePeriodOption struct {
+	Value  int    `json:"value"`
+	Label  string `json:"label"`
+	Months int    `json:"months"`
+}
+
+----------------------------------------
+FILE: errors.go
+Path: \internal\modules\guarantees\errors.go
+Size: 1 KB
+----------------------------------------
+Lines: 16
+
+package guarantees
+
+import "guarantee-management-system/internal/shared/errors"
+
+var (
+	ErrGuaranteeNotFound     = errors.NewAppError(errors.ErrNotFound, "Guarantee not found", 404)
+	ErrGuaranteeDuplicate    = errors.NewAppError(errors.ErrDuplicateEntry, "A guarantee with this code already exists", 409)
+	ErrInvalidStatus         = errors.NewAppError(errors.ErrValidation, "Invalid guarantee status", 400)
+	ErrCannotApprove         = errors.NewAppError(errors.ErrValidation, "Cannot approve guarantee in its current status", 400)
+	ErrCannotRenew           = errors.NewAppError(errors.ErrValidation, "Cannot renew guarantee in its current status", 400)
+	ErrCannotCancel          = errors.NewAppError(errors.ErrValidation, "Cannot cancel guarantee in its current status", 400)
+	ErrExpiryDateBeforePurchase = errors.NewAppError(errors.ErrValidation, "Expiry date must be after purchase date", 400)
+	ErrInvalidDate           = errors.NewAppError(errors.ErrValidation, "Invalid date format", 400)
+	ErrCustomerNotFound      = errors.NewAppError(errors.ErrNotFound, "Customer not found", 404)
+	ErrProductNotFound       = errors.NewAppError(errors.ErrNotFound, "Product not found", 404)
+)
+
+----------------------------------------
+FILE: handler.go
+Path: \internal\modules\guarantees\handler.go
+Size: 8 KB
+----------------------------------------
+Lines: 323
+
+package guarantees
+
+import (
+	"net/http"
+	"strconv"
+	"path/filepath"
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/responses"
+	"fmt"
+	"time"
+	"os"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"io"
+	"bytes"
+)
+
+type GuaranteeHandler struct {
+	service   *GuaranteeService
+	validator *GuaranteeValidator
+}
+
+func NewGuaranteeHandler(service *GuaranteeService, validator *GuaranteeValidator) *GuaranteeHandler {
+	return &GuaranteeHandler{
+		service:   service,
+		validator: validator,
+	}
+}
+
+func (h *GuaranteeHandler) Create(c *gin.Context) {
+	req, err := h.validator.ValidateCreateRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	adminID := c.GetUint("admin_id")
+
+	guarantee, err := h.service.Create(req, adminID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Guarantee created successfully", guarantee)
+}
+
+func (h *GuaranteeHandler) Get(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
+
+	guarantee, err := h.service.GetByID(uint(id))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.Success(c, guarantee)
+}
+
+func (h *GuaranteeHandler) List(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	search := c.DefaultQuery("search", "")
+	status := c.DefaultQuery("status", "")
+
+	var customerID, productID *uint
+	if id, err := strconv.ParseUint(c.DefaultQuery("customer_id", "0"), 10, 32); err == nil && id > 0 {
+		customerID = new(uint)
+		*customerID = uint(id)
+	}
+	if id, err := strconv.ParseUint(c.DefaultQuery("product_id", "0"), 10, 32); err == nil && id > 0 {
+		productID = new(uint)
+		*productID = uint(id)
+	}
+
+	result, err := h.service.List(page, limit, search, status, customerID, productID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMeta(c, result.Guarantees, responses.PaginationMeta{
+		CurrentPage: result.Page,
+		PerPage:     result.Limit,
+		Total:       result.Total,
+		LastPage:    result.LastPage,
+	})
+}
+
+func (h *GuaranteeHandler) Update(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
+
+	req, err := h.validator.ValidateUpdateRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	guarantee, err := h.service.Update(uint(id), req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Guarantee updated successfully", guarantee)
+}
+
+func (h *GuaranteeHandler) Approve(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
+
+	req, err := h.validator.ValidateApproveRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	adminID := c.GetUint("admin_id")
+
+	guarantee, err := h.service.Approve(uint(id), req, adminID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Guarantee approved successfully", guarantee)
+}
+
+func (h *GuaranteeHandler) Renew(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
+
+	req, err := h.validator.ValidateRenewRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	adminID := c.GetUint("admin_id")
+
+	guarantee, err := h.service.Renew(uint(id), req, adminID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Guarantee renewed successfully", guarantee)
+}
+
+func (h *GuaranteeHandler) Cancel(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
+
+	adminID := c.GetUint("admin_id")
+
+	guarantee, err := h.service.Cancel(uint(id), adminID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Guarantee cancelled successfully", guarantee)
+}
+
+func (h *GuaranteeHandler) Delete(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
+
+	if err := h.service.Delete(uint(id)); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Guarantee deleted successfully", nil)
+}
+
+func (h *GuaranteeHandler) GetExpiringSoon(c *gin.Context) {
+	days, _ := strconv.Atoi(c.DefaultQuery("days", "30"))
+
+	guarantees, err := h.service.GetExpiringSoon(days)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.Success(c, guarantees)
+}
+
+func handleError(c *gin.Context, err error) {
+	if appErr, ok := err.(*errors.AppError); ok {
+		responses.Error(c, appErr.Code, appErr.Message)
+		return
+	}
+	responses.InternalError(c, err)
+}
+
+// Add these methods to GuaranteeHandler
+
+// PublicRegister handles public guarantee registration without authentication
+// PublicRegister handles public guarantee registration without authentication
+func (h *GuaranteeHandler) PublicRegister(c *gin.Context) {
+	var req PublicRegisterRequest
+	
+	// Log the request body for debugging
+	body, _ := c.GetRawData()
+	fmt.Println("Received request body:", string(body))
+	
+	// Restore the body since GetRawData consumes it
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
+		return
+	}
+
+	response, err := h.service.PublicRegister(&req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Guarantee registered successfully", response)
+}
+
+// GetGuaranteePeriods returns available guarantee periods
+func (h *GuaranteeHandler) GetGuaranteePeriods(c *gin.Context) {
+	periods := h.service.GetGuaranteePeriods()
+	responses.Success(c, periods)
+}
+
+// CheckGuaranteeStatus allows public checking of guarantee status by code
+func (h *GuaranteeHandler) CheckGuaranteeStatus(c *gin.Context) {
+	code := c.Query("code")
+	if code == "" {
+		responses.Error(c, http.StatusBadRequest, "Guarantee code is required")
+		return
+	}
+
+	guarantee, err := h.service.GetByCode(code)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.Success(c, guarantee)
+}
+
+// Add this method for file upload
+func (h *GuaranteeHandler) UploadFile(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "No file uploaded")
+		return
+	}
+
+	// Validate file type
+	allowedTypes := map[string]bool{
+		"image/jpeg": true,
+		"image/png":  true,
+		"image/gif":  true,
+		"image/webp": true,
+		"application/pdf": true,
+	}
+	
+	contentType := file.Header.Get("Content-Type")
+	if !allowedTypes[contentType] {
+		responses.Error(c, http.StatusBadRequest, "Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF")
+		return
+	}
+
+	// Validate file size (max 10MB)
+	if file.Size > 10*1024*1024 {
+		responses.Error(c, http.StatusBadRequest, "File size exceeds 10MB limit")
+		return
+	}
+
+	// Generate unique filename
+	ext := filepath.Ext(file.Filename)
+	filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), uuid.New().String()[:8], ext)
+	
+	// Create uploads directory if not exists
+	uploadDir := "./uploads/guarantees"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		responses.InternalError(c, err)
+		return
+	}
+
+	// Save file
+	filePath := filepath.Join(uploadDir, filename)
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		responses.InternalError(c, err)
+		return
+	}
+
+	// Return the file URL
+	fileURL := fmt.Sprintf("/uploads/guarantees/%s", filename)
+	responses.Success(c, gin.H{
+		"url":      fileURL,
+		"filename": filename,
+		"size":     file.Size,
+		"type":     contentType,
+	})
+}
+
+----------------------------------------
+FILE: model.go
+Path: \internal\modules\guarantees\model.go
+Size: 3 KB
+----------------------------------------
+Lines: 66
+
+package guarantees
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+type Guarantee struct {
+	ID                  uint           `gorm:"primaryKey" json:"id"`
+	Code                string         `gorm:"uniqueIndex;size:50;not null" json:"code"`
+	CustomerID          uint           `gorm:"not null" json:"customer_id"`
+	Customer            Customer       `gorm:"foreignKey:CustomerID" json:"customer,omitempty"`
+	ProductID           uint           `gorm:"not null" json:"product_id"`
+	Product             Product        `gorm:"foreignKey:ProductID" json:"product,omitempty"`
+	PurchaseDate        time.Time      `gorm:"type:date;not null" json:"purchase_date"`
+	ExpiryDate          time.Time      `gorm:"type:date;not null" json:"expiry_date"`
+	Status              string         `gorm:"size:20;default:'Pending'" json:"status"`
+	InvoiceImage        string         `gorm:"size:255" json:"invoice_image"`
+	GuaranteeCardImage  string         `gorm:"size:255" json:"guarantee_card_image"`
+	Notes               string         `gorm:"type:text" json:"notes"`
+	CreatedBy           *uint          `json:"created_by"`
+	CreatedByAdmin      Admin          `gorm:"foreignKey:CreatedBy" json:"created_by_admin,omitempty"`
+	ApprovedBy          *uint          `json:"approved_by"`
+	ApprovedByAdmin     Admin          `gorm:"foreignKey:ApprovedBy" json:"approved_by_admin,omitempty"`
+	ApprovedAt          *time.Time     `json:"approved_at,omitempty"`
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
+	DeletedAt           gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+// Customer - mirror of the actual Customer model from the customers module
+type Customer struct {
+	ID       uint   `gorm:"-" json:"id"`
+	FullName string `gorm:"-" json:"full_name"`
+	Phone    string `gorm:"-" json:"phone,omitempty"`
+	Email    string `gorm:"-" json:"email,omitempty"`
+}
+
+// Product - mirror of the actual Product model from the products module
+type Product struct {
+	ID          uint   `gorm:"-" json:"id"`
+	Name        string `gorm:"-" json:"name"`
+	Description string `gorm:"-" json:"description,omitempty"`
+}
+
+// Admin - mirror of the actual Admin model from the auth module
+type Admin struct {
+	ID       uint   `gorm:"-" json:"id"`
+	Username string `gorm:"-" json:"username"`
+	FullName string `gorm:"-" json:"full_name,omitempty"`
+}
+
+func (Guarantee) TableName() string {
+	return "guarantees"
+}
+
+// Status constants
+const (
+	StatusPending   = "Pending"
+	StatusApproved  = "Approved"
+	StatusRejected  = "Rejected"
+	StatusRenewed   = "Renewed"
+	StatusCancelled = "Cancelled"
+	StatusExpired   = "Expired"
+)
+
+----------------------------------------
+FILE: repository.go
+Path: \internal\modules\guarantees\repository.go
+Size: 3 KB
+----------------------------------------
+Lines: 113
+
+package guarantees
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+type GuaranteeRepository struct {
+	db *gorm.DB
+}
+
+func NewGuaranteeRepository(db *gorm.DB) *GuaranteeRepository {
+	return &GuaranteeRepository{db: db}
+}
+
+func (r *GuaranteeRepository) Create(guarantee *Guarantee) error {
+	return r.db.Create(guarantee).Error
+}
+
+func (r *GuaranteeRepository) FindByID(id uint) (*Guarantee, error) {
+	var guarantee Guarantee
+	err := r.db.
+		Preload("Customer").
+		Preload("Product").
+		Preload("CreatedByAdmin").
+		Preload("ApprovedByAdmin").
+		Where("id = ?", id).
+		First(&guarantee).Error
+	if err != nil {
+		return nil, err
+	}
+	return &guarantee, nil
+}
+
+func (r *GuaranteeRepository) FindAll(page, limit int, search string, status string, customerID, productID *uint) ([]Guarantee, int64, error) {
+	var guarantees []Guarantee
+	var total int64
+
+	query := r.db.Model(&Guarantee{})
+
+	if search != "" {
+		query = query.
+			Joins("LEFT JOIN customers ON customers.id = guarantees.customer_id").
+			Joins("LEFT JOIN products ON products.id = guarantees.product_id").
+			Where("guarantees.code ILIKE ? OR customers.full_name ILIKE ? OR products.name ILIKE ?",
+				"%"+search+"%", "%"+search+"%", "%"+search+"%")
+	}
+
+	if status != "" && status != "all" {
+		query = query.Where("guarantees.status = ?", status)
+	}
+
+	if customerID != nil && *customerID > 0 {
+		query = query.Where("guarantees.customer_id = ?", customerID)
+	}
+
+	if productID != nil && *productID > 0 {
+		query = query.Where("guarantees.product_id = ?", productID)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	err := query.
+		Preload("Customer").
+		Preload("Product").
+		Preload("CreatedByAdmin").
+		Preload("ApprovedByAdmin").
+		Offset(offset).
+		Limit(limit).
+		Order("guarantees.created_at DESC").
+		Find(&guarantees).Error
+
+	return guarantees, total, err
+}
+
+func (r *GuaranteeRepository) FindByCode(code string) (*Guarantee, error) {
+	var guarantee Guarantee
+	err := r.db.Where("code = ?", code).First(&guarantee).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &guarantee, nil
+}
+
+
+func (r *GuaranteeRepository) Update(guarantee *Guarantee) error {
+	return r.db.Save(guarantee).Error
+}
+
+func (r *GuaranteeRepository) Delete(id uint) error {
+	return r.db.Delete(&Guarantee{}, id).Error
+}
+
+func (r *GuaranteeRepository) FindExpiringSoon(days int) ([]Guarantee, error) {
+	var guarantees []Guarantee
+	threshold := time.Now().AddDate(0, 0, days)
+	err := r.db.Where("expiry_date <= ? AND expiry_date >= ? AND status IN ?", threshold, time.Now(), []string{StatusApproved, StatusRenewed}).
+		Preload("Customer").Preload("Product").Find(&guarantees).Error
+	return guarantees, err
+}
+
+func (r *GuaranteeRepository) UpdateExpiredStatus() error {
+	return r.db.Model(&Guarantee{}).
+		Where("expiry_date < ? AND status IN ?", time.Now(), []string{StatusApproved, StatusRenewed}).
+		Update("status", StatusExpired).Error
+}
+
+----------------------------------------
+FILE: routes.go
+Path: \internal\modules\guarantees\routes.go
+Size: 1 KB
+----------------------------------------
+Lines: 47
+
+package guarantees
+
+import (
+	"guarantee-management-system/internal/middleware"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+type GuaranteeModule struct {
+	handler *GuaranteeHandler
+}
+
+func NewGuaranteeModule(db *gorm.DB) *GuaranteeModule {
+	repo := NewGuaranteeRepository(db)
+	service := NewGuaranteeService(repo, db)
+	validator := NewGuaranteeValidator()
+	handler := NewGuaranteeHandler(service, validator)
+
+	return &GuaranteeModule{handler: handler}
+}
+
+func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
+
+	public := router.Group("/guarantees/public")
+	{
+		public.POST("/register", m.handler.PublicRegister)
+		public.GET("/periods", m.handler.GetGuaranteePeriods)
+		public.GET("/check", m.handler.CheckGuaranteeStatus)
+		public.POST("/upload", m.handler.UploadFile)
+	}
+
+	// Protected routes (authentication required)
+	protected := router.Group("/guarantees")
+	protected.Use(middleware.AuthMiddleware())
+	{
+		protected.POST("", m.handler.Create)
+		protected.GET("", m.handler.List)
+		protected.GET("/expiring", m.handler.GetExpiringSoon)
+		protected.GET("/:id", m.handler.Get)
+		protected.PUT("/:id", m.handler.Update)
+		protected.POST("/:id/approve", m.handler.Approve)
+		protected.POST("/:id/renew", m.handler.Renew)
+		protected.POST("/:id/cancel", m.handler.Cancel)
+		protected.DELETE("/:id", m.handler.Delete)
+	}
+}
+
+----------------------------------------
+FILE: service.go
+Path: \internal\modules\guarantees\service.go
+Size: 18 KB
+----------------------------------------
+Lines: 587
+
+package guarantees
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"time"
+
+	"guarantee-management-system/internal/shared/errors"
+	"gorm.io/gorm"
+)
+
+type GuaranteeService struct {
+	repo *GuaranteeRepository
+	db   *gorm.DB
+}
+
+func NewGuaranteeService(repo *GuaranteeRepository, db *gorm.DB) *GuaranteeService {
+	return &GuaranteeService{repo: repo, db: db}
+}
+
+func (s *GuaranteeService) generateCode() (string, error) {
+	bytes := make([]byte, 6)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("GUA-%s", hex.EncodeToString(bytes)[:8]), nil
+}
+
+func (s *GuaranteeService) validateDates(purchaseDate, expiryDate time.Time) error {
+	if expiryDate.Before(purchaseDate) {
+		return ErrExpiryDateBeforePurchase
+	}
+	if expiryDate.Before(time.Now()) {
+		return errors.NewAppError(errors.ErrValidation, "Expiry date cannot be in the past", 400)
+	}
+	return nil
+}
+
+func (s *GuaranteeService) Create(req *CreateGuaranteeRequest, adminID uint) (*GuaranteeDTO, error) {
+	// Parse dates
+	purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
+	if err != nil {
+		return nil, ErrInvalidDate
+	}
+	expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
+	if err != nil {
+		return nil, ErrInvalidDate
+	}
+
+	if err := s.validateDates(purchaseDate, expiryDate); err != nil {
+		return nil, err
+	}
+
+	// Verify customer exists
+	var customerExists bool
+	if err := s.db.Table("customers").Where("id = ? AND deleted_at IS NULL", req.CustomerID).Select("count(*) > 0").Find(&customerExists).Error; err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify customer", 500)
+	}
+	if !customerExists {
+		return nil, ErrCustomerNotFound
+	}
+
+	// Verify product exists
+	var productExists bool
+	if err := s.db.Table("products").Where("id = ? AND deleted_at IS NULL", req.ProductID).Select("count(*) > 0").Find(&productExists).Error; err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify product", 500)
+	}
+	if !productExists {
+		return nil, ErrProductNotFound
+	}
+
+	// Generate unique code
+	var code string
+	for i := 0; i < 3; i++ {
+		code, err = s.generateCode()
+		if err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to generate code", 500)
+		}
+		existing, _ := s.repo.FindByCode(code)
+		if existing == nil {
+			break
+		}
+		if i == 2 {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to generate unique code", 500)
+		}
+	}
+
+	guarantee := &Guarantee{
+		Code:               code,
+		CustomerID:         req.CustomerID,
+		ProductID:          req.ProductID,
+		PurchaseDate:       purchaseDate,
+		ExpiryDate:         expiryDate,
+		Status:             StatusPending,
+		InvoiceImage:       req.InvoiceImage,
+		GuaranteeCardImage: req.GuaranteeCardImage,
+		Notes:              req.Notes,
+		CreatedBy:          &adminID,
+	}
+
+	if err := s.repo.Create(guarantee); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create guarantee", 500)
+	}
+
+	// Reload with relations
+	created, err := s.repo.FindByID(guarantee.ID)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load created guarantee", 500)
+	}
+
+	return s.mapToDTO(created), nil
+}
+
+func (s *GuaranteeService) GetByID(id uint) (*GuaranteeDTO, error) {
+	guarantee, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrGuaranteeNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
+	}
+	return s.mapToDTO(guarantee), nil
+}
+
+func (s *GuaranteeService) List(page, limit int, search, status string, customerID, productID *uint) (*ListGuaranteesResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	guarantees, total, err := s.repo.FindAll(page, limit, search, status, customerID, productID)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list guarantees", 500)
+	}
+
+	dtos := make([]GuaranteeDTO, len(guarantees))
+	for i, guarantee := range guarantees {
+		dtos[i] = *s.mapToDTO(&guarantee)
+	}
+
+	lastPage := int(total) / limit
+	if int(total)%limit != 0 {
+		lastPage++
+	}
+
+	return &ListGuaranteesResponse{
+		Guarantees: dtos,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		LastPage:   lastPage,
+	}, nil
+}
+
+func (s *GuaranteeService) Update(id uint, req *UpdateGuaranteeRequest) (*GuaranteeDTO, error) {
+	guarantee, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrGuaranteeNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
+	}
+
+	// Only allow updates if status is Pending
+	if guarantee.Status != StatusPending {
+		return nil, errors.NewAppError(errors.ErrValidation, "Can only update pending guarantees", 400)
+	}
+
+	if req.CustomerID > 0 {
+		var exists bool
+		if err := s.db.Table("customers").Where("id = ? AND deleted_at IS NULL", req.CustomerID).Select("count(*) > 0").Find(&exists).Error; err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify customer", 500)
+		}
+		if !exists {
+			return nil, ErrCustomerNotFound
+		}
+		guarantee.CustomerID = req.CustomerID
+	}
+
+	if req.ProductID > 0 {
+		var exists bool
+		if err := s.db.Table("products").Where("id = ? AND deleted_at IS NULL", req.ProductID).Select("count(*) > 0").Find(&exists).Error; err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify product", 500)
+		}
+		if !exists {
+			return nil, ErrProductNotFound
+		}
+		guarantee.ProductID = req.ProductID
+	}
+
+	if req.PurchaseDate != "" {
+		purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
+		if err != nil {
+			return nil, ErrInvalidDate
+		}
+		guarantee.PurchaseDate = purchaseDate
+	}
+
+	if req.ExpiryDate != "" {
+		expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
+		if err != nil {
+			return nil, ErrInvalidDate
+		}
+		guarantee.ExpiryDate = expiryDate
+	}
+
+	if err := s.validateDates(guarantee.PurchaseDate, guarantee.ExpiryDate); err != nil {
+		return nil, err
+	}
+
+	if req.InvoiceImage != "" {
+		guarantee.InvoiceImage = req.InvoiceImage
+	}
+	if req.GuaranteeCardImage != "" {
+		guarantee.GuaranteeCardImage = req.GuaranteeCardImage
+	}
+	if req.Notes != "" {
+		guarantee.Notes = req.Notes
+	}
+
+	if err := s.repo.Update(guarantee); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
+	}
+
+	updated, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
+	}
+
+	return s.mapToDTO(updated), nil
+}
+
+func (s *GuaranteeService) Approve(id uint, req *ApproveGuaranteeRequest, adminID uint) (*GuaranteeDTO, error) {
+	guarantee, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrGuaranteeNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
+	}
+
+	if guarantee.Status != StatusPending {
+		return nil, ErrCannotApprove
+	}
+
+	guarantee.Status = req.Status
+	guarantee.ApprovedBy = &adminID
+	now := time.Now()
+	guarantee.ApprovedAt = &now
+	if req.Notes != "" {
+		guarantee.Notes = req.Notes
+	}
+
+	if err := s.repo.Update(guarantee); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
+	}
+
+	updated, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
+	}
+
+	return s.mapToDTO(updated), nil
+}
+
+func (s *GuaranteeService) Renew(id uint, req *RenewGuaranteeRequest, adminID uint) (*GuaranteeDTO, error) {
+	guarantee, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrGuaranteeNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
+	}
+
+	if guarantee.Status != StatusApproved && guarantee.Status != StatusRenewed {
+		return nil, ErrCannotRenew
+	}
+
+	newExpiryDate, err := time.Parse("2006-01-02", req.NewExpiryDate)
+	if err != nil {
+		return nil, ErrInvalidDate
+	}
+
+	if newExpiryDate.Before(guarantee.ExpiryDate) {
+		return nil, errors.NewAppError(errors.ErrValidation, "New expiry date must be after current expiry date", 400)
+	}
+
+	guarantee.ExpiryDate = newExpiryDate
+	guarantee.Status = StatusRenewed
+	if req.Notes != "" {
+		guarantee.Notes = req.Notes
+	}
+
+	if err := s.repo.Update(guarantee); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
+	}
+
+	updated, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
+	}
+
+	return s.mapToDTO(updated), nil
+}
+
+func (s *GuaranteeService) Cancel(id uint, adminID uint) (*GuaranteeDTO, error) {
+	guarantee, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrGuaranteeNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
+	}
+
+	if guarantee.Status == StatusCancelled || guarantee.Status == StatusExpired {
+		return nil, ErrCannotCancel
+	}
+
+	guarantee.Status = StatusCancelled
+	if err := s.repo.Update(guarantee); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
+	}
+
+	updated, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
+	}
+
+	return s.mapToDTO(updated), nil
+}
+
+func (s *GuaranteeService) Delete(id uint) error {
+	if err := s.repo.Delete(id); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrGuaranteeNotFound
+		}
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to delete guarantee", 500)
+	}
+	return nil
+}
+
+func (s *GuaranteeService) GetExpiringSoon(days int) ([]GuaranteeDTO, error) {
+	guarantees, err := s.repo.FindExpiringSoon(days)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find expiring guarantees", 500)
+	}
+
+	dtos := make([]GuaranteeDTO, len(guarantees))
+	for i, guarantee := range guarantees {
+		dtos[i] = *s.mapToDTO(&guarantee)
+	}
+	return dtos, nil
+}
+
+func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
+	dto := &GuaranteeDTO{
+		ID:                  guarantee.ID,
+		Code:                guarantee.Code,
+		CustomerID:          guarantee.CustomerID,
+		ProductID:           guarantee.ProductID,
+		Status:              guarantee.Status,
+		InvoiceImage:        guarantee.InvoiceImage,
+		GuaranteeCardImage:  guarantee.GuaranteeCardImage,
+		Notes:               guarantee.Notes,
+		CreatedAt:           guarantee.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:           guarantee.UpdatedAt.Format(time.RFC3339),
+		PurchaseDate:        guarantee.PurchaseDate.Format("2006-01-02"),
+		ExpiryDate:          guarantee.ExpiryDate.Format("2006-01-02"),
+	}
+
+	// Check if Customer is loaded (ID > 0 means it was preloaded)
+	if guarantee.Customer.ID > 0 {
+		dto.CustomerName = guarantee.Customer.FullName
+	} else {
+		// If not preloaded, try to get the name from a separate query
+		// This is a fallback - the repository should preload the relations
+		var customer Customer
+		if err := s.db.Table("customers").Where("id = ?", guarantee.CustomerID).Select("full_name").Scan(&customer).Error; err == nil {
+			dto.CustomerName = customer.FullName
+		}
+	}
+
+	if guarantee.Product.ID > 0 {
+		dto.ProductName = guarantee.Product.Name
+	} else {
+		var product Product
+		if err := s.db.Table("products").Where("id = ?", guarantee.ProductID).Select("name").Scan(&product).Error; err == nil {
+			dto.ProductName = product.Name
+		}
+	}
+
+	if guarantee.CreatedByAdmin.ID > 0 {
+		dto.CreatedBy = &guarantee.CreatedByAdmin.ID
+		dto.CreatedByUsername = guarantee.CreatedByAdmin.Username
+	}
+
+	if guarantee.ApprovedByAdmin.ID > 0 {
+		dto.ApprovedBy = &guarantee.ApprovedByAdmin.ID
+		dto.ApprovedByUsername = guarantee.ApprovedByAdmin.Username
+	}
+
+	if guarantee.ApprovedAt != nil {
+		formatted := guarantee.ApprovedAt.Format(time.RFC3339)
+		dto.ApprovedAt = &formatted
+	}
+
+	return dto
+}
+
+// Add this method to GuaranteeService
+
+func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRegisterResponse, error) {
+	// Start a transaction
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1. Check if customer exists by National ID or Phone
+	var existingCustomer Customer
+	var customerID uint
+	
+	err := tx.Table("customers").
+		Where("national_id = ? OR phone = ?", req.NationalID, req.Phone).
+		First(&existingCustomer).Error
+	
+	if err == nil {
+		// Customer exists
+		customerID = existingCustomer.ID
+	} else if err == gorm.ErrRecordNotFound {
+		// Create new customer
+		customer := map[string]interface{}{
+			"full_name":   req.FullName,
+			"phone":       req.Phone,
+			"national_id": req.NationalID,
+			"province":    req.Province,
+			"city":        req.City,
+			"address":     req.Address,
+		}
+		
+		if err := tx.Table("customers").Create(&customer).Error; err != nil {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
+		}
+		
+		// Get the created customer ID
+		var newCustomer Customer
+		if err := tx.Table("customers").Where("national_id = ?", req.NationalID).First(&newCustomer).Error; err != nil {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created customer", 500)
+		}
+		customerID = newCustomer.ID
+	} else {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check customer existence", 500)
+	}
+
+	// 2. Create or get product
+	var productID uint
+	var product Product
+	
+	// Check if product exists by name
+	err = tx.Table("products").Where("name = ?", req.ProductName).First(&product).Error
+	if err == nil {
+		productID = product.ID
+	} else if err == gorm.ErrRecordNotFound {
+		// Create new product (inactive by default, admin can activate later)
+		newProduct := map[string]interface{}{
+			"name":        req.ProductName,
+			"description": "Auto-created from guarantee registration",
+			"category_id": 1, // Default category, admin can change later
+			"is_active":   false,
+		}
+		
+		if err := tx.Table("products").Create(&newProduct).Error; err != nil {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create product", 500)
+		}
+		
+		// Get the created product ID
+		var newProductRecord Product
+		if err := tx.Table("products").Where("name = ?", req.ProductName).First(&newProductRecord).Error; err != nil {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created product", 500)
+		}
+		productID = newProductRecord.ID
+	} else {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check product existence", 500)
+	}
+
+	// 3. Parse dates
+	purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
+	if err != nil {
+		tx.Rollback()
+		return nil, ErrInvalidDate
+	}
+	
+	// Calculate expiry date based on guarantee period (in months)
+	expiryDate := purchaseDate.AddDate(0, req.GuaranteePeriod, 0)
+	
+	if err := s.validateDates(purchaseDate, expiryDate); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// 4. Check if guarantee code already exists
+	existingGuarantee, err := s.repo.FindByCode(req.GuaranteeCode)
+	if err != nil {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check guarantee code", 500)
+	}
+	if existingGuarantee != nil {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Guarantee code already registered", 409)
+	}
+
+	// 5. Create guarantee
+	guarantee := &Guarantee{
+		Code:               req.GuaranteeCode,
+		CustomerID:         customerID,
+		ProductID:          productID,
+		PurchaseDate:       purchaseDate,
+		ExpiryDate:         expiryDate,
+		Status:             StatusPending,
+		InvoiceImage:       req.InvoiceImage,
+		GuaranteeCardImage: req.GuaranteeCardImage,
+		Notes:              req.Notes,
+		// CreatedBy remains nil for public registration
+	}
+
+	if err := tx.Create(guarantee).Error; err != nil {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create guarantee", 500)
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to commit transaction", 500)
+	}
+
+	// Return response
+	return &PublicRegisterResponse{
+		GuaranteeID:   guarantee.ID,
+		GuaranteeCode: guarantee.Code,
+		CustomerID:    customerID,
+		CustomerName:  req.FullName,
+		ExpiryDate:    expiryDate.Format("2006-01-02"),
+		Status:        StatusPending,
+		Message:       "Guarantee registered successfully. Waiting for admin approval.",
+	}, nil
+}
+
+// GetGuaranteePeriods returns available guarantee periods
+func (s *GuaranteeService) GetGuaranteePeriods() []GuaranteePeriodOption {
+	return []GuaranteePeriodOption{
+		{Value: 3, Label: "3 Months", Months: 3},
+		{Value: 6, Label: "6 Months", Months: 6},
+		{Value: 9, Label: "9 Months", Months: 9},
+		{Value: 12, Label: "12 Months (1 Year)", Months: 12},
+		{Value: 15, Label: "15 Months", Months: 15},
+		{Value: 18, Label: "18 Months", Months: 18},
+		{Value: 21, Label: "21 Months", Months: 21},
+		{Value: 24, Label: "24 Months (2 Years)", Months: 24},
+		{Value: 30, Label: "30 Months", Months: 30},
+		{Value: 36, Label: "36 Months (3 Years)", Months: 36},
+	}
+}
+// Add this method to GuaranteeService
+func (s *GuaranteeService) GetByCode(code string) (*GuaranteeDTO, error) {
+	guarantee, err := s.repo.FindByCode(code)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrGuaranteeNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
+	}
+	if guarantee == nil {
+		return nil, ErrGuaranteeNotFound
+	}
+	return s.mapToDTO(guarantee), nil
+}
+
+----------------------------------------
+FILE: validator.go
+Path: \internal\modules\guarantees\validator.go
+Size: 2 KB
+----------------------------------------
+Lines: 58
+
+package guarantees
+
+import (
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/validator"
+
+	"github.com/gin-gonic/gin"
+)
+
+type GuaranteeValidator struct{}
+
+func NewGuaranteeValidator() *GuaranteeValidator {
+	return &GuaranteeValidator{}
+}
+
+func (v *GuaranteeValidator) ValidateCreateRequest(c *gin.Context) (*CreateGuaranteeRequest, error) {
+	var req CreateGuaranteeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+	return &req, nil
+}
+
+func (v *GuaranteeValidator) ValidateUpdateRequest(c *gin.Context) (*UpdateGuaranteeRequest, error) {
+	var req UpdateGuaranteeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+	return &req, nil
+}
+
+func (v *GuaranteeValidator) ValidateApproveRequest(c *gin.Context) (*ApproveGuaranteeRequest, error) {
+	var req ApproveGuaranteeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+	return &req, nil
+}
+
+func (v *GuaranteeValidator) ValidateRenewRequest(c *gin.Context) (*RenewGuaranteeRequest, error) {
+	var req RenewGuaranteeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+	return &req, nil
+}
+
+============================================
+DIRECTORY: \internal\modules\products
+============================================
+
+----------------------------------------
+FILE: dto.go
+Path: \internal\modules\products\dto.go
+Size: 1 KB
+----------------------------------------
+Lines: 34
+
+package products
+
+type ProductDTO struct {
+	ID           uint   `json:"id"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	CategoryID   uint   `json:"category_id"`
+	CategoryName string `json:"category_name"`
+	IsActive     bool   `json:"is_active"`
+	CreatedAt    string `json:"created_at"`
+	UpdatedAt    string `json:"updated_at"`
+}
+
+type CreateProductRequest struct {
+	Name        string `json:"name" binding:"required,min=2,max=100"`
+	Description string `json:"description"`
+	CategoryID  uint   `json:"category_id" binding:"required"`
+	IsActive    *bool  `json:"is_active"`
+}
+
+type UpdateProductRequest struct {
+	Name        string `json:"name" binding:"omitempty,min=2,max=100"`
+	Description string `json:"description"`
+	CategoryID  uint   `json:"category_id" binding:"omitempty"`
+	IsActive    *bool  `json:"is_active"`
+}
+
+type ListProductsResponse struct {
+	Products []ProductDTO `json:"products"`
+	Total    int64        `json:"total"`
+	Page     int          `json:"page"`
+	Limit    int          `json:"limit"`
+	LastPage int          `json:"last_page"`
+}
+
+----------------------------------------
+FILE: errors.go
+Path: \internal\modules\products\errors.go
+Size: 0 KB
+----------------------------------------
+Lines: 9
+
+package products
+
+import "guarantee-management-system/internal/shared/errors"
+
+var (
+	ErrProductNotFound  = errors.NewAppError(errors.ErrNotFound, "Product not found", 404)
+	ErrProductDuplicate = errors.NewAppError(errors.ErrDuplicateEntry, "A product with this name already exists in this category", 409)
+	ErrInvalidCategory  = errors.NewAppError(errors.ErrValidation, "Selected category does not exist", 400)
+)
+
+----------------------------------------
+FILE: handler.go
+Path: \internal\modules\products\handler.go
+Size: 3 KB
+----------------------------------------
+Lines: 107
+
+package products
+
+import (
+	"net/http"
+	"strconv"
+
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/responses"
+
+	"github.com/gin-gonic/gin"
+)
+
+type ProductHandler struct {
+	service   *ProductService
+	validator *ProductValidator
+}
+
+func NewProductHandler(service *ProductService, validator *ProductValidator) *ProductHandler {
+	return &ProductHandler{service: service, validator: validator}
+}
+
+func (h *ProductHandler) Create(c *gin.Context) {
+	req, err := h.validator.ValidateCreateRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	product, err := h.service.Create(req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.SuccessWithMessage(c, "Product created successfully", product)
+}
+
+func (h *ProductHandler) Get(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid product ID")
+		return
+	}
+	product, err := h.service.GetByID(uint(id))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.Success(c, product)
+}
+
+func (h *ProductHandler) List(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	search := c.DefaultQuery("search", "")
+	categoryID, _ := strconv.ParseUint(c.DefaultQuery("category_id", "0"), 10, 32)
+
+	result, err := h.service.List(page, limit, search, uint(categoryID))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.SuccessWithMeta(c, result.Products, responses.PaginationMeta{
+		CurrentPage: result.Page,
+		PerPage:     result.Limit,
+		Total:       result.Total,
+		LastPage:    result.LastPage,
+	})
+}
+
+func (h *ProductHandler) Update(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid product ID")
+		return
+	}
+	req, err := h.validator.ValidateUpdateRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	product, err := h.service.Update(uint(id), req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.SuccessWithMessage(c, "Product updated successfully", product)
+}
+
+func (h *ProductHandler) Delete(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid product ID")
+		return
+	}
+	if err := h.service.Delete(uint(id)); err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.SuccessWithMessage(c, "Product deleted successfully", nil)
+}
+
+func handleError(c *gin.Context, err error) {
+	if appErr, ok := err.(*errors.AppError); ok {
+		responses.Error(c, appErr.Code, appErr.Message)
+		return
+	}
+	responses.InternalError(c, err)
+}
+
+----------------------------------------
+FILE: model.go
+Path: \internal\modules\products\model.go
+Size: 1 KB
+----------------------------------------
+Lines: 22
+
+package products
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+type Product struct {
+	ID          uint           `gorm:"primaryKey" json:"id"`
+	Name        string         `gorm:"size:100;not null" json:"name"`
+	Description string         `gorm:"type:text" json:"description"`
+	CategoryID  uint           `gorm:"not null" json:"category_id"`
+	IsActive    bool           `gorm:"default:true" json:"is_active"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (Product) TableName() string {
+	return "products"
+}
+
+----------------------------------------
+FILE: repository.go
+Path: \internal\modules\products\repository.go
+Size: 2 KB
+----------------------------------------
+Lines: 66
+
+package products
+
+import "gorm.io/gorm"
+
+type ProductRepository struct {
+	db *gorm.DB
+}
+
+func NewProductRepository(db *gorm.DB) *ProductRepository {
+	return &ProductRepository{db: db}
+}
+
+func (r *ProductRepository) Create(product *Product) error {
+	return r.db.Create(product).Error
+}
+
+func (r *ProductRepository) FindByID(id uint) (*Product, error) {
+	var product Product
+	err := r.db.Where("id = ?", id).First(&product).Error
+	if err != nil {
+		return nil, err
+	}
+	return &product, nil
+}
+
+func (r *ProductRepository) FindByNameAndCategory(name string, categoryID uint) (*Product, error) {
+	var product Product
+	err := r.db.Where("name = ? AND category_id = ?", name, categoryID).First(&product).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &product, nil
+}
+
+func (r *ProductRepository) FindAll(page, limit int, search string, categoryID uint) ([]Product, int64, error) {
+	var products []Product
+	var total int64
+
+	query := r.db.Model(&Product{})
+
+	if search != "" {
+		query = query.Where("name ILIKE ? OR description ILIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+	if categoryID > 0 {
+		query = query.Where("category_id = ?", categoryID)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	err := query.Offset(offset).Limit(limit).Order("name ASC").Find(&products).Error
+	return products, total, err
+}
+
+func (r *ProductRepository) Update(product *Product) error {
+	return r.db.Save(product).Error
+}
+
+func (r *ProductRepository) Delete(id uint) error {
+	return r.db.Delete(&Product{}, id).Error
+}
+
+----------------------------------------
+FILE: routes.go
+Path: \internal\modules\products\routes.go
+Size: 1 KB
+----------------------------------------
+Lines: 35
+
+package products
+
+import (
+	"guarantee-management-system/internal/middleware"
+	"guarantee-management-system/internal/modules/categories"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+type ProductModule struct {
+	handler *ProductHandler
+}
+
+func NewProductModule(db *gorm.DB) *ProductModule {
+	repo := NewProductRepository(db)
+	categoryRepo := categories.NewCategoryRepository(db)
+	service := NewProductService(repo, categoryRepo)
+	validator := NewProductValidator()
+	handler := NewProductHandler(service, validator)
+
+	return &ProductModule{handler: handler}
+}
+
+func (m *ProductModule) RegisterRoutes(router *gin.RouterGroup) {
+	products := router.Group("/products")
+	products.Use(middleware.AuthMiddleware())
+	{
+		products.POST("", m.handler.Create)
+		products.GET("", m.handler.List)
+		products.GET("/:id", m.handler.Get)
+		products.PUT("/:id", m.handler.Update)
+		products.DELETE("/:id", m.handler.Delete)
+	}
+}
+
+----------------------------------------
+FILE: service.go
+Path: \internal\modules\products\service.go
+Size: 5 KB
+----------------------------------------
+Lines: 171
+
+package products
+
+import (
+	"time"
+
+	"guarantee-management-system/internal/modules/categories"
+	"guarantee-management-system/internal/shared/errors"
+
+	"gorm.io/gorm"
+)
+
+type ProductService struct {
+	repo         *ProductRepository
+	categoryRepo *categories.CategoryRepository
+}
+
+func NewProductService(repo *ProductRepository, categoryRepo *categories.CategoryRepository) *ProductService {
+	return &ProductService{repo: repo, categoryRepo: categoryRepo}
+}
+
+func (s *ProductService) Create(req *CreateProductRequest) (*ProductDTO, error) {
+	category, err := s.categoryRepo.FindByID(req.CategoryID)
+	if err != nil || category == nil {
+		return nil, ErrInvalidCategory
+	}
+
+	existing, err := s.repo.FindByNameAndCategory(req.Name, req.CategoryID)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check existing product", 500)
+	}
+	if existing != nil {
+		return nil, ErrProductDuplicate
+	}
+
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	product := &Product{
+		Name:        req.Name,
+		Description: req.Description,
+		CategoryID:  req.CategoryID,
+		IsActive:    isActive,
+	}
+
+	if err := s.repo.Create(product); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create product", 500)
+	}
+
+	return s.mapToDTO(product, category.Name), nil
+}
+
+func (s *ProductService) GetByID(id uint) (*ProductDTO, error) {
+	product, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrProductNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find product", 500)
+	}
+	return s.mapToDTO(product, s.lookupCategoryName(product.CategoryID)), nil
+}
+
+func (s *ProductService) List(page, limit int, search string, categoryID uint) (*ListProductsResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	products, total, err := s.repo.FindAll(page, limit, search, categoryID)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list products", 500)
+	}
+
+	// Bulk-cache category names so we don't run one lookup query per product.
+	categoryNames := make(map[uint]string)
+	dtos := make([]ProductDTO, len(products))
+	for i, product := range products {
+		name, ok := categoryNames[product.CategoryID]
+		if !ok {
+			name = s.lookupCategoryName(product.CategoryID)
+			categoryNames[product.CategoryID] = name
+		}
+		dtos[i] = *s.mapToDTO(&product, name)
+	}
+
+	lastPage := int(total) / limit
+	if int(total)%limit != 0 {
+		lastPage++
+	}
+
+	return &ListProductsResponse{
+		Products: dtos,
+		Total:    total,
+		Page:     page,
+		Limit:    limit,
+		LastPage: lastPage,
+	}, nil
+}
+
+func (s *ProductService) Update(id uint, req *UpdateProductRequest) (*ProductDTO, error) {
+	product, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrProductNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find product", 500)
+	}
+
+	if req.CategoryID != 0 && req.CategoryID != product.CategoryID {
+		category, err := s.categoryRepo.FindByID(req.CategoryID)
+		if err != nil || category == nil {
+			return nil, ErrInvalidCategory
+		}
+		product.CategoryID = req.CategoryID
+	}
+	if req.Name != "" {
+		product.Name = req.Name
+	}
+	if req.Description != "" {
+		product.Description = req.Description
+	}
+	if req.IsActive != nil {
+		product.IsActive = *req.IsActive
+	}
+
+	if err := s.repo.Update(product); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update product", 500)
+	}
+
+	return s.mapToDTO(product, s.lookupCategoryName(product.CategoryID)), nil
+}
+
+func (s *ProductService) Delete(id uint) error {
+	_, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrProductNotFound
+		}
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to find product", 500)
+	}
+
+	if err := s.repo.Delete(id); err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to delete product", 500)
+	}
+	return nil
+}
+
+func (s *ProductService) lookupCategoryName(categoryID uint) string {
+	category, err := s.categoryRepo.FindByID(categoryID)
+	if err != nil || category == nil {
+		return ""
+	}
+	return category.Name
+}
+
+func (s *ProductService) mapToDTO(product *Product, categoryName string) *ProductDTO {
+	return &ProductDTO{
+		ID:           product.ID,
+		Name:         product.Name,
+		Description:  product.Description,
+		CategoryID:   product.CategoryID,
+		CategoryName: categoryName,
+		IsActive:     product.IsActive,
+		CreatedAt:    product.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:    product.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+----------------------------------------
+FILE: validator.go
+Path: \internal\modules\products\validator.go
+Size: 1 KB
+----------------------------------------
+Lines: 36
+
+package products
+
+import (
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/validator"
+
+	"github.com/gin-gonic/gin"
+)
+
+type ProductValidator struct{}
+
+func NewProductValidator() *ProductValidator {
+	return &ProductValidator{}
+}
+
+func (v *ProductValidator) ValidateCreateRequest(c *gin.Context) (*CreateProductRequest, error) {
+	var req CreateProductRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+	return &req, nil
+}
+
+func (v *ProductValidator) ValidateUpdateRequest(c *gin.Context) (*UpdateProductRequest, error) {
+	var req UpdateProductRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+	return &req, nil
+}
+
+============================================
+DIRECTORY: \internal\modules\repairs
+============================================
+
+----------------------------------------
+FILE: dto.go
+Path: \internal\modules\repairs\dto.go
+Size: 1 KB
+----------------------------------------
+Lines: 33
+
+package repairs
+
+type RepairDTO struct {
+    ID           uint    `json:"id"`
+    GuaranteeID  uint    `json:"guarantee_id"`
+    TechnicianID *uint   `json:"technician_id"`
+    Status       string  `json:"status"`
+    Description  string  `json:"description"`
+    StartedAt    *string `json:"started_at,omitempty"`
+    CompletedAt  *string `json:"completed_at,omitempty"`
+    CreatedAt    string  `json:"created_at"`
+    UpdatedAt    string  `json:"updated_at"`
+}
+
+type CreateRepairRequest struct {
+    GuaranteeID  uint   `json:"guarantee_id" binding:"required"`
+    TechnicianID *uint  `json:"technician_id"`
+    Description  string `json:"description" binding:"required"`
+}
+
+type UpdateRepairRequest struct {
+    TechnicianID *uint  `json:"technician_id"`
+    Status       string `json:"status" binding:"omitempty,oneof=Pending InProgress Completed Cancelled"`
+    Description  string `json:"description"`
+}
+
+type ListRepairsResponse struct {
+    Repairs  []RepairDTO `json:"repairs"`
+    Total    int64       `json:"total"`
+    Page     int         `json:"page"`
+    Limit    int         `json:"limit"`
+    LastPage int         `json:"last_page"`
+}
+
+----------------------------------------
+FILE: errors.go
+Path: \internal\modules\repairs\errors.go
+Size: 0 KB
+----------------------------------------
+Lines: 9
+
+package repairs
+
+import "guarantee-management-system/internal/shared/errors"
+
+var (
+    ErrRepairNotFound = errors.NewAppError(errors.ErrNotFound, "Repair not found", 404)
+    ErrInvalidStatus  = errors.NewAppError(errors.ErrValidation, "Invalid repair status", 400)
+    ErrCannotUpdate   = errors.NewAppError(errors.ErrValidation, "Cannot update repair in its current status", 400)
+)
+
+----------------------------------------
+FILE: handler.go
+Path: \internal\modules\repairs\handler.go
+Size: 3 KB
+----------------------------------------
+Lines: 117
+
+package repairs
+
+import (
+    "net/http"
+    "strconv"
+    "guarantee-management-system/internal/shared/errors"
+    "guarantee-management-system/internal/shared/responses"
+    "github.com/gin-gonic/gin"
+)
+
+type RepairHandler struct {
+    service   *RepairService
+    validator *RepairValidator
+}
+
+func NewRepairHandler(service *RepairService, validator *RepairValidator) *RepairHandler {
+    return &RepairHandler{
+        service:   service,
+        validator: validator,
+    }
+}
+
+func (h *RepairHandler) Create(c *gin.Context) {
+    req, err := h.validator.ValidateCreateRequest(c)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    repair, err := h.service.Create(req)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.SuccessWithMessage(c, "Repair created successfully", repair)
+}
+
+func (h *RepairHandler) Get(c *gin.Context) {
+    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+    if err != nil {
+        responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
+        return
+    }
+
+    repair, err := h.service.GetByID(uint(id))
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.Success(c, repair)
+}
+
+func (h *RepairHandler) List(c *gin.Context) {
+    page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+    limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+    status := c.DefaultQuery("status", "")
+
+    result, err := h.service.List(page, limit, status)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.SuccessWithMeta(c, result.Repairs, responses.PaginationMeta{
+        CurrentPage: result.Page,
+        PerPage:     result.Limit,
+        Total:       result.Total,
+        LastPage:    result.LastPage,
+    })
+}
+
+func (h *RepairHandler) Update(c *gin.Context) {
+    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+    if err != nil {
+        responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
+        return
+    }
+
+    req, err := h.validator.ValidateUpdateRequest(c)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    repair, err := h.service.Update(uint(id), req)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.SuccessWithMessage(c, "Repair updated successfully", repair)
+}
+
+func (h *RepairHandler) Delete(c *gin.Context) {
+    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+    if err != nil {
+        responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
+        return
+    }
+
+    if err := h.service.Delete(uint(id)); err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.SuccessWithMessage(c, "Repair deleted successfully", nil)
+}
+
+func handleError(c *gin.Context, err error) {
+    if appErr, ok := err.(*errors.AppError); ok {
+        responses.Error(c, appErr.Code, appErr.Message)
+        return
+    }
+    responses.InternalError(c, err)
+}
+
+----------------------------------------
+FILE: model.go
+Path: \internal\modules\repairs\model.go
+Size: 1 KB
+----------------------------------------
+Lines: 30
+
+package repairs
+
+import (
+    "time"
+    "gorm.io/gorm"
+)
+
+type Repair struct {
+    ID           uint           `gorm:"primaryKey" json:"id"`
+    GuaranteeID  uint           `gorm:"not null" json:"guarantee_id"`
+    TechnicianID *uint          `json:"technician_id"`
+    Status       string         `gorm:"size:20;default:'Pending'" json:"status"`
+    Description  string         `gorm:"type:text" json:"description"`
+    StartedAt    *time.Time     `json:"started_at,omitempty"`
+    CompletedAt  *time.Time     `json:"completed_at,omitempty"`
+    CreatedAt    time.Time      `json:"created_at"`
+    UpdatedAt    time.Time      `json:"updated_at"`
+    DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (Repair) TableName() string {
+    return "repairs"
+}
+
+const (
+    StatusPending   = "Pending"
+    StatusInProgress = "InProgress"
+    StatusCompleted  = "Completed"
+    StatusCancelled  = "Cancelled"
+)
+
+----------------------------------------
+FILE: repository.go
+Path: \internal\modules\repairs\repository.go
+Size: 1 KB
+----------------------------------------
+Lines: 51
+
+package repairs
+
+import "gorm.io/gorm"
+
+type RepairRepository struct {
+    db *gorm.DB
+}
+
+func NewRepairRepository(db *gorm.DB) *RepairRepository {
+    return &RepairRepository{db: db}
+}
+
+func (r *RepairRepository) Create(repair *Repair) error {
+    return r.db.Create(repair).Error
+}
+
+func (r *RepairRepository) FindByID(id uint) (*Repair, error) {
+    var repair Repair
+    err := r.db.First(&repair, id).Error
+    if err != nil {
+        return nil, err
+    }
+    return &repair, nil
+}
+
+func (r *RepairRepository) FindAll(page, limit int, status string) ([]Repair, int64, error) {
+    var repairs []Repair
+    var total int64
+
+    query := r.db.Model(&Repair{})
+
+    if status != "" {
+        query = query.Where("status = ?", status)
+    }
+
+    if err := query.Count(&total).Error; err != nil {
+        return nil, 0, err
+    }
+
+    offset := (page - 1) * limit
+    err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&repairs).Error
+    return repairs, total, err
+}
+
+func (r *RepairRepository) Update(repair *Repair) error {
+    return r.db.Save(repair).Error
+}
+
+func (r *RepairRepository) Delete(id uint) error {
+    return r.db.Delete(&Repair{}, id).Error
+}
+
+----------------------------------------
+FILE: routes.go
+Path: \internal\modules\repairs\routes.go
+Size: 1 KB
+----------------------------------------
+Lines: 32
+
+package repairs
+
+import (
+    "guarantee-management-system/internal/middleware"
+    "github.com/gin-gonic/gin"
+    "gorm.io/gorm"
+)
+
+type RepairModule struct {
+    handler *RepairHandler
+}
+
+func NewRepairModule(db *gorm.DB) *RepairModule {
+    repo := NewRepairRepository(db)
+    service := NewRepairService(repo, db)
+    validator := NewRepairValidator()
+    handler := NewRepairHandler(service, validator)
+
+    return &RepairModule{handler: handler}
+}
+
+func (m *RepairModule) RegisterRoutes(router *gin.RouterGroup) {
+    repairs := router.Group("/repairs")
+    repairs.Use(middleware.AuthMiddleware())
+    {
+        repairs.POST("", m.handler.Create)
+        repairs.GET("", m.handler.List)
+        repairs.GET("/:id", m.handler.Get)
+        repairs.PUT("/:id", m.handler.Update)
+        repairs.DELETE("/:id", m.handler.Delete)
+    }
+}
+
+----------------------------------------
+FILE: service.go
+Path: \internal\modules\repairs\service.go
+Size: 5 KB
+----------------------------------------
+Lines: 183
+
+package repairs
+
+import (
+    "time"
+    "guarantee-management-system/internal/shared/errors"
+    "gorm.io/gorm"
+)
+
+type RepairService struct {
+    repo *RepairRepository
+    db   *gorm.DB
+}
+
+func NewRepairService(repo *RepairRepository, db *gorm.DB) *RepairService {
+    return &RepairService{repo: repo, db: db}
+}
+
+func (s *RepairService) Create(req *CreateRepairRequest) (*RepairDTO, error) {
+    // Verify guarantee exists
+    var exists bool
+    if err := s.db.Table("guarantees").Where("id = ? AND deleted_at IS NULL", req.GuaranteeID).Select("count(*) > 0").Find(&exists).Error; err != nil {
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify guarantee", 500)
+    }
+    if !exists {
+        return nil, errors.NewAppError(errors.ErrNotFound, "Guarantee not found", 404)
+    }
+
+    repair := &Repair{
+        GuaranteeID:  req.GuaranteeID,
+        TechnicianID: req.TechnicianID,
+        Status:       StatusPending,
+        Description:  req.Description,
+    }
+
+    if err := s.repo.Create(repair); err != nil {
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create repair", 500)
+    }
+
+    return s.mapToDTO(repair), nil
+}
+
+func (s *RepairService) GetByID(id uint) (*RepairDTO, error) {
+    repair, err := s.repo.FindByID(id)
+    if err != nil {
+        if err == gorm.ErrRecordNotFound {
+            return nil, ErrRepairNotFound
+        }
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find repair", 500)
+    }
+    return s.mapToDTO(repair), nil
+}
+
+func (s *RepairService) List(page, limit int, status string) (*ListRepairsResponse, error) {
+    if page < 1 {
+        page = 1
+    }
+    if limit < 1 || limit > 100 {
+        limit = 10
+    }
+
+    repairs, total, err := s.repo.FindAll(page, limit, status)
+    if err != nil {
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list repairs", 500)
+    }
+
+    dtos := make([]RepairDTO, len(repairs))
+    for i, repair := range repairs {
+        dtos[i] = *s.mapToDTO(&repair)
+    }
+
+    lastPage := int(total) / limit
+    if int(total)%limit != 0 {
+        lastPage++
+    }
+
+    return &ListRepairsResponse{
+        Repairs:  dtos,
+        Total:    total,
+        Page:     page,
+        Limit:    limit,
+        LastPage: lastPage,
+    }, nil
+}
+
+func (s *RepairService) Update(id uint, req *UpdateRepairRequest) (*RepairDTO, error) {
+    repair, err := s.repo.FindByID(id)
+    if err != nil {
+        if err == gorm.ErrRecordNotFound {
+            return nil, ErrRepairNotFound
+        }
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find repair", 500)
+    }
+
+    // Prevent updates if completed or cancelled
+    if repair.Status == StatusCompleted || repair.Status == StatusCancelled {
+        return nil, ErrCannotUpdate
+    }
+
+    if req.TechnicianID != nil {
+        repair.TechnicianID = req.TechnicianID
+    }
+
+    if req.Status != "" {
+        // Validate status transition
+        if !s.isValidTransition(repair.Status, req.Status) {
+            return nil, ErrInvalidStatus
+        }
+        repair.Status = req.Status
+
+        // Set timestamps based on status
+        now := time.Now()
+        if req.Status == StatusInProgress && repair.StartedAt == nil {
+            repair.StartedAt = &now
+        } else if req.Status == StatusCompleted {
+            repair.CompletedAt = &now
+        }
+    }
+
+    if req.Description != "" {
+        repair.Description = req.Description
+    }
+
+    if err := s.repo.Update(repair); err != nil {
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update repair", 500)
+    }
+
+    return s.mapToDTO(repair), nil
+}
+
+func (s *RepairService) Delete(id uint) error {
+    if err := s.repo.Delete(id); err != nil {
+        if err == gorm.ErrRecordNotFound {
+            return ErrRepairNotFound
+        }
+        return errors.NewAppError(errors.ErrInternalServer, "Failed to delete repair", 500)
+    }
+    return nil
+}
+
+func (s *RepairService) isValidTransition(current, new string) bool {
+    // Define valid transitions
+    validTransitions := map[string][]string{
+        StatusPending:    {StatusInProgress, StatusCancelled},
+        StatusInProgress: {StatusCompleted, StatusCancelled},
+        StatusCompleted:  {},
+        StatusCancelled:  {},
+    }
+
+    allowed, ok := validTransitions[current]
+    if !ok {
+        return false
+    }
+
+    for _, status := range allowed {
+        if status == new {
+            return true
+        }
+    }
+    return false
+}
+
+func (s *RepairService) mapToDTO(repair *Repair) *RepairDTO {
+    dto := &RepairDTO{
+        ID:          repair.ID,
+        GuaranteeID: repair.GuaranteeID,
+        TechnicianID: repair.TechnicianID,
+        Status:      repair.Status,
+        Description: repair.Description,
+        CreatedAt:   repair.CreatedAt.Format(time.RFC3339),
+        UpdatedAt:   repair.UpdatedAt.Format(time.RFC3339),
+    }
+
+    if repair.StartedAt != nil {
+        started := repair.StartedAt.Format(time.RFC3339)
+        dto.StartedAt = &started
+    }
+    if repair.CompletedAt != nil {
+        completed := repair.CompletedAt.Format(time.RFC3339)
+        dto.CompletedAt = &completed
+    }
+
+    return dto
+}
+
+----------------------------------------
+FILE: validator.go
+Path: \internal\modules\repairs\validator.go
+Size: 1 KB
+----------------------------------------
+Lines: 39
+
+package repairs
+
+import (
+    "guarantee-management-system/internal/shared/errors"
+    "guarantee-management-system/internal/shared/validator"
+    "github.com/gin-gonic/gin"
+)
+
+type RepairValidator struct{}
+
+func NewRepairValidator() *RepairValidator {
+    return &RepairValidator{}
+}
+
+func (v *RepairValidator) ValidateCreateRequest(c *gin.Context) (*CreateRepairRequest, error) {
+    var req CreateRepairRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+    }
+
+    if err := validator.ValidateStruct(&req); err != nil {
+        return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+    }
+
+    return &req, nil
+}
+
+func (v *RepairValidator) ValidateUpdateRequest(c *gin.Context) (*UpdateRepairRequest, error) {
+    var req UpdateRepairRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+    }
+
+    if err := validator.ValidateStruct(&req); err != nil {
+        return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+    }
+
+    return &req, nil
+}
+
+============================================
+DIRECTORY: \internal\modules\technicians
+============================================
+
+----------------------------------------
+FILE: dto.go
+Path: \internal\modules\technicians\dto.go
+Size: 2 KB
+----------------------------------------
+Lines: 39
+
+package technicians
+
+type TechnicianDTO struct {
+    ID         uint   `json:"id"`
+    FullName   string `json:"full_name"`
+    Username   string `json:"username"`
+    Phone      string `json:"phone"`
+    NationalID string `json:"national_id"`
+    Address    string `json:"address"`
+    IsActive   bool   `json:"is_active"`
+    CreatedAt  string `json:"created_at"`
+    UpdatedAt  string `json:"updated_at"`
+}
+
+type CreateTechnicianRequest struct {
+    FullName   string `json:"full_name" binding:"required,min=2,max=100"`
+    Username   string `json:"username" binding:"required,min=3,max=50"`
+    Password   string `json:"password" binding:"required,min=6"`
+    Phone      string `json:"phone" binding:"omitempty,min=10,max=20"`
+    NationalID string `json:"national_id" binding:"omitempty,min=6,max=20"`
+    Address    string `json:"address"`
+    IsActive   *bool  `json:"is_active"`
+}
+
+type UpdateTechnicianRequest struct {
+    FullName   string `json:"full_name" binding:"omitempty,min=2,max=100"`
+    Phone      string `json:"phone" binding:"omitempty,min=10,max=20"`
+    NationalID string `json:"national_id" binding:"omitempty,min=6,max=20"`
+    Address    string `json:"address"`
+    IsActive   *bool  `json:"is_active"`
+}
+
+type ListTechniciansResponse struct {
+    Technicians []TechnicianDTO `json:"technicians"`
+    Total       int64           `json:"total"`
+    Page        int             `json:"page"`
+    Limit       int             `json:"limit"`
+    LastPage    int             `json:"last_page"`
+}
+
+----------------------------------------
+FILE: handler.go
+Path: \internal\modules\technicians\handler.go
+Size: 3 KB
+----------------------------------------
+Lines: 117
+
+package technicians
+
+import (
+    "net/http"
+    "strconv"
+    "guarantee-management-system/internal/shared/errors"
+    "guarantee-management-system/internal/shared/responses"
+    "github.com/gin-gonic/gin"
+)
+
+type TechnicianHandler struct {
+    service   *TechnicianService
+    validator *TechnicianValidator
+}
+
+func NewTechnicianHandler(service *TechnicianService, validator *TechnicianValidator) *TechnicianHandler {
+    return &TechnicianHandler{
+        service:   service,
+        validator: validator,
+    }
+}
+
+func (h *TechnicianHandler) Create(c *gin.Context) {
+    req, err := h.validator.ValidateCreateRequest(c)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    tech, err := h.service.Create(req)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.SuccessWithMessage(c, "Technician created successfully", tech)
+}
+
+func (h *TechnicianHandler) Get(c *gin.Context) {
+    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+    if err != nil {
+        responses.Error(c, http.StatusBadRequest, "Invalid technician ID")
+        return
+    }
+
+    tech, err := h.service.GetByID(uint(id))
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.Success(c, tech)
+}
+
+func (h *TechnicianHandler) List(c *gin.Context) {
+    page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+    limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+    search := c.DefaultQuery("search", "")
+
+    result, err := h.service.List(page, limit, search)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.SuccessWithMeta(c, result.Technicians, responses.PaginationMeta{
+        CurrentPage: result.Page,
+        PerPage:     result.Limit,
+        Total:       result.Total,
+        LastPage:    result.LastPage,
+    })
+}
+
+func (h *TechnicianHandler) Update(c *gin.Context) {
+    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+    if err != nil {
+        responses.Error(c, http.StatusBadRequest, "Invalid technician ID")
+        return
+    }
+
+    req, err := h.validator.ValidateUpdateRequest(c)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    tech, err := h.service.Update(uint(id), req)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.SuccessWithMessage(c, "Technician updated successfully", tech)
+}
+
+func (h *TechnicianHandler) Delete(c *gin.Context) {
+    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+    if err != nil {
+        responses.Error(c, http.StatusBadRequest, "Invalid technician ID")
+        return
+    }
+
+    if err := h.service.Delete(uint(id)); err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.SuccessWithMessage(c, "Technician deleted successfully", nil)
+}
+
+func handleError(c *gin.Context, err error) {
+    if appErr, ok := err.(*errors.AppError); ok {
+        responses.Error(c, appErr.Code, appErr.Message)
+        return
+    }
+    responses.InternalError(c, err)
+}
+
+----------------------------------------
+FILE: model.go
+Path: \internal\modules\technicians\model.go
+Size: 1 KB
+----------------------------------------
+Lines: 24
+
+package technicians
+
+import (
+    "time"
+    "gorm.io/gorm"
+)
+
+type Technician struct {
+    ID         uint           `gorm:"primaryKey" json:"id"`
+    FullName   string         `gorm:"size:100;not null" json:"full_name"`
+    Username   string         `gorm:"uniqueIndex;size:50;not null" json:"username"`
+    Password   string         `gorm:"size:255;not null" json:"-"`
+    Phone      string         `gorm:"size:20" json:"phone"`
+    NationalID string         `gorm:"size:20;index" json:"national_id"`
+    Address    string         `gorm:"type:text" json:"address"`
+    IsActive   bool           `gorm:"default:true" json:"is_active"`
+    CreatedAt  time.Time      `json:"created_at"`
+    UpdatedAt  time.Time      `json:"updated_at"`
+    DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (Technician) TableName() string {
+    return "technicians"
+}
+
+----------------------------------------
+FILE: repository.go
+Path: \internal\modules\technicians\repository.go
+Size: 2 KB
+----------------------------------------
+Lines: 64
+
+package technicians
+
+import "gorm.io/gorm"
+
+type TechnicianRepository struct {
+    db *gorm.DB
+}
+
+func NewTechnicianRepository(db *gorm.DB) *TechnicianRepository {
+    return &TechnicianRepository{db: db}
+}
+
+func (r *TechnicianRepository) Create(tech *Technician) error {
+    return r.db.Create(tech).Error
+}
+
+func (r *TechnicianRepository) FindByID(id uint) (*Technician, error) {
+    var tech Technician
+    err := r.db.First(&tech, id).Error
+    if err != nil {
+        return nil, err
+    }
+    return &tech, nil
+}
+
+func (r *TechnicianRepository) FindByUsername(username string) (*Technician, error) {
+    var tech Technician
+    err := r.db.Where("username = ?", username).First(&tech).Error
+    if err != nil {
+        if err == gorm.ErrRecordNotFound {
+            return nil, nil
+        }
+        return nil, err
+    }
+    return &tech, nil
+}
+
+func (r *TechnicianRepository) FindAll(page, limit int, search string) ([]Technician, int64, error) {
+    var technicians []Technician
+    var total int64
+
+    query := r.db.Model(&Technician{})
+
+    if search != "" {
+        query = query.Where("full_name ILIKE ? OR username ILIKE ? OR phone ILIKE ?",
+            "%"+search+"%", "%"+search+"%", "%"+search+"%")
+    }
+
+    if err := query.Count(&total).Error; err != nil {
+        return nil, 0, err
+    }
+
+    offset := (page - 1) * limit
+    err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&technicians).Error
+    return technicians, total, err
+}
+
+func (r *TechnicianRepository) Update(tech *Technician) error {
+    return r.db.Save(tech).Error
+}
+
+func (r *TechnicianRepository) Delete(id uint) error {
+    return r.db.Delete(&Technician{}, id).Error
+}
+
+----------------------------------------
+FILE: routes.go
+Path: \internal\modules\technicians\routes.go
+Size: 1 KB
+----------------------------------------
+Lines: 32
+
+package technicians
+
+import (
+    "guarantee-management-system/internal/middleware"
+    "github.com/gin-gonic/gin"
+    "gorm.io/gorm"
+)
+
+type TechnicianModule struct {
+    handler *TechnicianHandler
+}
+
+func NewTechnicianModule(db *gorm.DB) *TechnicianModule {
+    repo := NewTechnicianRepository(db)
+    service := NewTechnicianService(repo)
+    validator := NewTechnicianValidator()
+    handler := NewTechnicianHandler(service, validator)
+
+    return &TechnicianModule{handler: handler}
+}
+
+func (m *TechnicianModule) RegisterRoutes(router *gin.RouterGroup) {
+    technicians := router.Group("/technicians")
+    technicians.Use(middleware.AuthMiddleware())
+    {
+        technicians.POST("", m.handler.Create)
+        technicians.GET("", m.handler.List)
+        technicians.GET("/:id", m.handler.Get)
+        technicians.PUT("/:id", m.handler.Update)
+        technicians.DELETE("/:id", m.handler.Delete)
+    }
+}
+
+----------------------------------------
+FILE: service.go
+Path: \internal\modules\technicians\service.go
+Size: 5 KB
+----------------------------------------
+Lines: 151
+
+package technicians
+
+import (
+    "time"
+    "guarantee-management-system/internal/shared/errors"
+    "golang.org/x/crypto/bcrypt"
+    "gorm.io/gorm"
+)
+
+type TechnicianService struct {
+    repo *TechnicianRepository
+}
+
+func NewTechnicianService(repo *TechnicianRepository) *TechnicianService {
+    return &TechnicianService{repo: repo}
+}
+
+func (s *TechnicianService) Create(req *CreateTechnicianRequest) (*TechnicianDTO, error) {
+    existing, err := s.repo.FindByUsername(req.Username)
+    if err != nil {
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check existing technician", 500)
+    }
+    if existing != nil {
+        return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Username already exists", 409)
+    }
+
+    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+    if err != nil {
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to hash password", 500)
+    }
+
+    isActive := true
+    if req.IsActive != nil {
+        isActive = *req.IsActive
+    }
+
+    tech := &Technician{
+        FullName:   req.FullName,
+        Username:   req.Username,
+        Password:   string(hashedPassword),
+        Phone:      req.Phone,
+        NationalID: req.NationalID,
+        Address:    req.Address,
+        IsActive:   isActive,
+    }
+
+    if err := s.repo.Create(tech); err != nil {
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create technician", 500)
+    }
+
+    return s.mapToDTO(tech), nil
+}
+
+func (s *TechnicianService) GetByID(id uint) (*TechnicianDTO, error) {
+    tech, err := s.repo.FindByID(id)
+    if err != nil {
+        if err == gorm.ErrRecordNotFound {
+            return nil, errors.NewAppError(errors.ErrNotFound, "Technician not found", 404)
+        }
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find technician", 500)
+    }
+    return s.mapToDTO(tech), nil
+}
+
+func (s *TechnicianService) List(page, limit int, search string) (*ListTechniciansResponse, error) {
+    if page < 1 {
+        page = 1
+    }
+    if limit < 1 || limit > 100 {
+        limit = 10
+    }
+
+    technicians, total, err := s.repo.FindAll(page, limit, search)
+    if err != nil {
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list technicians", 500)
+    }
+
+    dtos := make([]TechnicianDTO, len(technicians))
+    for i, tech := range technicians {
+        dtos[i] = *s.mapToDTO(&tech)
+    }
+
+    lastPage := int(total) / limit
+    if int(total)%limit != 0 {
+        lastPage++
+    }
+
+    return &ListTechniciansResponse{
+        Technicians: dtos,
+        Total:       total,
+        Page:        page,
+        Limit:       limit,
+        LastPage:    lastPage,
+    }, nil
+}
+
+func (s *TechnicianService) Update(id uint, req *UpdateTechnicianRequest) (*TechnicianDTO, error) {
+    tech, err := s.repo.FindByID(id)
+    if err != nil {
+        if err == gorm.ErrRecordNotFound {
+            return nil, errors.NewAppError(errors.ErrNotFound, "Technician not found", 404)
+        }
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find technician", 500)
+    }
+
+    if req.FullName != "" {
+        tech.FullName = req.FullName
+    }
+    if req.Phone != "" {
+        tech.Phone = req.Phone
+    }
+    if req.NationalID != "" {
+        tech.NationalID = req.NationalID
+    }
+    if req.Address != "" {
+        tech.Address = req.Address
+    }
+    if req.IsActive != nil {
+        tech.IsActive = *req.IsActive
+    }
+
+    if err := s.repo.Update(tech); err != nil {
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update technician", 500)
+    }
+
+    return s.mapToDTO(tech), nil
+}
+
+func (s *TechnicianService) Delete(id uint) error {
+    if err := s.repo.Delete(id); err != nil {
+        if err == gorm.ErrRecordNotFound {
+            return errors.NewAppError(errors.ErrNotFound, "Technician not found", 404)
+        }
+        return errors.NewAppError(errors.ErrInternalServer, "Failed to delete technician", 500)
+    }
+    return nil
+}
+
+func (s *TechnicianService) mapToDTO(tech *Technician) *TechnicianDTO {
+    return &TechnicianDTO{
+        ID:         tech.ID,
+        FullName:   tech.FullName,
+        Username:   tech.Username,
+        Phone:      tech.Phone,
+        NationalID: tech.NationalID,
+        Address:    tech.Address,
+        IsActive:   tech.IsActive,
+        CreatedAt:  tech.CreatedAt.Format(time.RFC3339),
+        UpdatedAt:  tech.UpdatedAt.Format(time.RFC3339),
+    }
+}
+
+----------------------------------------
+FILE: validator.go
+Path: \internal\modules\technicians\validator.go
+Size: 1 KB
+----------------------------------------
+Lines: 39
+
+package technicians
+
+import (
+    "guarantee-management-system/internal/shared/errors"
+    "guarantee-management-system/internal/shared/validator"
+    "github.com/gin-gonic/gin"
+)
+
+type TechnicianValidator struct{}
+
+func NewTechnicianValidator() *TechnicianValidator {
+    return &TechnicianValidator{}
+}
+
+func (v *TechnicianValidator) ValidateCreateRequest(c *gin.Context) (*CreateTechnicianRequest, error) {
+    var req CreateTechnicianRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+    }
+
+    if err := validator.ValidateStruct(&req); err != nil {
+        return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+    }
+
+    return &req, nil
+}
+
+func (v *TechnicianValidator) ValidateUpdateRequest(c *gin.Context) (*UpdateTechnicianRequest, error) {
+    var req UpdateTechnicianRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+    }
+
+    if err := validator.ValidateStruct(&req); err != nil {
+        return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+    }
+
+    return &req, nil
 }
 
 ============================================
@@ -4802,7 +8501,7 @@ Lines: 3
 File Types:
   (no extension) : 2 files
   .example : 1 files
-  .go : 33 files
+  .go : 72 files
   .mod : 1 files
   .ps1 : 3 files
   .sql : 12 files
@@ -4810,7 +8509,7 @@ File Types:
 
 Languages:
   Docker : 1 files
-  Go : 33 files
+  Go : 72 files
   Make : 1 files
   Other : 3 files
   PowerShell : 3 files

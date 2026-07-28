@@ -51,6 +51,15 @@ guarantee-management-system/
 │   │   │   ├── dashboard/
 │   │   │   │   ├── handler.go
 │   │   │   │   └── routes.go
+│   │   │   ├── guarantees/
+│   │   │   │   ├── dto.go
+│   │   │   │   ├── errors.go
+│   │   │   │   ├── handler.go
+│   │   │   │   ├── model.go
+│   │   │   │   ├── repository.go
+│   │   │   │   ├── routes.go
+│   │   │   │   ├── service.go
+│   │   │   │   └── validator.go
 │   │   │   └── products/
 │   │   │       ├── dto.go
 │   │   │       ├── errors.go
@@ -88,6 +97,8 @@ guarantee-management-system/
 │   │   └── 20260721085726_create_products_table.up.sql
 │   ├── uploads/
 │   │   ├── guarantee_cards/
+│   │   ├── guarantees/
+│   │   │   └── 1785133728690378600_8173baea.png
 │   │   ├── invoices/
 │   │   ├── repair_images/
 │   │   └── reports/
@@ -174,6 +185,26 @@ guarantee-management-system/
 │   │   │   │   │   └── CustomersPage.tsx
 │   │   │   │   ├── schemas/
 │   │   │   │   │   └── customerSchema.ts
+│   │   │   │   └── types/
+│   │   │   │       └── index.ts
+│   │   │   ├── guarantees/
+│   │   │   │   ├── api/
+│   │   │   │   │   ├── guarantees.ts
+│   │   │   │   │   └── publicGuarantee.ts
+│   │   │   │   ├── components/
+│   │   │   │   │   ├── ApproveDialog.tsx
+│   │   │   │   │   ├── GuaranteeDeleteDialog.tsx
+│   │   │   │   │   ├── GuaranteeForm.tsx
+│   │   │   │   │   ├── GuaranteeStatusBadge.tsx
+│   │   │   │   │   ├── GuaranteeTable.tsx
+│   │   │   │   │   ├── GuaranteeViewDialog.tsx
+│   │   │   │   │   └── RenewDialog.tsx
+│   │   │   │   ├── pages/
+│   │   │   │   │   ├── CheckGuaranteePage.tsx
+│   │   │   │   │   ├── GuaranteesPage.tsx
+│   │   │   │   │   └── PublicRegisterPage.tsx
+│   │   │   │   ├── schemas/
+│   │   │   │   │   └── guaranteeSchema.ts
 │   │   │   │   └── types/
 │   │   │   │       └── index.ts
 │   │   │   └── products/

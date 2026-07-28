@@ -9,6 +9,7 @@ import {
 import { MoreHorizontal, Edit, Trash2 } from 'lucide-react'
 import { Product } from '../types'
 import { format } from 'date-fns'
+import { FormattedDate } from '@/components/common/FormattedDate'
 
 interface ProductTableProps {
   products: Product[]
@@ -56,7 +57,7 @@ export function ProductTable({ products, onEdit, onDelete, isLoading }: ProductT
                   {product.is_active ? 'Active' : 'Inactive'}
                 </Badge>
               </TableCell>
-              <TableCell>{format(new Date(product.created_at), 'MMM d, yyyy')}</TableCell>
+              <TableCell><FormattedDate date={product.created_at} format="MMM DD, YYYY" /></TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>

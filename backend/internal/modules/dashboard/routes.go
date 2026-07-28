@@ -4,14 +4,15 @@ import (
 	"guarantee-management-system/internal/middleware"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type DashboardModule struct {
 	handler *DashboardHandler
 }
 
-func NewDashboardModule() *DashboardModule {
-	handler := NewDashboardHandler()
+func NewDashboardModule(db *gorm.DB) *DashboardModule {
+	handler := NewDashboardHandler(db)
 	return &DashboardModule{
 		handler: handler,
 	}

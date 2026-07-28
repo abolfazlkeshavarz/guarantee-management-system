@@ -13,6 +13,7 @@ import { ProductDeleteDialog } from '../components/ProductDeleteDialog'
 import { productService } from '../api/products'
 import { Product } from '../types'
 import { categoryService } from '@/features/categories/api/categories'
+import { queryClient, invalidateDashboard } from '@/lib/query-client'
 
 export function ProductsPage() {
   const queryClient = useQueryClient()
@@ -47,6 +48,7 @@ export function ProductsPage() {
     mutationFn: productService.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      invalidateDashboard()
       toast.success('Product created successfully')
       setIsFormOpen(false)
     },
@@ -57,6 +59,7 @@ export function ProductsPage() {
     mutationFn: ({ id, data }: { id: number; data: any }) => productService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      invalidateDashboard()
       toast.success('Product updated successfully')
       setIsFormOpen(false)
       setSelectedProduct(null)
@@ -68,6 +71,7 @@ export function ProductsPage() {
     mutationFn: productService.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      invalidateDashboard()
       toast.success('Product deleted successfully')
       setIsDeleteOpen(false)
       setSelectedProduct(null)

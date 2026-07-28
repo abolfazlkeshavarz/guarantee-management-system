@@ -32,6 +32,7 @@ import { guaranteeSchema, GuaranteeFormValues } from '../schemas/guaranteeSchema
 import { Guarantee } from '../types'
 import { customerService } from '@/features/customers/api/customers'
 import { productService } from '@/features/products/api/products'
+import { DatePicker } from '@/components/ui/date-picker'
 
 interface GuaranteeFormProps {
   open: boolean
@@ -201,7 +202,11 @@ export function GuaranteeForm({
                   <FormItem>
                     <FormLabel>Purchase Date *</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} disabled={isDisabled} />
+                      <DatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={isDisabled}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -214,7 +219,11 @@ export function GuaranteeForm({
                   <FormItem>
                     <FormLabel>Expiry Date *</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} disabled={isDisabled} />
+                      <DatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={isDisabled}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

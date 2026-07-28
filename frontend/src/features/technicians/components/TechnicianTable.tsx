@@ -1,0 +1,115 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Edit, Trash2, Power } from 'lucide-react'
+import { Technician } from '../types'
+import { format } from 'date-fns'
+import { FormattedDate } from '@/components/common/FormattedDate'
+
+interface TechnicianTableProps {
+  technicians: Technician[]
+  onEdit: (technician: Technician) => void
+  onToggleStatus: (technician: Technician) => void
+  onDelete: (technician: Technician) => void
+  isLoading?: boolean
+}
+
+export function TechnicianTable({
+  technicians,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  isLoading,
+}: TechnicianTableProps) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    )
+  }
+
+  if (technicians.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        No technicians found
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>ID</TableHead>
+            <TableHead>Full Name</TableHead>
+            <TableHead>Username</TableHead>
+            <TableHead>Phone</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {technicians.map((tech) => (
+            <TableRow key={tech.id}>
+              <TableCell className="font-medium">#{tech.id}</TableCell>
+              <TableCell>{tech.full_name}</TableCell>
+              <TableCell>{tech.username}</TableCell>
+              <TableCell>{tech.phone || '-'}</TableCell>
+              <TableCell>
+                <Badge variant={tech.is_active ? 'default' : 'secondary'}>
+                  {tech.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {format(new Date(tech.created_at), 'MMM d, yyyy')}
+              </TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={<Button variant="ghost" className="h-8 w-8 p-0" />}
+                  >
+                    <span className="sr-only">Open menu</span>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onEdit(tech)}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onToggleStatus(tech)}>
+                      <Power className="mr-2 h-4 w-4" />
+                      {tech.is_active ? 'Deactivate' : 'Activate'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onDelete(tech)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
