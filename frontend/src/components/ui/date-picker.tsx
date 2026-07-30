@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
+import { JalaliCalendar } from "@/components/ui/jalali-calendar"
 import { CalendarIcon, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -20,6 +21,24 @@ interface DatePickerProps {
   disabled?: boolean
   className?: string
   required?: boolean
+}
+
+// The `value` prop always comes from the backend as a plain Gregorian
+// YYYY-MM-DD string, regardless of the active calendar display mode.
+// This must NEVER be interpreted as Jalali, unlike user-typed input.
+function parseBackendDate(value: string): Date | null {
+  if (!value) return null
+  const parts = value.split('-')
+  if (parts.length === 3) {
+    const y = Number(parts[0])
+    const m = Number(parts[1])
+    const d = Number(parts[2])
+    if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d)) {
+      return new Date(Date.UTC(y, m - 1, d))
+    }
+  }
+  const date = new Date(value)
+  return isNaN(date.getTime()) ? null : date
 }
 
 export function DatePicker({ 
@@ -41,10 +60,11 @@ export function DatePicker({
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(undefined)
   const [inputValue, setInputValue] = React.useState('')
 
-  // Update when value prop changes
+  // Update when the backend value changes, or when the display calendar
+  // is toggled (so the field re-formats without changing the underlying date)
   React.useEffect(() => {
     if (value) {
-      const date = typeof value === 'string' ? parseDate(value) : value
+      const date = parseBackendDate(value)
       if (date && !isNaN(date.getTime())) {
         setSelectedDate(date)
         setInputValue(formatDate(date, 'YYYY-MM-DD'))
@@ -53,7 +73,8 @@ export function DatePicker({
       setSelectedDate(undefined)
       setInputValue('')
     }
-  }, [value, calendarType, formatDate, parseDate])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, calendarType])
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
@@ -71,7 +92,9 @@ export function DatePicker({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
     setInputValue(val)
-    
+
+    // Here, unlike the backend value, the user is typing in whatever
+    // calendar is currently active — so calendar-aware parsing is correct.
     const parsed = parseDate(val)
     if (parsed) {
       setSelectedDate(parsed)
@@ -84,9 +107,6 @@ export function DatePicker({
     setInputValue('')
     onChange?.('')
   }
-
-  // Format the display date for the button
-  const displayDate = selectedDate ? formatDate(selectedDate, 'YYYY-MM-DD') : 'Select date'
 
   return (
     <div className={cn("relative", className)}>
@@ -115,14 +135,23 @@ export function DatePicker({
               }
             />
             <PopoverContent className="w-auto overflow-hidden p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                defaultMonth={selectedDate}
-                captionLayout="dropdown"
-                onSelect={handleDateSelect}
-                disabled={disabled}
-              />
+              {calendarType === 'jalali' ? (
+                <JalaliCalendar
+                  selected={selectedDate}
+                  defaultMonth={selectedDate}
+                  onSelect={handleDateSelect}
+                  disabled={disabled}
+                />
+              ) : (
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  defaultMonth={selectedDate}
+                  captionLayout="dropdown"
+                  onSelect={handleDateSelect}
+                  disabled={disabled}
+                />
+              )}
               <div className="border-t p-2 text-xs text-center text-muted-foreground">
                 {calendarType === 'gregorian' ? 'Gregorian Calendar' : 'Jalali (Persian) Calendar'}
               </div>
