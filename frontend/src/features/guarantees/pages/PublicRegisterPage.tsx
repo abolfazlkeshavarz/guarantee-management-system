@@ -33,6 +33,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Upload, X, FileText, Image } from 'lucide-react'
+import { DatePicker } from '@/components/ui/date-picker'
 
 const publicRegisterSchema = z.object({
   // Customer
@@ -447,10 +448,15 @@ export function PublicRegisterPage() {
                       control={form.control}
                       name="purchase_date"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex flex-col">
                           <FormLabel>Purchase Date *</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <DatePicker
+                              value={field.value}
+                              onChange={field.onChange}
+                              placeholder="Select purchase date"
+                              className="w-full"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
