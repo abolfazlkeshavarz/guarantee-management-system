@@ -2,10 +2,10 @@
   GUARANTEE MANAGEMENT SYSTEM - CODE SUMMARY
 ============================================
 
-Generated: 2026-07-29 09:12:34
+Generated: 2026-08-01 06:48:23
 Project Root: D:\Abolfazl Keshavarz\guarantee-management-system
-Total Files: 206
-Total Directories: 67
+Total Files: 217
+Total Directories: 72
 
 ============================================
   FILE CONTENTS
@@ -2391,6 +2391,208 @@ if ($failed -eq 0) {
     exit 1
 }
 
+----------------------------------------
+FILE: test-technician.ps1
+Path: \backend\test-technician.ps1
+Size: 7 KB
+----------------------------------------
+Lines: 194
+
+# test-technician.ps1
+# Test Technician Auth and Dashboard
+
+param(
+    [string]$BaseUrl = "http://localhost:8080",
+    [string]$TechnicianUsername = "abol",
+    [string]$TechnicianPassword = "abolfazl"
+)
+
+$ApiUrl = "$BaseUrl/api/v1"
+$Passed = 0
+$Failed = 0
+
+function Write-Section($title) {
+    Write-Host ""
+    Write-Host "============================================" -ForegroundColor Cyan
+    Write-Host "  $title" -ForegroundColor Cyan
+    Write-Host "============================================" -ForegroundColor Cyan
+}
+
+function Write-Pass($name) {
+    Write-Host "[PASS] $name" -ForegroundColor Green
+    $script:Passed++
+}
+
+function Write-Fail($name, $errorMsg) {
+    Write-Host "[FAIL] $name" -ForegroundColor Red
+    Write-Host "       $errorMsg" -ForegroundColor Gray
+    $script:Failed++
+}
+
+function Invoke-Api {
+    param(
+        [string]$Method,
+        [string]$Path,
+        [hashtable]$Headers = @{},
+        [object]$Body = $null
+    )
+    $uri = "$ApiUrl$Path"
+    $params = @{
+        Uri = $uri
+        Method = $Method
+        Headers = $Headers
+        ErrorAction = 'Stop'
+    }
+    if ($Body) {
+        $params["Body"] = ($Body | ConvertTo-Json -Depth 10)
+        $params["ContentType"] = "application/json"
+    }
+    return Invoke-RestMethod @params
+}
+
+# ============================================
+# 1. Technician Login
+# ============================================
+Write-Section "1. Technician Login"
+
+try {
+    $loginResp = Invoke-Api -Method Post -Path "/technician/login" -Body @{
+        username = $TechnicianUsername
+        password = $TechnicianPassword
+    }
+    $Token = $loginResp.data.token
+    $Technician = $loginResp.data.technician
+    
+    if ($Token) {
+        Write-Pass "Technician login successful"
+        Write-Host "  Technician: $($Technician.full_name) ($($Technician.username))" -ForegroundColor Gray
+    } else {
+        Write-Fail "Technician login" "No token received"
+        exit 1
+    }
+} catch {
+    Write-Fail "Technician login" $_.Exception.Message
+    exit 1
+}
+
+$authHeaders = @{ Authorization = "Bearer $Token" }
+
+# ============================================
+# 2. Get Technician Profile
+# ============================================
+Write-Section "2. Technician Profile"
+
+try {
+    $profile = Invoke-Api -Method Get -Path "/technician/profile" -Headers $authHeaders
+    if ($profile.data.id -eq $Technician.id) {
+        Write-Pass "Get technician profile"
+        Write-Host "  Full Name: $($profile.data.full_name)" -ForegroundColor Gray
+        Write-Host "  Username: $($profile.data.username)" -ForegroundColor Gray
+        Write-Host "  Active: $($profile.data.is_active)" -ForegroundColor Gray
+    } else {
+        Write-Fail "Get technician profile" "ID mismatch"
+    }
+} catch {
+    Write-Fail "Get technician profile" $_.Exception.Message
+}
+
+# ============================================
+# 3. Get Technician's Repairs
+# ============================================
+Write-Section "3. Technician Repairs"
+
+try {
+    $repairs = Invoke-Api -Method Get -Path "/technician/repairs" -Headers $authHeaders
+    $total = $repairs.meta.total
+    Write-Pass "Get technician repairs"
+    Write-Host "  Total repairs: $total" -ForegroundColor Gray
+    
+    # Show status breakdown
+    $statusGroups = $repairs.data | Group-Object status
+    foreach ($group in $statusGroups) {
+        Write-Host "  $($group.Name): $($group.Count)" -ForegroundColor Gray
+    }
+} catch {
+    Write-Fail "Get technician repairs" $_.Exception.Message
+}
+
+# ============================================
+# 4. Update Repair Status
+# ============================================
+Write-Section "4. Update Repair Status"
+
+# Get first repair that can be updated
+try {
+    $repairs = Invoke-Api -Method Get -Path "/technician/repairs" -Headers $authHeaders
+    $repair = $repairs.data | Where-Object { $_.status -ne "Completed" -and $_.status -ne "Cancelled" } | Select-Object -First 1
+    
+    if ($repair) {
+        # Try to update to InProgress
+        try {
+            $update = Invoke-Api -Method Put -Path "/technician/repairs/$($repair.id)" -Headers $authHeaders -Body @{
+                status = "InProgress"
+            }
+            Write-Pass "Update repair to InProgress"
+            Write-Host "  Repair #$($repair.id): $($repair.status) -> InProgress" -ForegroundColor Gray
+            
+            # Update to Completed
+            try {
+                $update = Invoke-Api -Method Put -Path "/technician/repairs/$($repair.id)" -Headers $authHeaders -Body @{
+                    status = "Completed"
+                }
+                Write-Pass "Update repair to Completed"
+                Write-Host "  Repair #$($repair.id): InProgress -> Completed" -ForegroundColor Gray
+            } catch {
+                Write-Fail "Update repair to Completed" $_.Exception.Message
+            }
+        } catch {
+            Write-Fail "Update repair to InProgress" $_.Exception.Message
+        }
+    } else {
+        Write-Host "[INFO] No updatable repairs found" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Fail "Get repairs for update" $_.Exception.Message
+}
+
+# ============================================
+# 5. Test Security (Technician Can't Access Admin Routes)
+# ============================================
+Write-Section "5. Security Tests"
+
+try {
+    Invoke-Api -Method Get -Path "/technicians" -Headers $authHeaders | Out-Null
+    Write-Fail "Technician accessing admin route" "Should have been forbidden"
+} catch {
+    if ($_.Exception.Response.StatusCode -eq 403) {
+        Write-Pass "Technician blocked from admin routes (403 Forbidden)"
+    } else {
+        Write-Fail "Security test" "Expected 403, got $($_.Exception.Response.StatusCode)"
+    }
+}
+
+# ============================================
+# Summary
+# ============================================
+Write-Host ""
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  Test Summary" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "  Passed:  $Passed" -ForegroundColor Green
+Write-Host "  Failed:  $Failed" -ForegroundColor Red
+Write-Host "  Total:   $($Passed + $Failed)" -ForegroundColor White
+Write-Host "============================================" -ForegroundColor Cyan
+
+if ($Failed -gt 0) {
+    Write-Host ""
+    Write-Host "Some tests failed. Please review the errors above." -ForegroundColor Red
+    exit 1
+} else {
+    Write-Host ""
+    Write-Host "All technician tests passed!" -ForegroundColor Green
+    exit 0
+}
+
 ============================================
 DIRECTORY: \backend\cmd\admin
 ============================================
@@ -2722,7 +2924,7 @@ FILE: main.go
 Path: \backend\cmd\api\main.go
 Size: 3 KB
 ----------------------------------------
-Lines: 118
+Lines: 120
 
 package main
 
@@ -2795,7 +2997,7 @@ func main() {
 
 		// Initialize dashboard module
 		dashboardModule := dashboard.NewDashboardModule(database.GetDB())
-    	dashboardModule.RegisterRoutes(v1)
+		dashboardModule.RegisterRoutes(v1)
 
 		// Initialize product categories module
 		categoriesModule := categories.NewCategoryModule(database.GetDB())
@@ -2805,17 +3007,19 @@ func main() {
 		productsModule := products.NewProductModule(database.GetDB())
 		productsModule.RegisterRoutes(v1)
 
-		// Initialize guarantees module - MAKE SURE THIS IS HERE
+		// Initialize guarantees module
 		guaranteesModule := guarantees.NewGuaranteeModule(database.GetDB())
 		guaranteesModule.RegisterRoutes(v1)
-		
-		techniciansModule := technicians.NewTechnicianModule(database.GetDB())
-        techniciansModule.RegisterRoutes(v1)
 
+		// Initialize technicians module with config
+		techniciansModule := technicians.NewTechnicianModule(database.GetDB(), cfg)
+		techniciansModule.RegisterRoutes(v1)
+
+		// Initialize repairs module
 		repairsModule := repairs.NewRepairModule(database.GetDB())
-        repairsModule.RegisterRoutes(v1)
+		repairsModule.RegisterRoutes(v1)
 
-		log.Println("âœ… Guarantees module registered successfully")
+		log.Println("âœ… All modules registered successfully")
 	}
 
 	// Log all routes for debugging
@@ -3379,9 +3583,9 @@ DIRECTORY: \backend\internal\middleware
 ----------------------------------------
 FILE: auth.go
 Path: \backend\internal\middleware\auth.go
-Size: 1 KB
+Size: 2 KB
 ----------------------------------------
-Lines: 46
+Lines: 75
 
 package middleware
 
@@ -3421,14 +3625,43 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Set user context
-		c.Set("admin_id", claims.AdminID)
+		// Set user context with role
+		c.Set("role", claims.Role)
 		c.Set("username", claims.Username)
+		
+		if claims.Role == "admin" {
+			c.Set("admin_id", claims.AdminID)
+		} else if claims.Role == "technician" {
+			c.Set("technician_id", claims.TechnicianID)
+		}
 
 		c.Next()
 	}
 }
 
+func TechnicianOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists || role != "technician" {
+			responses.Forbidden(c, "Technician access only")
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+func AdminOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists || role != "admin" {
+			responses.Forbidden(c, "Admin access only")
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
 
 ----------------------------------------
 FILE: cors.go
@@ -7750,126 +7983,180 @@ var (
 ----------------------------------------
 FILE: handler.go
 Path: \backend\internal\modules\repairs\handler.go
-Size: 3 KB
+Size: 4 KB
 ----------------------------------------
-Lines: 117
+Lines: 171
 
 package repairs
 
 import (
-    "net/http"
-    "strconv"
-    "guarantee-management-system/internal/shared/errors"
-    "guarantee-management-system/internal/shared/responses"
-    "github.com/gin-gonic/gin"
+	"net/http"
+	"strconv"
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/responses"
+	"github.com/gin-gonic/gin"
 )
 
 type RepairHandler struct {
-    service   *RepairService
-    validator *RepairValidator
+	service   *RepairService
+	validator *RepairValidator
 }
 
 func NewRepairHandler(service *RepairService, validator *RepairValidator) *RepairHandler {
-    return &RepairHandler{
-        service:   service,
-        validator: validator,
-    }
+	return &RepairHandler{
+		service:   service,
+		validator: validator,
+	}
 }
 
 func (h *RepairHandler) Create(c *gin.Context) {
-    req, err := h.validator.ValidateCreateRequest(c)
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	req, err := h.validator.ValidateCreateRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    repair, err := h.service.Create(req)
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	repair, err := h.service.Create(req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    responses.SuccessWithMessage(c, "Repair created successfully", repair)
+	responses.SuccessWithMessage(c, "Repair created successfully", repair)
 }
 
 func (h *RepairHandler) Get(c *gin.Context) {
-    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-    if err != nil {
-        responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
-        return
-    }
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
+		return
+	}
 
-    repair, err := h.service.GetByID(uint(id))
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	repair, err := h.service.GetByID(uint(id))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    responses.Success(c, repair)
+	responses.Success(c, repair)
 }
 
 func (h *RepairHandler) List(c *gin.Context) {
-    page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-    limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-    status := c.DefaultQuery("status", "")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	status := c.DefaultQuery("status", "")
 
-    result, err := h.service.List(page, limit, status)
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	result, err := h.service.List(page, limit, status)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    responses.SuccessWithMeta(c, result.Repairs, responses.PaginationMeta{
-        CurrentPage: result.Page,
-        PerPage:     result.Limit,
-        Total:       result.Total,
-        LastPage:    result.LastPage,
-    })
+	responses.SuccessWithMeta(c, result.Repairs, responses.PaginationMeta{
+		CurrentPage: result.Page,
+		PerPage:     result.Limit,
+		Total:       result.Total,
+		LastPage:    result.LastPage,
+	})
 }
 
 func (h *RepairHandler) Update(c *gin.Context) {
-    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-    if err != nil {
-        responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
-        return
-    }
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
+		return
+	}
 
-    req, err := h.validator.ValidateUpdateRequest(c)
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	req, err := h.validator.ValidateUpdateRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    repair, err := h.service.Update(uint(id), req)
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	repair, err := h.service.Update(uint(id), req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    responses.SuccessWithMessage(c, "Repair updated successfully", repair)
+	responses.SuccessWithMessage(c, "Repair updated successfully", repair)
 }
 
 func (h *RepairHandler) Delete(c *gin.Context) {
-    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-    if err != nil {
-        responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
-        return
-    }
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
+		return
+	}
 
-    if err := h.service.Delete(uint(id)); err != nil {
-        handleError(c, err)
-        return
-    }
+	if err := h.service.Delete(uint(id)); err != nil {
+		handleError(c, err)
+		return
+	}
 
-    responses.SuccessWithMessage(c, "Repair deleted successfully", nil)
+	responses.SuccessWithMessage(c, "Repair deleted successfully", nil)
+}
+
+// Technician-specific endpoints
+func (h *RepairHandler) MyRepairs(c *gin.Context) {
+	techID, exists := c.Get("technician_id")
+	if !exists {
+		responses.Unauthorized(c, "Unauthorized")
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	status := c.DefaultQuery("status", "")
+
+	result, err := h.service.ListByTechnician(techID.(uint), page, limit, status)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMeta(c, result.Repairs, responses.PaginationMeta{
+		CurrentPage: result.Page,
+		PerPage:     result.Limit,
+		Total:       result.Total,
+		LastPage:    result.LastPage,
+	})
+}
+
+func (h *RepairHandler) UpdateMyRepair(c *gin.Context) {
+	techID, exists := c.Get("technician_id")
+	if !exists {
+		responses.Unauthorized(c, "Unauthorized")
+		return
+	}
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
+		return
+	}
+
+	req, err := h.validator.ValidateUpdateRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	repair, err := h.service.UpdateByTechnician(uint(id), techID.(uint), req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Repair updated successfully", repair)
 }
 
 func handleError(c *gin.Context, err error) {
-    if appErr, ok := err.(*errors.AppError); ok {
-        responses.Error(c, appErr.Code, appErr.Message)
-        return
-    }
-    responses.InternalError(c, err)
+	if appErr, ok := err.(*errors.AppError); ok {
+		responses.Error(c, appErr.Code, appErr.Message)
+		return
+	}
+	responses.InternalError(c, err)
 }
 
 ----------------------------------------
@@ -7913,60 +8200,79 @@ const (
 ----------------------------------------
 FILE: repository.go
 Path: \backend\internal\modules\repairs\repository.go
-Size: 1 KB
+Size: 2 KB
 ----------------------------------------
-Lines: 51
+Lines: 70
 
 package repairs
 
 import "gorm.io/gorm"
 
 type RepairRepository struct {
-    db *gorm.DB
+	db *gorm.DB
 }
 
 func NewRepairRepository(db *gorm.DB) *RepairRepository {
-    return &RepairRepository{db: db}
+	return &RepairRepository{db: db}
 }
 
 func (r *RepairRepository) Create(repair *Repair) error {
-    return r.db.Create(repair).Error
+	return r.db.Create(repair).Error
 }
 
 func (r *RepairRepository) FindByID(id uint) (*Repair, error) {
-    var repair Repair
-    err := r.db.First(&repair, id).Error
-    if err != nil {
-        return nil, err
-    }
-    return &repair, nil
+	var repair Repair
+	err := r.db.First(&repair, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &repair, nil
 }
 
 func (r *RepairRepository) FindAll(page, limit int, status string) ([]Repair, int64, error) {
-    var repairs []Repair
-    var total int64
+	var repairs []Repair
+	var total int64
 
-    query := r.db.Model(&Repair{})
+	query := r.db.Model(&Repair{})
 
-    if status != "" {
-        query = query.Where("status = ?", status)
-    }
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
 
-    if err := query.Count(&total).Error; err != nil {
-        return nil, 0, err
-    }
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 
-    offset := (page - 1) * limit
-    err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&repairs).Error
-    return repairs, total, err
+	offset := (page - 1) * limit
+	err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&repairs).Error
+	return repairs, total, err
+}
+
+func (r *RepairRepository) FindByTechnician(techID uint, page, limit int, status string) ([]Repair, int64, error) {
+	var repairs []Repair
+	var total int64
+
+	query := r.db.Model(&Repair{}).Where("technician_id = ?", techID)
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&repairs).Error
+	return repairs, total, err
 }
 
 func (r *RepairRepository) Update(repair *Repair) error {
-    return r.db.Save(repair).Error
+	return r.db.Save(repair).Error
 }
 
 func (r *RepairRepository) Delete(id uint) error {
-    return r.db.Delete(&Repair{}, id).Error
+	return r.db.Delete(&Repair{}, id).Error
 }
 
 ----------------------------------------
@@ -7974,230 +8280,318 @@ FILE: routes.go
 Path: \backend\internal\modules\repairs\routes.go
 Size: 1 KB
 ----------------------------------------
-Lines: 32
+Lines: 41
 
 package repairs
 
 import (
-    "guarantee-management-system/internal/middleware"
-    "github.com/gin-gonic/gin"
-    "gorm.io/gorm"
+	"guarantee-management-system/internal/middleware"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type RepairModule struct {
-    handler *RepairHandler
+	handler *RepairHandler
 }
 
 func NewRepairModule(db *gorm.DB) *RepairModule {
-    repo := NewRepairRepository(db)
-    service := NewRepairService(repo, db)
-    validator := NewRepairValidator()
-    handler := NewRepairHandler(service, validator)
+	repo := NewRepairRepository(db)
+	service := NewRepairService(repo, db)
+	validator := NewRepairValidator()
+	handler := NewRepairHandler(service, validator)
 
-    return &RepairModule{handler: handler}
+	return &RepairModule{handler: handler}
 }
 
 func (m *RepairModule) RegisterRoutes(router *gin.RouterGroup) {
-    repairs := router.Group("/repairs")
-    repairs.Use(middleware.AuthMiddleware())
-    {
-        repairs.POST("", m.handler.Create)
-        repairs.GET("", m.handler.List)
-        repairs.GET("/:id", m.handler.Get)
-        repairs.PUT("/:id", m.handler.Update)
-        repairs.DELETE("/:id", m.handler.Delete)
-    }
+	// Admin routes
+	repairs := router.Group("/repairs")
+	repairs.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
+	{
+		repairs.POST("", m.handler.Create)
+		repairs.GET("", m.handler.List)
+		repairs.GET("/:id", m.handler.Get)
+		repairs.PUT("/:id", m.handler.Update)
+		repairs.DELETE("/:id", m.handler.Delete)
+	}
+
+	// Technician routes
+	technician := router.Group("/technician")
+	technician.Use(middleware.AuthMiddleware(), middleware.TechnicianOnly())
+	{
+		technician.GET("/repairs", m.handler.MyRepairs)
+		technician.PUT("/repairs/:id", m.handler.UpdateMyRepair)
+	}
 }
 
 ----------------------------------------
 FILE: service.go
 Path: \backend\internal\modules\repairs\service.go
-Size: 5 KB
+Size: 7 KB
 ----------------------------------------
-Lines: 183
+Lines: 262
 
 package repairs
 
 import (
-    "time"
-    "guarantee-management-system/internal/shared/errors"
-    "gorm.io/gorm"
+	"time"
+	"guarantee-management-system/internal/shared/errors"
+	"gorm.io/gorm"
 )
 
 type RepairService struct {
-    repo *RepairRepository
-    db   *gorm.DB
+	repo *RepairRepository
+	db   *gorm.DB
 }
 
 func NewRepairService(repo *RepairRepository, db *gorm.DB) *RepairService {
-    return &RepairService{repo: repo, db: db}
+	return &RepairService{repo: repo, db: db}
 }
 
 func (s *RepairService) Create(req *CreateRepairRequest) (*RepairDTO, error) {
-    // Verify guarantee exists
-    var exists bool
-    if err := s.db.Table("guarantees").Where("id = ? AND deleted_at IS NULL", req.GuaranteeID).Select("count(*) > 0").Find(&exists).Error; err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify guarantee", 500)
-    }
-    if !exists {
-        return nil, errors.NewAppError(errors.ErrNotFound, "Guarantee not found", 404)
-    }
+	// Verify guarantee exists
+	var exists bool
+	if err := s.db.Table("guarantees").Where("id = ? AND deleted_at IS NULL", req.GuaranteeID).Select("count(*) > 0").Find(&exists).Error; err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify guarantee", 500)
+	}
+	if !exists {
+		return nil, errors.NewAppError(errors.ErrNotFound, "Guarantee not found", 404)
+	}
 
-    repair := &Repair{
-        GuaranteeID:  req.GuaranteeID,
-        TechnicianID: req.TechnicianID,
-        Status:       StatusPending,
-        Description:  req.Description,
-    }
+	repair := &Repair{
+		GuaranteeID:  req.GuaranteeID,
+		TechnicianID: req.TechnicianID,
+		Status:       StatusPending,
+		Description:  req.Description,
+	}
 
-    if err := s.repo.Create(repair); err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create repair", 500)
-    }
+	if err := s.repo.Create(repair); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create repair", 500)
+	}
 
-    return s.mapToDTO(repair), nil
+	return s.mapToDTO(repair), nil
 }
 
 func (s *RepairService) GetByID(id uint) (*RepairDTO, error) {
-    repair, err := s.repo.FindByID(id)
-    if err != nil {
-        if err == gorm.ErrRecordNotFound {
-            return nil, ErrRepairNotFound
-        }
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find repair", 500)
-    }
-    return s.mapToDTO(repair), nil
+	repair, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrRepairNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find repair", 500)
+	}
+	return s.mapToDTO(repair), nil
 }
 
 func (s *RepairService) List(page, limit int, status string) (*ListRepairsResponse, error) {
-    if page < 1 {
-        page = 1
-    }
-    if limit < 1 || limit > 100 {
-        limit = 10
-    }
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
 
-    repairs, total, err := s.repo.FindAll(page, limit, status)
-    if err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list repairs", 500)
-    }
+	repairs, total, err := s.repo.FindAll(page, limit, status)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list repairs", 500)
+	}
 
-    dtos := make([]RepairDTO, len(repairs))
-    for i, repair := range repairs {
-        dtos[i] = *s.mapToDTO(&repair)
-    }
+	dtos := make([]RepairDTO, len(repairs))
+	for i, repair := range repairs {
+		dtos[i] = *s.mapToDTO(&repair)
+	}
 
-    lastPage := int(total) / limit
-    if int(total)%limit != 0 {
-        lastPage++
-    }
+	lastPage := int(total) / limit
+	if int(total)%limit != 0 {
+		lastPage++
+	}
 
-    return &ListRepairsResponse{
-        Repairs:  dtos,
-        Total:    total,
-        Page:     page,
-        Limit:    limit,
-        LastPage: lastPage,
-    }, nil
+	return &ListRepairsResponse{
+		Repairs:  dtos,
+		Total:    total,
+		Page:     page,
+		Limit:    limit,
+		LastPage: lastPage,
+	}, nil
+}
+
+func (s *RepairService) ListByTechnician(techID uint, page, limit int, status string) (*ListRepairsResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	repairs, total, err := s.repo.FindByTechnician(techID, page, limit, status)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list repairs for technician", 500)
+	}
+
+	dtos := make([]RepairDTO, len(repairs))
+	for i, repair := range repairs {
+		dtos[i] = *s.mapToDTO(&repair)
+	}
+
+	lastPage := int(total) / limit
+	if int(total)%limit != 0 {
+		lastPage++
+	}
+
+	return &ListRepairsResponse{
+		Repairs:  dtos,
+		Total:    total,
+		Page:     page,
+		Limit:    limit,
+		LastPage: lastPage,
+	}, nil
 }
 
 func (s *RepairService) Update(id uint, req *UpdateRepairRequest) (*RepairDTO, error) {
-    repair, err := s.repo.FindByID(id)
-    if err != nil {
-        if err == gorm.ErrRecordNotFound {
-            return nil, ErrRepairNotFound
-        }
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find repair", 500)
-    }
+	repair, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrRepairNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find repair", 500)
+	}
 
-    // Prevent updates if completed or cancelled
-    if repair.Status == StatusCompleted || repair.Status == StatusCancelled {
-        return nil, ErrCannotUpdate
-    }
+	// Prevent updates if completed or cancelled
+	if repair.Status == StatusCompleted || repair.Status == StatusCancelled {
+		return nil, ErrCannotUpdate
+	}
 
-    if req.TechnicianID != nil {
-        repair.TechnicianID = req.TechnicianID
-    }
+	if req.TechnicianID != nil {
+		repair.TechnicianID = req.TechnicianID
+	}
 
-    if req.Status != "" {
-        // Validate status transition
-        if !s.isValidTransition(repair.Status, req.Status) {
-            return nil, ErrInvalidStatus
-        }
-        repair.Status = req.Status
+	if req.Status != "" {
+		// Validate status transition
+		if !s.isValidTransition(repair.Status, req.Status) {
+			return nil, ErrInvalidStatus
+		}
+		repair.Status = req.Status
 
-        // Set timestamps based on status
-        now := time.Now()
-        if req.Status == StatusInProgress && repair.StartedAt == nil {
-            repair.StartedAt = &now
-        } else if req.Status == StatusCompleted {
-            repair.CompletedAt = &now
-        }
-    }
+		// Set timestamps based on status
+		now := time.Now()
+		if req.Status == StatusInProgress && repair.StartedAt == nil {
+			repair.StartedAt = &now
+		} else if req.Status == StatusCompleted {
+			repair.CompletedAt = &now
+		}
+	}
 
-    if req.Description != "" {
-        repair.Description = req.Description
-    }
+	if req.Description != "" {
+		repair.Description = req.Description
+	}
 
-    if err := s.repo.Update(repair); err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update repair", 500)
-    }
+	if err := s.repo.Update(repair); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update repair", 500)
+	}
 
-    return s.mapToDTO(repair), nil
+	return s.mapToDTO(repair), nil
+}
+
+func (s *RepairService) UpdateByTechnician(repairID uint, techID uint, req *UpdateRepairRequest) (*RepairDTO, error) {
+	// First verify the repair belongs to this technician
+	repair, err := s.repo.FindByID(repairID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrRepairNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find repair", 500)
+	}
+
+	// Verify technician owns this repair
+	if repair.TechnicianID == nil || *repair.TechnicianID != techID {
+		return nil, errors.NewAppError(errors.ErrForbidden, "You are not assigned to this repair", 403)
+	}
+
+	// Prevent updates if completed or cancelled
+	if repair.Status == StatusCompleted || repair.Status == StatusCancelled {
+		return nil, ErrCannotUpdate
+	}
+
+	if req.Status != "" {
+		// Validate status transition
+		if !s.isValidTransition(repair.Status, req.Status) {
+			return nil, ErrInvalidStatus
+		}
+		repair.Status = req.Status
+
+		// Set timestamps based on status
+		now := time.Now()
+		if req.Status == StatusInProgress && repair.StartedAt == nil {
+			repair.StartedAt = &now
+		} else if req.Status == StatusCompleted {
+			repair.CompletedAt = &now
+		}
+	}
+
+	if req.Description != "" {
+		repair.Description = req.Description
+	}
+
+	if err := s.repo.Update(repair); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update repair", 500)
+	}
+
+	return s.mapToDTO(repair), nil
 }
 
 func (s *RepairService) Delete(id uint) error {
-    if err := s.repo.Delete(id); err != nil {
-        if err == gorm.ErrRecordNotFound {
-            return ErrRepairNotFound
-        }
-        return errors.NewAppError(errors.ErrInternalServer, "Failed to delete repair", 500)
-    }
-    return nil
+	if err := s.repo.Delete(id); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrRepairNotFound
+		}
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to delete repair", 500)
+	}
+	return nil
 }
 
 func (s *RepairService) isValidTransition(current, new string) bool {
-    // Define valid transitions
-    validTransitions := map[string][]string{
-        StatusPending:    {StatusInProgress, StatusCancelled},
-        StatusInProgress: {StatusCompleted, StatusCancelled},
-        StatusCompleted:  {},
-        StatusCancelled:  {},
-    }
+	// Define valid transitions
+	validTransitions := map[string][]string{
+		StatusPending:    {StatusInProgress, StatusCancelled},
+		StatusInProgress: {StatusCompleted, StatusCancelled},
+		StatusCompleted:  {},
+		StatusCancelled:  {},
+	}
 
-    allowed, ok := validTransitions[current]
-    if !ok {
-        return false
-    }
+	allowed, ok := validTransitions[current]
+	if !ok {
+		return false
+	}
 
-    for _, status := range allowed {
-        if status == new {
-            return true
-        }
-    }
-    return false
+	for _, status := range allowed {
+		if status == new {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *RepairService) mapToDTO(repair *Repair) *RepairDTO {
-    dto := &RepairDTO{
-        ID:          repair.ID,
-        GuaranteeID: repair.GuaranteeID,
-        TechnicianID: repair.TechnicianID,
-        Status:      repair.Status,
-        Description: repair.Description,
-        CreatedAt:   repair.CreatedAt.Format(time.RFC3339),
-        UpdatedAt:   repair.UpdatedAt.Format(time.RFC3339),
-    }
+	dto := &RepairDTO{
+		ID:          repair.ID,
+		GuaranteeID: repair.GuaranteeID,
+		TechnicianID: repair.TechnicianID,
+		Status:      repair.Status,
+		Description: repair.Description,
+		CreatedAt:   repair.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   repair.UpdatedAt.Format(time.RFC3339),
+	}
 
-    if repair.StartedAt != nil {
-        started := repair.StartedAt.Format(time.RFC3339)
-        dto.StartedAt = &started
-    }
-    if repair.CompletedAt != nil {
-        completed := repair.CompletedAt.Format(time.RFC3339)
-        dto.CompletedAt = &completed
-    }
+	if repair.StartedAt != nil {
+		started := repair.StartedAt.Format(time.RFC3339)
+		dto.StartedAt = &started
+	}
+	if repair.CompletedAt != nil {
+		completed := repair.CompletedAt.Format(time.RFC3339)
+		dto.CompletedAt = &completed
+	}
 
-    return dto
+	return dto
 }
 
 ----------------------------------------
@@ -8256,171 +8650,220 @@ FILE: dto.go
 Path: \backend\internal\modules\technicians\dto.go
 Size: 2 KB
 ----------------------------------------
-Lines: 39
+Lines: 44
 
 package technicians
 
 type TechnicianDTO struct {
-    ID         uint   `json:"id"`
-    FullName   string `json:"full_name"`
-    Username   string `json:"username"`
-    Phone      string `json:"phone"`
-    NationalID string `json:"national_id"`
-    Address    string `json:"address"`
-    IsActive   bool   `json:"is_active"`
-    CreatedAt  string `json:"created_at"`
-    UpdatedAt  string `json:"updated_at"`
+	ID         uint   `json:"id"`
+	FullName   string `json:"full_name"`
+	Username   string `json:"username"`
+	Phone      string `json:"phone"`
+	NationalID string `json:"national_id"`
+	Address    string `json:"address"`
+	IsActive   bool   `json:"is_active"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
 }
 
 type CreateTechnicianRequest struct {
-    FullName   string `json:"full_name" binding:"required,min=2,max=100"`
-    Username   string `json:"username" binding:"required,min=3,max=50"`
-    Password   string `json:"password" binding:"required,min=6"`
-    Phone      string `json:"phone" binding:"omitempty,min=10,max=20"`
-    NationalID string `json:"national_id" binding:"omitempty,min=6,max=20"`
-    Address    string `json:"address"`
-    IsActive   *bool  `json:"is_active"`
+	FullName   string `json:"full_name" binding:"required,min=2,max=100"`
+	Username   string `json:"username" binding:"required,min=3,max=50"`
+	Password   string `json:"password" binding:"required,min=6"`
+	Phone      string `json:"phone" binding:"omitempty,min=10,max=20"`
+	NationalID string `json:"national_id" binding:"omitempty,min=6,max=20"`
+	Address    string `json:"address"`
+	IsActive   *bool  `json:"is_active"`
 }
 
 type UpdateTechnicianRequest struct {
-    FullName   string `json:"full_name" binding:"omitempty,min=2,max=100"`
-    Phone      string `json:"phone" binding:"omitempty,min=10,max=20"`
-    NationalID string `json:"national_id" binding:"omitempty,min=6,max=20"`
-    Address    string `json:"address"`
-    IsActive   *bool  `json:"is_active"`
+	FullName   string `json:"full_name" binding:"omitempty,min=2,max=100"`
+	Phone      string `json:"phone" binding:"omitempty,min=10,max=20"`
+	NationalID string `json:"national_id" binding:"omitempty,min=6,max=20"`
+	Address    string `json:"address"`
+	IsActive   *bool  `json:"is_active"`
+}
+
+type TechnicianLoginRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }
 
 type ListTechniciansResponse struct {
-    Technicians []TechnicianDTO `json:"technicians"`
-    Total       int64           `json:"total"`
-    Page        int             `json:"page"`
-    Limit       int             `json:"limit"`
-    LastPage    int             `json:"last_page"`
+	Technicians []TechnicianDTO `json:"technicians"`
+	Total       int64           `json:"total"`
+	Page        int             `json:"page"`
+	Limit       int             `json:"limit"`
+	LastPage    int             `json:"last_page"`
 }
 
 ----------------------------------------
 FILE: handler.go
 Path: \backend\internal\modules\technicians\handler.go
-Size: 3 KB
+Size: 4 KB
 ----------------------------------------
-Lines: 117
+Lines: 161
 
 package technicians
 
 import (
-    "net/http"
-    "strconv"
-    "guarantee-management-system/internal/shared/errors"
-    "guarantee-management-system/internal/shared/responses"
-    "github.com/gin-gonic/gin"
+	"net/http"
+	"strconv"
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/responses"
+	"github.com/gin-gonic/gin"
 )
 
 type TechnicianHandler struct {
-    service   *TechnicianService
-    validator *TechnicianValidator
+	service   *TechnicianService
+	validator *TechnicianValidator
 }
 
 func NewTechnicianHandler(service *TechnicianService, validator *TechnicianValidator) *TechnicianHandler {
-    return &TechnicianHandler{
-        service:   service,
-        validator: validator,
-    }
+	return &TechnicianHandler{
+		service:   service,
+		validator: validator,
+	}
 }
 
 func (h *TechnicianHandler) Create(c *gin.Context) {
-    req, err := h.validator.ValidateCreateRequest(c)
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	req, err := h.validator.ValidateCreateRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    tech, err := h.service.Create(req)
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	tech, err := h.service.Create(req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    responses.SuccessWithMessage(c, "Technician created successfully", tech)
+	responses.SuccessWithMessage(c, "Technician created successfully", tech)
 }
 
 func (h *TechnicianHandler) Get(c *gin.Context) {
-    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-    if err != nil {
-        responses.Error(c, http.StatusBadRequest, "Invalid technician ID")
-        return
-    }
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid technician ID")
+		return
+	}
 
-    tech, err := h.service.GetByID(uint(id))
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	tech, err := h.service.GetByID(uint(id))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    responses.Success(c, tech)
+	responses.Success(c, tech)
 }
 
 func (h *TechnicianHandler) List(c *gin.Context) {
-    page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-    limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-    search := c.DefaultQuery("search", "")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	search := c.DefaultQuery("search", "")
 
-    result, err := h.service.List(page, limit, search)
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	result, err := h.service.List(page, limit, search)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    responses.SuccessWithMeta(c, result.Technicians, responses.PaginationMeta{
-        CurrentPage: result.Page,
-        PerPage:     result.Limit,
-        Total:       result.Total,
-        LastPage:    result.LastPage,
-    })
+	responses.SuccessWithMeta(c, result.Technicians, responses.PaginationMeta{
+		CurrentPage: result.Page,
+		PerPage:     result.Limit,
+		Total:       result.Total,
+		LastPage:    result.LastPage,
+	})
 }
 
 func (h *TechnicianHandler) Update(c *gin.Context) {
-    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-    if err != nil {
-        responses.Error(c, http.StatusBadRequest, "Invalid technician ID")
-        return
-    }
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid technician ID")
+		return
+	}
 
-    req, err := h.validator.ValidateUpdateRequest(c)
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	req, err := h.validator.ValidateUpdateRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    tech, err := h.service.Update(uint(id), req)
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	tech, err := h.service.Update(uint(id), req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 
-    responses.SuccessWithMessage(c, "Technician updated successfully", tech)
+	responses.SuccessWithMessage(c, "Technician updated successfully", tech)
 }
 
 func (h *TechnicianHandler) Delete(c *gin.Context) {
-    id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-    if err != nil {
-        responses.Error(c, http.StatusBadRequest, "Invalid technician ID")
-        return
-    }
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid technician ID")
+		return
+	}
 
-    if err := h.service.Delete(uint(id)); err != nil {
-        handleError(c, err)
-        return
-    }
+	if err := h.service.Delete(uint(id)); err != nil {
+		handleError(c, err)
+		return
+	}
 
-    responses.SuccessWithMessage(c, "Technician deleted successfully", nil)
+	responses.SuccessWithMessage(c, "Technician deleted successfully", nil)
+}
+
+// Login handles technician login
+func (h *TechnicianHandler) Login(c *gin.Context) {
+	var req TechnicianLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	if req.Username == "" || req.Password == "" {
+		responses.Error(c, http.StatusBadRequest, "Username and password are required")
+		return
+	}
+
+	tech, token, expiresIn, err := h.service.Login(req.Username, req.Password)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.Success(c, gin.H{
+		"token":      token,
+		"token_type": "Bearer",
+		"expires_in": expiresIn,
+		"technician": tech,
+	})
+}
+
+// GetProfile returns the current technician's profile
+func (h *TechnicianHandler) GetProfile(c *gin.Context) {
+	techID, exists := c.Get("technician_id")
+	if !exists {
+		responses.Unauthorized(c, "Unauthorized")
+		return
+	}
+
+	tech, err := h.service.GetByID(techID.(uint))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.Success(c, tech)
 }
 
 func handleError(c *gin.Context, err error) {
-    if appErr, ok := err.(*errors.AppError); ok {
-        responses.Error(c, appErr.Code, appErr.Message)
-        return
-    }
-    responses.InternalError(c, err)
+	if appErr, ok := err.(*errors.AppError); ok {
+		responses.Error(c, appErr.Code, appErr.Message)
+		return
+	}
+	responses.InternalError(c, err)
 }
 
 ----------------------------------------
@@ -8532,39 +8975,52 @@ FILE: routes.go
 Path: \backend\internal\modules\technicians\routes.go
 Size: 1 KB
 ----------------------------------------
-Lines: 32
+Lines: 45
 
 package technicians
 
 import (
-    "guarantee-management-system/internal/middleware"
-    "github.com/gin-gonic/gin"
-    "gorm.io/gorm"
+	"guarantee-management-system/internal/config"
+	"guarantee-management-system/internal/middleware"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type TechnicianModule struct {
-    handler *TechnicianHandler
+	handler *TechnicianHandler
 }
 
-func NewTechnicianModule(db *gorm.DB) *TechnicianModule {
-    repo := NewTechnicianRepository(db)
-    service := NewTechnicianService(repo)
-    validator := NewTechnicianValidator()
-    handler := NewTechnicianHandler(service, validator)
+func NewTechnicianModule(db *gorm.DB, cfg *config.Config) *TechnicianModule {
+	repo := NewTechnicianRepository(db)
+	service := NewTechnicianService(repo, cfg)
+	validator := NewTechnicianValidator()
+	handler := NewTechnicianHandler(service, validator)
 
-    return &TechnicianModule{handler: handler}
+	return &TechnicianModule{handler: handler}
 }
 
 func (m *TechnicianModule) RegisterRoutes(router *gin.RouterGroup) {
-    technicians := router.Group("/technicians")
-    technicians.Use(middleware.AuthMiddleware())
-    {
-        technicians.POST("", m.handler.Create)
-        technicians.GET("", m.handler.List)
-        technicians.GET("/:id", m.handler.Get)
-        technicians.PUT("/:id", m.handler.Update)
-        technicians.DELETE("/:id", m.handler.Delete)
-    }
+	// Public technician login
+	router.POST("/technician/login", m.handler.Login)
+
+	// Admin-only technician management
+	technicians := router.Group("/technicians")
+	technicians.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
+	{
+		technicians.POST("", m.handler.Create)
+		technicians.GET("", m.handler.List)
+		technicians.GET("/:id", m.handler.Get)
+		technicians.PUT("/:id", m.handler.Update)
+		technicians.DELETE("/:id", m.handler.Delete)
+	}
+
+	// Technician profile (authenticated technicians only)
+	profile := router.Group("/technician")
+	profile.Use(middleware.AuthMiddleware(), middleware.TechnicianOnly())
+	{
+		profile.GET("/profile", m.handler.GetProfile)
+	}
 }
 
 ----------------------------------------
@@ -8572,158 +9028,182 @@ FILE: service.go
 Path: \backend\internal\modules\technicians\service.go
 Size: 5 KB
 ----------------------------------------
-Lines: 151
+Lines: 175
 
 package technicians
 
 import (
-    "time"
-    "guarantee-management-system/internal/shared/errors"
-    "golang.org/x/crypto/bcrypt"
-    "gorm.io/gorm"
+	"time"
+	"guarantee-management-system/internal/config"
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/utils"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type TechnicianService struct {
-    repo *TechnicianRepository
+	repo   *TechnicianRepository
+	config *config.Config
 }
 
-func NewTechnicianService(repo *TechnicianRepository) *TechnicianService {
-    return &TechnicianService{repo: repo}
+func NewTechnicianService(repo *TechnicianRepository, cfg *config.Config) *TechnicianService {
+	return &TechnicianService{
+		repo:   repo,
+		config: cfg,
+	}
 }
 
 func (s *TechnicianService) Create(req *CreateTechnicianRequest) (*TechnicianDTO, error) {
-    existing, err := s.repo.FindByUsername(req.Username)
-    if err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check existing technician", 500)
-    }
-    if existing != nil {
-        return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Username already exists", 409)
-    }
+	existing, err := s.repo.FindByUsername(req.Username)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check existing technician", 500)
+	}
+	if existing != nil {
+		return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Username already exists", 409)
+	}
 
-    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-    if err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to hash password", 500)
-    }
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to hash password", 500)
+	}
 
-    isActive := true
-    if req.IsActive != nil {
-        isActive = *req.IsActive
-    }
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
 
-    tech := &Technician{
-        FullName:   req.FullName,
-        Username:   req.Username,
-        Password:   string(hashedPassword),
-        Phone:      req.Phone,
-        NationalID: req.NationalID,
-        Address:    req.Address,
-        IsActive:   isActive,
-    }
+	tech := &Technician{
+		FullName:   req.FullName,
+		Username:   req.Username,
+		Password:   string(hashedPassword),
+		Phone:      req.Phone,
+		NationalID: req.NationalID,
+		Address:    req.Address,
+		IsActive:   isActive,
+	}
 
-    if err := s.repo.Create(tech); err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create technician", 500)
-    }
+	if err := s.repo.Create(tech); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create technician", 500)
+	}
 
-    return s.mapToDTO(tech), nil
+	return s.mapToDTO(tech), nil
+}
+
+func (s *TechnicianService) Login(username, password string) (*TechnicianDTO, string, int64, error) {
+	tech, err := s.repo.FindByUsername(username)
+	if err != nil {
+		return nil, "", 0, errors.NewAppError(errors.ErrInternalServer, "Login failed", 500)
+	}
+	if tech == nil || !tech.IsActive {
+		return nil, "", 0, errors.NewAppError(errors.ErrInvalidCredentials, "Invalid credentials", 401)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(tech.Password), []byte(password)); err != nil {
+		return nil, "", 0, errors.NewAppError(errors.ErrInvalidCredentials, "Invalid credentials", 401)
+	}
+	token, expiresIn, err := utils.GenerateTechnicianToken(tech.ID, tech.Username, s.config.JWTSecret, s.config.JWTExpiration)
+	if err != nil {
+		return nil, "", 0, errors.NewAppError(errors.ErrInternalServer, "Failed to generate token", 500)
+	}
+	return s.mapToDTO(tech), token, expiresIn, nil
 }
 
 func (s *TechnicianService) GetByID(id uint) (*TechnicianDTO, error) {
-    tech, err := s.repo.FindByID(id)
-    if err != nil {
-        if err == gorm.ErrRecordNotFound {
-            return nil, errors.NewAppError(errors.ErrNotFound, "Technician not found", 404)
-        }
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find technician", 500)
-    }
-    return s.mapToDTO(tech), nil
+	tech, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.NewAppError(errors.ErrNotFound, "Technician not found", 404)
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find technician", 500)
+	}
+	return s.mapToDTO(tech), nil
 }
 
 func (s *TechnicianService) List(page, limit int, search string) (*ListTechniciansResponse, error) {
-    if page < 1 {
-        page = 1
-    }
-    if limit < 1 || limit > 100 {
-        limit = 10
-    }
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
 
-    technicians, total, err := s.repo.FindAll(page, limit, search)
-    if err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list technicians", 500)
-    }
+	technicians, total, err := s.repo.FindAll(page, limit, search)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list technicians", 500)
+	}
 
-    dtos := make([]TechnicianDTO, len(technicians))
-    for i, tech := range technicians {
-        dtos[i] = *s.mapToDTO(&tech)
-    }
+	dtos := make([]TechnicianDTO, len(technicians))
+	for i, tech := range technicians {
+		dtos[i] = *s.mapToDTO(&tech)
+	}
 
-    lastPage := int(total) / limit
-    if int(total)%limit != 0 {
-        lastPage++
-    }
+	lastPage := int(total) / limit
+	if int(total)%limit != 0 {
+		lastPage++
+	}
 
-    return &ListTechniciansResponse{
-        Technicians: dtos,
-        Total:       total,
-        Page:        page,
-        Limit:       limit,
-        LastPage:    lastPage,
-    }, nil
+	return &ListTechniciansResponse{
+		Technicians: dtos,
+		Total:       total,
+		Page:        page,
+		Limit:       limit,
+		LastPage:    lastPage,
+	}, nil
 }
 
 func (s *TechnicianService) Update(id uint, req *UpdateTechnicianRequest) (*TechnicianDTO, error) {
-    tech, err := s.repo.FindByID(id)
-    if err != nil {
-        if err == gorm.ErrRecordNotFound {
-            return nil, errors.NewAppError(errors.ErrNotFound, "Technician not found", 404)
-        }
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find technician", 500)
-    }
+	tech, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.NewAppError(errors.ErrNotFound, "Technician not found", 404)
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find technician", 500)
+	}
 
-    if req.FullName != "" {
-        tech.FullName = req.FullName
-    }
-    if req.Phone != "" {
-        tech.Phone = req.Phone
-    }
-    if req.NationalID != "" {
-        tech.NationalID = req.NationalID
-    }
-    if req.Address != "" {
-        tech.Address = req.Address
-    }
-    if req.IsActive != nil {
-        tech.IsActive = *req.IsActive
-    }
+	if req.FullName != "" {
+		tech.FullName = req.FullName
+	}
+	if req.Phone != "" {
+		tech.Phone = req.Phone
+	}
+	if req.NationalID != "" {
+		tech.NationalID = req.NationalID
+	}
+	if req.Address != "" {
+		tech.Address = req.Address
+	}
+	if req.IsActive != nil {
+		tech.IsActive = *req.IsActive
+	}
 
-    if err := s.repo.Update(tech); err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update technician", 500)
-    }
+	if err := s.repo.Update(tech); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update technician", 500)
+	}
 
-    return s.mapToDTO(tech), nil
+	return s.mapToDTO(tech), nil
 }
 
 func (s *TechnicianService) Delete(id uint) error {
-    if err := s.repo.Delete(id); err != nil {
-        if err == gorm.ErrRecordNotFound {
-            return errors.NewAppError(errors.ErrNotFound, "Technician not found", 404)
-        }
-        return errors.NewAppError(errors.ErrInternalServer, "Failed to delete technician", 500)
-    }
-    return nil
+	if err := s.repo.Delete(id); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return errors.NewAppError(errors.ErrNotFound, "Technician not found", 404)
+		}
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to delete technician", 500)
+	}
+	return nil
 }
 
 func (s *TechnicianService) mapToDTO(tech *Technician) *TechnicianDTO {
-    return &TechnicianDTO{
-        ID:         tech.ID,
-        FullName:   tech.FullName,
-        Username:   tech.Username,
-        Phone:      tech.Phone,
-        NationalID: tech.NationalID,
-        Address:    tech.Address,
-        IsActive:   tech.IsActive,
-        CreatedAt:  tech.CreatedAt.Format(time.RFC3339),
-        UpdatedAt:  tech.UpdatedAt.Format(time.RFC3339),
-    }
+	return &TechnicianDTO{
+		ID:         tech.ID,
+		FullName:   tech.FullName,
+		Username:   tech.Username,
+		Phone:      tech.Phone,
+		NationalID: tech.NationalID,
+		Address:    tech.Address,
+		IsActive:   tech.IsActive,
+		CreatedAt:  tech.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:  tech.UpdatedAt.Format(time.RFC3339),
+	}
 }
 
 ----------------------------------------
@@ -9078,9 +9558,9 @@ DIRECTORY: \backend\internal\shared\utils
 ----------------------------------------
 FILE: jwt.go
 Path: \backend\internal\shared\utils\jwt.go
-Size: 1 KB
+Size: 2 KB
 ----------------------------------------
-Lines: 55
+Lines: 58
 
 package utils
 
@@ -9092,29 +9572,33 @@ import (
 )
 
 type Claims struct {
-	AdminID  uint   `json:"admin_id"`
-	Username string `json:"username"`
+	AdminID      uint   `json:"admin_id,omitempty"`
+	TechnicianID uint   `json:"technician_id,omitempty"`
+	Username     string `json:"username"`
+	Role         string `json:"role"` // "admin" or "technician"
 	jwt.RegisteredClaims
 }
 
 func GenerateToken(adminID uint, username, secret string, expiration time.Duration) (string, int64, error) {
-	expiresAt := time.Now().Add(expiration)
-	claims := &Claims{
-		AdminID:  adminID,
-		Username: username,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expiresAt),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-		},
-	}
+	return generate(Claims{AdminID: adminID, Username: username, Role: "admin"}, secret, expiration)
+}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+func GenerateTechnicianToken(techID uint, username, secret string, expiration time.Duration) (string, int64, error) {
+	return generate(Claims{TechnicianID: techID, Username: username, Role: "technician"}, secret, expiration)
+}
+
+func generate(claims Claims, secret string, expiration time.Duration) (string, int64, error) {
+	expiresAt := time.Now().Add(expiration)
+	claims.RegisteredClaims = jwt.RegisteredClaims{
+		ExpiresAt: jwt.NewNumericDate(expiresAt),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		NotBefore: jwt.NewNumericDate(time.Now()),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
 	tokenString, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return "", 0, err
 	}
-
 	return tokenString, int64(expiration.Seconds()), nil
 }
 
@@ -9136,7 +9620,6 @@ func ValidateToken(tokenString, secret string) (*Claims, error) {
 
 	return nil, errors.New("invalid token")
 }
-
 
 ============================================
 DIRECTORY: \backend\internal\shared\validator
@@ -10141,7 +10624,7 @@ FILE: package.json
 Path: \frontend\package.json
 Size: 2 KB
 ----------------------------------------
-Lines: 65
+Lines: 66
 
 {
   "name": "frontend",
@@ -10186,6 +10669,7 @@ Lines: 65
     "radix-ui": "^1.6.7",
     "react": "^19.2.7",
     "react-aria-components": "^1.19.0",
+    "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.83.0",
     "react-router-dom": "^7.18.1",
@@ -10212,9 +10696,9 @@ Lines: 65
 ----------------------------------------
 FILE: package-lock.json
 Path: \frontend\package-lock.json
-Size: 343 KB
+Size: 344 KB
 ----------------------------------------
-Lines: 9663
+Lines: 9696
 
 {
   "name": "frontend",
@@ -10257,6 +10741,7 @@ Lines: 9663
         "radix-ui": "^1.6.7",
         "react": "^19.2.7",
         "react-aria-components": "^1.19.0",
+        "react-day-picker": "^10.0.1",
         "react-dom": "^19.2.7",
         "react-hook-form": "^7.83.0",
         "react-router-dom": "^7.18.1",
@@ -10779,6 +11264,12 @@ Lines: 9663
           "optional": true
         }
       }
+    },
+    "node_modules/@date-fns/tz": {
+      "version": "1.5.0",
+      "resolved": "https://registry.npmjs.org/@date-fns/tz/-/tz-1.5.0.tgz",
+      "integrity": "sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==",
+      "license": "MIT"
     },
     "node_modules/@dotenvx/dotenvx": {
       "version": "1.75.1",
@@ -18322,6 +18813,32 @@ Lines: 9663
         "react-dom": "^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1"
       }
     },
+    "node_modules/react-day-picker": {
+      "version": "10.0.1",
+      "resolved": "https://registry.npmjs.org/react-day-picker/-/react-day-picker-10.0.1.tgz",
+      "integrity": "sha512-eNh6BlwcYInWaJtRv18mXQ06Ys/H6rdTZAnTaSdOYJuTpwP1JMCHNd1FDRadA+gbeinq+psdULN5Xnowy9mV8w==",
+      "license": "MIT",
+      "dependencies": {
+        "@date-fns/tz": "^1.4.1",
+        "date-fns": "^4.1.0"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "funding": {
+        "type": "individual",
+        "url": "https://github.com/sponsors/gpbl"
+      },
+      "peerDependencies": {
+        "@types/react": ">=16.8.0",
+        "react": ">=16.8.0"
+      },
+      "peerDependenciesMeta": {
+        "@types/react": {
+          "optional": true
+        }
+      }
+    },
     "node_modules/react-dom": {
       "version": "19.2.8",
       "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-19.2.8.tgz",
@@ -21411,6 +21928,246 @@ export { Button, buttonVariants }
 
 
 ----------------------------------------
+FILE: calendar.tsx
+Path: \frontend\src\components\ui\calendar.tsx
+Size: 8 KB
+----------------------------------------
+Lines: 232
+
+"use client"
+
+import * as React from "react"
+import {
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "lucide-react"
+import {
+  DayPicker,
+  getDefaultClassNames,
+  type DayButton,
+  type Locale,
+} from "react-day-picker"
+
+import { cn } from "@/lib/utils"
+import { Button, buttonVariants } from "@/components/ui/button"
+
+function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  captionLayout = "label",
+  buttonVariant = "ghost",
+  locale,
+  formatters,
+  components,
+  ...props
+}: React.ComponentProps<typeof DayPicker> & {
+  buttonVariant?: React.ComponentProps<typeof Button>["variant"]
+}) {
+  const defaultClassNames = getDefaultClassNames()
+
+  return (
+    <DayPicker
+      showOutsideDays={showOutsideDays}
+      className={cn(
+        "group/calendar bg-background p-2 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(7)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
+        String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
+        String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
+        className
+      )}
+      captionLayout={captionLayout}
+      locale={locale}
+      formatters={{
+        formatMonthDropdown: (date) =>
+          date.toLocaleString(locale?.code, { month: "short" }),
+        ...formatters,
+      }}
+      classNames={{
+        root: cn("w-fit", defaultClassNames.root),
+        months: cn(
+          "relative flex flex-col gap-4 md:flex-row",
+          defaultClassNames.months
+        ),
+        month: cn("flex w-full flex-col gap-4", defaultClassNames.month),
+        nav: cn(
+          "absolute inset-x-0 top-0 flex w-full items-center justify-between gap-1",
+          defaultClassNames.nav
+        ),
+        button_previous: cn(
+          buttonVariants({ variant: buttonVariant }),
+          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          defaultClassNames.button_previous
+        ),
+        button_next: cn(
+          buttonVariants({ variant: buttonVariant }),
+          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          defaultClassNames.button_next
+        ),
+        month_caption: cn(
+          "flex h-(--cell-size) w-full items-center justify-center px-(--cell-size)",
+          defaultClassNames.month_caption
+        ),
+        dropdowns: cn(
+          "flex h-(--cell-size) w-full items-center justify-center gap-1.5 text-sm font-medium",
+          defaultClassNames.dropdowns
+        ),
+        dropdown_root: cn(
+          "cn-calendar-dropdown-root relative rounded-(--cell-radius)",
+          defaultClassNames.dropdown_root
+        ),
+        dropdown: cn(
+          "absolute inset-0 bg-popover opacity-0",
+          defaultClassNames.dropdown
+        ),
+        caption_label: cn(
+          "font-medium select-none",
+          captionLayout === "label"
+            ? "cn-calendar-caption text-sm"
+            : "cn-calendar-caption-label flex items-center gap-1 rounded-(--cell-radius) text-sm [&>svg]:size-3.5 [&>svg]:text-muted-foreground",
+          defaultClassNames.caption_label
+        ),
+        month_grid: cn("w-full border-collapse", defaultClassNames.month_grid),
+        weekdays: cn("flex", defaultClassNames.weekdays),
+        weekday: cn(
+          "flex-1 rounded-(--cell-radius) text-[0.8rem] font-normal text-muted-foreground select-none",
+          defaultClassNames.weekday
+        ),
+        week: cn("mt-2 flex w-full", defaultClassNames.week),
+        week_number_header: cn(
+          "w-(--cell-size) select-none",
+          defaultClassNames.week_number_header
+        ),
+        week_number: cn(
+          "text-[0.8rem] text-muted-foreground select-none",
+          defaultClassNames.week_number
+        ),
+        day: cn(
+          "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius)",
+          props.showWeekNumber
+            ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-(--cell-radius)"
+            : "[&:first-child[data-selected=true]_button]:rounded-l-(--cell-radius)",
+          defaultClassNames.day
+        ),
+        range_start: cn(
+          "relative isolate z-0 rounded-l-(--cell-radius) bg-muted after:absolute after:inset-y-0 after:right-0 after:w-4 after:bg-muted",
+          defaultClassNames.range_start
+        ),
+        range_middle: cn("rounded-none", defaultClassNames.range_middle),
+        range_end: cn(
+          "relative isolate z-0 rounded-r-(--cell-radius) bg-muted after:absolute after:inset-y-0 after:left-0 after:w-4 after:bg-muted",
+          defaultClassNames.range_end
+        ),
+        today: cn(
+          "rounded-(--cell-radius) bg-muted text-foreground data-[selected=true]:rounded-none",
+          defaultClassNames.today
+        ),
+        outside: cn(
+          "text-muted-foreground aria-selected:text-muted-foreground",
+          defaultClassNames.outside
+        ),
+        disabled: cn(
+          "text-muted-foreground opacity-50",
+          defaultClassNames.disabled
+        ),
+        hidden: cn("invisible", defaultClassNames.hidden),
+        ...classNames,
+      }}
+      components={{
+        Root: ({ className, rootRef, ...props }) => {
+          return (
+            <div
+              data-slot="calendar"
+              ref={rootRef}
+              className={cn(className)}
+              {...props}
+            />
+          )
+        },
+        Chevron: ({ className, orientation, ...props }) => {
+          if (orientation === "left") {
+            return (
+              <ChevronLeftIcon
+                className={cn("cn-rtl-flip size-4", className)}
+                {...props}
+              />
+            )
+          }
+
+          if (orientation === "right") {
+            return (
+              <ChevronRightIcon
+                className={cn("cn-rtl-flip size-4", className)}
+                {...props}
+              />
+            )
+          }
+
+          return (
+            <ChevronDownIcon className={cn("size-4", className)} {...props} />
+          )
+        },
+        DayButton: ({ ...props }) => (
+          <CalendarDayButton locale={locale} {...props} />
+        ),
+        WeekNumber: ({ children, ...props }) => {
+          return (
+            <td {...props}>
+              <div className="flex size-(--cell-size) items-center justify-center text-center">
+                {children}
+              </div>
+            </td>
+          )
+        },
+        ...components,
+      }}
+      {...props}
+    />
+  )
+}
+
+function CalendarDayButton({
+  className,
+  day,
+  modifiers,
+  locale,
+  ...props
+}: React.ComponentProps<typeof DayButton> & { locale?: Partial<Locale> }) {
+  const defaultClassNames = getDefaultClassNames()
+
+  const ref = React.useRef<HTMLButtonElement>(null)
+  React.useEffect(() => {
+    if (modifiers.focused) ref.current?.focus()
+  }, [modifiers.focused])
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      data-day={day.date.toLocaleDateString(locale?.code)}
+      data-selected-single={
+        modifiers.selected &&
+        !modifiers.range_start &&
+        !modifiers.range_end &&
+        !modifiers.range_middle
+      }
+      data-range-start={modifiers.range_start}
+      data-range-end={modifiers.range_end}
+      data-range-middle={modifiers.range_middle}
+      className={cn(
+        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted data-[range-middle=true]:text-foreground data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground dark:hover:text-foreground [&>span]:text-xs [&>span]:opacity-70",
+        defaultClassNames.day,
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Calendar, CalendarDayButton }
+
+
+----------------------------------------
 FILE: card.tsx
 Path: \frontend\src\components\ui\card.tsx
 Size: 3 KB
@@ -21525,16 +22282,25 @@ export {
 ----------------------------------------
 FILE: date-picker.tsx
 Path: \frontend\src\components\ui\date-picker.tsx
-Size: 14 KB
+Size: 5 KB
 ----------------------------------------
-Lines: 457
+Lines: 177
 
-import React, { useState, useEffect, useRef } from 'react'
-import { useCalendar } from '@/contexts/CalendarContext'
-import { Input } from './input'
-import { Button } from './button'
-import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+"use client"
+
+import * as React from "react"
+import { useCalendar } from "@/contexts/CalendarContext"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { JalaliCalendar } from "@/components/ui/jalali-calendar"
+import { CalendarIcon, X } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface DatePickerProps {
   value?: string
@@ -21545,395 +22311,93 @@ interface DatePickerProps {
   required?: boolean
 }
 
-// Jalali week days - starting from Saturday (Shanbeh)
-const JALALI_WEEK_DAYS = ['Ø´', 'ÛŒ', 'Ø¯', 'Ø³', 'Ú†', 'Ù¾', 'Ø¬']
-const GREGORIAN_WEEK_DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+// The `value` prop always comes from the backend as a plain Gregorian
+// YYYY-MM-DD string, regardless of the active calendar display mode.
+// This must NEVER be interpreted as Jalali, unlike user-typed input.
+function parseBackendDate(value: string): Date | null {
+  if (!value) return null
+  const parts = value.split('-')
+  if (parts.length === 3) {
+    const y = Number(parts[0])
+    const m = Number(parts[1])
+    const d = Number(parts[2])
+    if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d)) {
+      return new Date(Date.UTC(y, m - 1, d))
+    }
+  }
+  const date = new Date(value)
+  return isNaN(date.getTime()) ? null : date
+}
 
-// Jalali months for dropdown
-const JALALI_MONTHS_FOR_SELECT = [
-  { value: 1, label: 'ÙØ±ÙˆØ±Ø¯ÛŒÙ†' },
-  { value: 2, label: 'Ø§Ø±Ø¯ÛŒØ¨Ù‡Ø´Øª' },
-  { value: 3, label: 'Ø®Ø±Ø¯Ø§Ø¯' },
-  { value: 4, label: 'ØªÛŒØ±' },
-  { value: 5, label: 'Ù…Ø±Ø¯Ø§Ø¯' },
-  { value: 6, label: 'Ø´Ù‡Ø±ÛŒÙˆØ±' },
-  { value: 7, label: 'Ù…Ù‡Ø±' },
-  { value: 8, label: 'Ø¢Ø¨Ø§Ù†' },
-  { value: 9, label: 'Ø¢Ø°Ø±' },
-  { value: 10, label: 'Ø¯ÛŒ' },
-  { value: 11, label: 'Ø¨Ù‡Ù…Ù†' },
-  { value: 12, label: 'Ø§Ø³ÙÙ†Ø¯' },
-]
-
-const GREGORIAN_MONTHS_FOR_SELECT = [
-  { value: 1, label: 'January' },
-  { value: 2, label: 'February' },
-  { value: 3, label: 'March' },
-  { value: 4, label: 'April' },
-  { value: 5, label: 'May' },
-  { value: 6, label: 'June' },
-  { value: 7, label: 'July' },
-  { value: 8, label: 'August' },
-  { value: 9, label: 'September' },
-  { value: 10, label: 'October' },
-  { value: 11, label: 'November' },
-  { value: 12, label: 'December' },
-]
-
-export function DatePicker({ value, onChange, placeholder, disabled, className, required }: DatePickerProps) {
+export function DatePicker({ 
+  value, 
+  onChange, 
+  placeholder, 
+  disabled, 
+  className, 
+  required 
+}: DatePickerProps) {
   const { 
     calendarType, 
-    formatDate, 
-    parseDate, 
-    toJalali, 
-    toGregorian,
-    getJalaliMonthName,
-    getGregorianMonthName,
-    getDaysInJalaliMonth,
-    getJalaliFirstDayOfMonth,
-    getJalaliMonths,
-    isJalaliLeapYear
+    formatDate,
+    formatDateForBackend,
+    parseDate,
   } = useCalendar()
   
-  const [isOpen, setIsOpen] = useState(false)
-  const [inputValue, setInputValue] = useState('')
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [viewDate, setViewDate] = useState(new Date())
-  const pickerRef = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = React.useState(false)
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(undefined)
+  const [inputValue, setInputValue] = React.useState('')
 
-  // Update input value when value prop changes
-  useEffect(() => {
+  // Update when the backend value changes, or when the display calendar
+  // is toggled (so the field re-formats without changing the underlying date)
+  React.useEffect(() => {
     if (value) {
-      const date = typeof value === 'string' ? parseDate(value) : value
+      const date = parseBackendDate(value)
       if (date && !isNaN(date.getTime())) {
         setSelectedDate(date)
         setInputValue(formatDate(date, 'YYYY-MM-DD'))
-        setViewDate(date)
       }
     } else {
-      setSelectedDate(null)
+      setSelectedDate(undefined)
       setInputValue('')
-      setViewDate(new Date())
     }
-  }, [value, calendarType, formatDate, parseDate])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, calendarType])
 
-  // Close picker when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setSelectedDate(date)
+      setInputValue(formatDate(date, 'YYYY-MM-DD'))
+      onChange?.(formatDateForBackend(date))
+    } else {
+      setSelectedDate(undefined)
+      setInputValue('')
+      onChange?.('')
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    setOpen(false)
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
     setInputValue(val)
-    
+
+    // Here, unlike the backend value, the user is typing in whatever
+    // calendar is currently active â€” so calendar-aware parsing is correct.
     const parsed = parseDate(val)
     if (parsed) {
       setSelectedDate(parsed)
-      setViewDate(parsed)
-      onChange?.(parsed.toISOString().split('T')[0])
+      onChange?.(formatDateForBackend(parsed))
     }
   }
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date)
-    setInputValue(formatDate(date, 'YYYY-MM-DD'))
-    setViewDate(date)
-    onChange?.(date.toISOString().split('T')[0])
-    setIsOpen(false)
-  }
-
-  const changeJalaliMonth = (delta: number) => {
-    const j = toJalali(viewDate)
-    let newYear = j.year
-    let newMonth = j.month + delta
-    
-    if (newMonth > 12) {
-      newMonth = 1
-      newYear++
-    } else if (newMonth < 1) {
-      newMonth = 12
-      newYear--
-    }
-    
-    return toGregorian({ year: newYear, month: newMonth, day: 1 })
-  }
-
-  const goToPreviousMonth = () => {
-    if (calendarType === 'jalali') {
-      setViewDate(changeJalaliMonth(-1))
-    } else {
-      const newDate = new Date(viewDate)
-      newDate.setMonth(newDate.getMonth() - 1)
-      newDate.setDate(1)
-      setViewDate(newDate)
-    }
-  }
-
-  const goToNextMonth = () => {
-    if (calendarType === 'jalali') {
-      setViewDate(changeJalaliMonth(1))
-    } else {
-      const newDate = new Date(viewDate)
-      newDate.setMonth(newDate.getMonth() + 1)
-      newDate.setDate(1)
-      setViewDate(newDate)
-    }
-  }
-
-  // Handle month selection from dropdown
-  const handleMonthSelect = (month: number) => {
-    if (calendarType === 'jalali') {
-      const j = toJalali(viewDate)
-      const newDate = toGregorian({ year: j.year, month: month, day: 1 })
-      setViewDate(newDate)
-    } else {
-      const newDate = new Date(viewDate)
-      newDate.setMonth(month - 1)
-      newDate.setDate(1)
-      setViewDate(newDate)
-    }
-  }
-
-  // Handle year selection from dropdown
-  const handleYearSelect = (year: number) => {
-    if (calendarType === 'jalali') {
-      const j = toJalali(viewDate)
-      const newDate = toGregorian({ year: year, month: j.month, day: 1 })
-      setViewDate(newDate)
-    } else {
-      const newDate = new Date(viewDate)
-      newDate.setFullYear(year)
-      newDate.setDate(1)
-      setViewDate(newDate)
-    }
-  }
-
-  // Generate year range for dropdown
-  const getYearRange = () => {
-    const currentYear = calendarType === 'jalali' 
-      ? toJalali(new Date()).year 
-      : new Date().getFullYear()
-    
-    const years = []
-    const startYear = currentYear - 50
-    const endYear = currentYear + 50
-    
-    for (let year = startYear; year <= endYear; year++) {
-      years.push(year)
-    }
-    return years
-  }
-
-  const renderCalendar = () => {
-    const year = viewDate.getFullYear()
-    const month = viewDate.getMonth() + 1
-    
-    let firstDayOfMonth: number
-    let daysInMonth: number
-    let monthName: string
-    let currentYear: number
-    let jalaliMonth: number
-    let jalaliYear: number
-    let currentMonth: number
-    
-    if (calendarType === 'jalali') {
-      const j = toJalali(viewDate)
-      jalaliMonth = j.month
-      jalaliYear = j.year
-      currentMonth = j.month
-      
-      // Get the first day of the month
-      firstDayOfMonth = getJalaliFirstDayOfMonth(jalaliYear, jalaliMonth)
-      
-      // Get days in month
-      daysInMonth = getDaysInJalaliMonth(jalaliYear, jalaliMonth)
-      
-      monthName = getJalaliMonthName(jalaliMonth)
-      currentYear = jalaliYear
-    } else {
-      firstDayOfMonth = new Date(year, month - 1, 1).getDay()
-      daysInMonth = new Date(year, month, 0).getDate()
-      monthName = getGregorianMonthName(month)
-      currentYear = year
-      jalaliMonth = 0
-      jalaliYear = 0
-      currentMonth = month
-    }
-
-    const weekDays = calendarType === 'jalali' ? JALALI_WEEK_DAYS : GREGORIAN_WEEK_DAYS
-    const monthsForSelect = calendarType === 'jalali' ? JALALI_MONTHS_FOR_SELECT : GREGORIAN_MONTHS_FOR_SELECT
-    const years = getYearRange()
-
-    const today = new Date()
-    const todayJalali = toJalali(today)
-    
-    const days = []
-    
-    // Week header
-    days.push(
-      <div key="week-header" className="grid grid-cols-7 gap-1 mb-1">
-        {weekDays.map((d, i) => (
-          <div key={i} className="text-center text-xs font-medium text-muted-foreground py-1">
-            {d}
-          </div>
-        ))}
-      </div>
-    )
-
-    // Empty days
-    const emptyCells = []
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      emptyCells.push(
-        <div key={`empty-${i}`} className="h-9" />
-      )
-    }
-
-    // Days
-    const dayCells = []
-    for (let i = 1; i <= daysInMonth; i++) {
-      let isToday = false
-      let isSelected = false
-      let date: Date
-      
-      if (calendarType === 'jalali') {
-        // Convert Jalali date to Gregorian
-        date = toGregorian({ year: jalaliYear, month: jalaliMonth, day: i })
-        
-        // Check if this is today
-        isToday = jalaliYear === todayJalali.year && 
-                  jalaliMonth === todayJalali.month && 
-                  i === todayJalali.day
-        
-        // Check if this is selected
-        if (selectedDate) {
-          const selectedJ = toJalali(selectedDate)
-          isSelected = selectedJ.year === jalaliYear && 
-                       selectedJ.month === jalaliMonth && 
-                       selectedJ.day === i
-        }
-      } else {
-        date = new Date(year, month - 1, i)
-        isToday = year === today.getFullYear() && 
-                  (month - 1) === today.getMonth() && 
-                  i === today.getDate()
-        if (selectedDate) {
-          isSelected = year === selectedDate.getFullYear() && 
-                       (month - 1) === selectedDate.getMonth() && 
-                       i === selectedDate.getDate()
-        }
-      }
-      
-      const dayOfWeek = (firstDayOfMonth + i - 1) % 7
-      const isWeekend = calendarType === 'jalali' 
-        ? dayOfWeek === 6 // Friday (Jomeh)
-        : dayOfWeek === 0 || dayOfWeek === 6 // Sunday or Saturday
-
-      dayCells.push(
-        <button
-          key={`day-${i}`}
-          onClick={() => handleDateSelect(date)}
-          className={cn(
-            "h-9 w-9 rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
-            isSelected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-            isToday && !isSelected && "border border-primary",
-            isWeekend && "text-muted-foreground",
-            "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          )}
-          disabled={disabled}
-        >
-          {i}
-        </button>
-      )
-    }
-
-    const allCells = [...emptyCells, ...dayCells]
-    const rows = []
-    for (let i = 0; i < allCells.length; i += 7) {
-      rows.push(
-        <div key={`row-${i}`} className="grid grid-cols-7 gap-1">
-          {allCells.slice(i, i + 7)}
-        </div>
-      )
-    }
-
-    return (
-      <div className="p-3">
-        {/* Month and Year Selection */}
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={goToPreviousMonth}
-              className="p-1 hover:bg-accent rounded-md"
-              type="button"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            
-            {/* Month Select */}
-            <select
-              value={calendarType === 'jalali' ? jalaliMonth : month}
-              onChange={(e) => handleMonthSelect(Number(e.target.value))}
-              className="h-7 px-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              disabled={disabled}
-            >
-              {monthsForSelect.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-            
-            {/* Year Select */}
-            <select
-              value={currentYear}
-              onChange={(e) => handleYearSelect(Number(e.target.value))}
-              className="h-7 px-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              disabled={disabled}
-            >
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-            
-            <button
-              onClick={goToNextMonth}
-              className="p-1 hover:bg-accent rounded-md"
-              type="button"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          
-          {/* Today button */}
-          <button
-            onClick={() => {
-              const today = new Date()
-              setViewDate(today)
-              // If there's a value, don't auto-select today
-            }}
-            className="text-xs text-primary hover:underline"
-            type="button"
-          >
-            Today
-          </button>
-        </div>
-        
-        {days}
-        {rows}
-      </div>
-    )
+  const handleClear = () => {
+    setSelectedDate(undefined)
+    setInputValue('')
+    onChange?.('')
   }
 
   return (
-    <div ref={pickerRef} className="relative">
+    <div className={cn("relative", className)}>
       <div className="relative">
         <Input
           type="text"
@@ -21941,32 +22405,54 @@ export function DatePicker({ value, onChange, placeholder, disabled, className, 
           onChange={handleInputChange}
           placeholder={placeholder ?? 'YYYY-MM-DD'}
           disabled={disabled}
-          className={cn("pr-24", className)}
+          className="pr-24"
           required={required}
         />
         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="h-7 w-7"
-            onClick={() => setIsOpen(!isOpen)}
-            disabled={disabled}
-          >
-            <Calendar className="h-4 w-4" />
-          </Button>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  className="h-7 w-7"
+                  disabled={disabled}
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                </Button>
+              }
+            />
+            <PopoverContent className="w-auto overflow-hidden p-0" align="end">
+              {calendarType === 'jalali' ? (
+                <JalaliCalendar
+                  selected={selectedDate}
+                  defaultMonth={selectedDate}
+                  onSelect={handleDateSelect}
+                  disabled={disabled}
+                />
+              ) : (
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  defaultMonth={selectedDate}
+                  captionLayout="dropdown"
+                  onSelect={handleDateSelect}
+                  disabled={disabled}
+                />
+              )}
+              <div className="border-t p-2 text-xs text-center text-muted-foreground">
+                {calendarType === 'gregorian' ? 'Gregorian Calendar' : 'Jalali (Persian) Calendar'}
+              </div>
+            </PopoverContent>
+          </Popover>
+          
           {value && (
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
               className="h-7 w-7"
-              onClick={() => {
-                setSelectedDate(null)
-                setInputValue('')
-                setViewDate(new Date())
-                onChange?.('')
-              }}
+              onClick={handleClear}
               disabled={disabled}
             >
               <X className="h-4 w-4" />
@@ -21974,15 +22460,6 @@ export function DatePicker({ value, onChange, placeholder, disabled, className, 
           )}
         </div>
       </div>
-      
-      {isOpen && !disabled && (
-        <div className="absolute z-50 mt-1 w-[320px] rounded-md border bg-popover shadow-md">
-          {renderCalendar()}
-          <div className="border-t p-2 text-xs text-center text-muted-foreground">
-            {calendarType === 'gregorian' ? 'Gregorian Calendar' : 'Jalali (Persian) Calendar'}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -22814,6 +23291,237 @@ export {
 
 
 ----------------------------------------
+FILE: jalali-calendar.tsx
+Path: \frontend\src\components\ui\jalali-calendar.tsx
+Size: 7 KB
+----------------------------------------
+Lines: 223
+
+"use client"
+
+import * as React from "react"
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import { useCalendar } from "@/contexts/CalendarContext"
+import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { cn } from "@/lib/utils"
+
+interface JalaliCalendarProps {
+  selected?: Date
+  onSelect?: (date: Date | undefined) => void
+  defaultMonth?: Date
+  disabled?: boolean
+  className?: string
+  /** First selectable year in the year dropdown (default 1398) */
+  startYear?: number
+}
+
+const WEEKDAYS_FA = ["Ø´", "ÛŒ", "Ø¯Â¯", "Ø³", "Ú†", "Ù¾", "Ø¬"]
+
+export function JalaliCalendar({
+  selected,
+  onSelect,
+  defaultMonth,
+  disabled,
+  className,
+  startYear = 1398,
+}: JalaliCalendarProps) {
+  const {
+    toJalali,
+    toGregorian,
+    getDaysInJalaliMonth,
+    getJalaliFirstDayOfMonth,
+    getJalaliMonths,
+  } = useCalendar()
+
+  const initial = React.useMemo(
+    () => toJalali(selected ?? defaultMonth ?? new Date()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  )
+  const [viewYear, setViewYear] = React.useState(initial.year)
+  const [viewMonth, setViewMonth] = React.useState(initial.month)
+
+  // Keep the view in sync if `selected` changes from outside (e.g. typed input)
+  React.useEffect(() => {
+    if (selected) {
+      const j = toJalali(selected)
+      setViewYear(j.year)
+      setViewMonth(j.month)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.getTime()])
+
+  const todayJalali = toJalali(new Date())
+  const selectedJalali = selected ? toJalali(selected) : null
+
+  const months = getJalaliMonths()
+  const daysInMonth = getDaysInJalaliMonth(viewYear, viewMonth)
+  const firstDayOffset = getJalaliFirstDayOfMonth(viewYear, viewMonth)
+
+  // Years from startYear through the current Jalali year.
+  // If the currently viewed/selected year falls outside that range
+  // (e.g. old data), extend the list so it still shows correctly.
+  const years = React.useMemo(() => {
+    const currentYear = todayJalali.year
+    const rangeStart = Math.min(startYear, viewYear)
+    const rangeEnd = Math.max(currentYear, viewYear)
+    const arr: number[] = []
+    for (let y = rangeStart; y <= rangeEnd; y++) arr.push(y)
+    return arr
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startYear, viewYear, todayJalali.year])
+
+  const goToPrevMonth = () => {
+    if (viewMonth === 1) {
+      setViewMonth(12)
+      setViewYear((y) => y - 1)
+    } else {
+      setViewMonth((m) => m - 1)
+    }
+  }
+
+  const goToNextMonth = () => {
+    if (viewMonth === 12) {
+      setViewMonth(1)
+      setViewYear((y) => y + 1)
+    } else {
+      setViewMonth((m) => m + 1)
+    }
+  }
+
+  const handleDayClick = (day: number) => {
+    if (disabled) return
+    const gregorianDate = toGregorian({ year: viewYear, month: viewMonth, day })
+    onSelect?.(gregorianDate)
+  }
+
+  const cells: (number | null)[] = []
+  for (let i = 0; i < firstDayOffset; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+
+  return (
+    <div data-slot="jalali-calendar" className={cn("bg-background p-2 w-[272px]", className)}>
+      <div className="flex items-center justify-between gap-1 px-1 pb-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={goToPrevMonth}
+          disabled={disabled}
+        >
+          <ChevronLeftIcon className="h-4 w-4" />
+        </Button>
+
+        <div className="flex items-center gap-1">
+          <Select
+            value={String(viewMonth)}
+            onValueChange={(value) => setViewMonth(Number(value))}
+            disabled={disabled}
+          >
+            <SelectTrigger size="sm" className="h-7 w-[96px] text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              align="start"
+              alignItemWithTrigger={false}
+              className="w-[110px] min-w-[110px] max-h-[220px]"
+            >
+              {months.map((m) => (
+                <SelectItem key={m.number} value={String(m.number)}>
+                  {m.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={String(viewYear)}
+            onValueChange={(value) => setViewYear(Number(value))}
+            disabled={disabled}
+          >
+            <SelectTrigger size="sm" className="h-7 w-[76px] text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              align="start"
+              alignItemWithTrigger={false}
+              className="w-[80px] min-w-[80px] max-h-[220px]"
+            >
+              {years.map((y) => (
+                <SelectItem key={y} value={String(y)}>
+                  {y}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={goToNextMonth}
+          disabled={disabled}
+        >
+          <ChevronRightIcon className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {WEEKDAYS_FA.map((w, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-center text-[0.8rem] font-normal text-muted-foreground h-7"
+          >
+            {w}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((day, idx) => {
+          if (day === null) return <div key={idx} className="h-7 w-7" />
+
+          const isSelected =
+            selectedJalali &&
+            selectedJalali.year === viewYear &&
+            selectedJalali.month === viewMonth &&
+            selectedJalali.day === day
+
+          const isToday =
+            todayJalali.year === viewYear &&
+            todayJalali.month === viewMonth &&
+            todayJalali.day === day
+
+          return (
+            <button
+              type="button"
+              key={idx}
+              disabled={disabled}
+              onClick={() => handleDayClick(day)}
+              className={cn(
+                "h-7 w-7 rounded-md text-sm font-normal transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50",
+                isToday && !isSelected && "bg-muted text-foreground",
+                isSelected && "bg-primary text-primary-foreground hover:bg-primary"
+              )}
+            >
+              {day}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+----------------------------------------
 FILE: label.tsx
 Path: \frontend\src\components\ui\label.tsx
 Size: 0 KB
@@ -22838,6 +23546,105 @@ function Label({ className, ...props }: React.ComponentProps<"label">) {
 }
 
 export { Label }
+
+
+----------------------------------------
+FILE: popover.tsx
+Path: \frontend\src\components\ui\popover.tsx
+Size: 3 KB
+----------------------------------------
+Lines: 91
+
+"use client"
+
+import * as React from "react"
+import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
+
+import { cn } from "@/lib/utils"
+
+function Popover({ ...props }: PopoverPrimitive.Root.Props) {
+  return <PopoverPrimitive.Root data-slot="popover" {...props} />
+}
+
+function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {
+  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
+}
+
+function PopoverContent({
+  className,
+  align = "center",
+  alignOffset = 0,
+  side = "bottom",
+  sideOffset = 4,
+  ...props
+}: PopoverPrimitive.Popup.Props &
+  Pick<
+    PopoverPrimitive.Positioner.Props,
+    "align" | "alignOffset" | "side" | "sideOffset"
+  >) {
+  return (
+    <PopoverPrimitive.Portal>
+      <PopoverPrimitive.Positioner
+        align={align}
+        alignOffset={alignOffset}
+        side={side}
+        sideOffset={sideOffset}
+        className="isolate z-50"
+      >
+        <PopoverPrimitive.Popup
+          data-slot="popover-content"
+          className={cn(
+            "z-50 flex w-72 origin-(--transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+            className
+          )}
+          {...props}
+        />
+      </PopoverPrimitive.Positioner>
+    </PopoverPrimitive.Portal>
+  )
+}
+
+function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="popover-header"
+      className={cn("flex flex-col gap-0.5 text-sm", className)}
+      {...props}
+    />
+  )
+}
+
+function PopoverTitle({ className, ...props }: PopoverPrimitive.Title.Props) {
+  return (
+    <PopoverPrimitive.Title
+      data-slot="popover-title"
+      className={cn("font-medium", className)}
+      {...props}
+    />
+  )
+}
+
+function PopoverDescription({
+  className,
+  ...props
+}: PopoverPrimitive.Description.Props) {
+  return (
+    <PopoverPrimitive.Description
+      data-slot="popover-description"
+      className={cn("text-muted-foreground", className)}
+      {...props}
+    />
+  )
+}
+
+export {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+}
 
 
 ----------------------------------------
@@ -23411,9 +24218,9 @@ DIRECTORY: \frontend\src\contexts
 ----------------------------------------
 FILE: CalendarContext.tsx
 Path: \frontend\src\contexts\CalendarContext.tsx
-Size: 7 KB
+Size: 9 KB
 ----------------------------------------
-Lines: 272
+Lines: 336
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import moment from 'jalali-moment'
@@ -23425,6 +24232,7 @@ interface CalendarContextType {
   toggleCalendar: () => void
   setCalendarType: (type: CalendarType) => void
   formatDate: (date: Date | string, format?: string) => string
+  formatDateForBackend: (date: Date | string) => string
   parseDate: (dateString: string) => Date | null
   toGregorian: (jalaliDate: { year: number; month: number; day: number }) => Date
   toJalali: (date: Date) => { year: number; month: number; day: number }
@@ -23434,6 +24242,7 @@ interface CalendarContextType {
   getJalaliFirstDayOfMonth: (year: number, month: number) => number
   getJalaliMonths: () => Array<{ number: number; name: string; days: number }>
   isJalaliLeapYear: (year: number) => boolean
+  isValidDate: (date: any) => boolean
 }
 
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined)
@@ -23517,17 +24326,13 @@ export function CalendarProvider({
   }
 
   const getDaysInJalaliMonth = (year: number, month: number): number => {
-    // Use jalali-moment for accurate calculation
     const jDate = moment(`${year}/${month}/1`, 'jYYYY/jMM/jDD')
     return jDate.daysInMonth()
   }
 
   const getJalaliFirstDayOfMonth = (year: number, month: number): number => {
-    // Returns 0 for Saturday, 1 for Sunday, ..., 6 for Friday
     const jDate = moment(`${year}/${month}/1`, 'jYYYY/jMM/jDD')
-    // moment returns 0=Sunday, 1=Monday, ..., 6=Saturday
-    // We need 0=Saturday, 1=Sunday, ..., 6=Friday
-    const dayOfWeek = jDate.day() // 0=Sunday, 6=Saturday
+    const dayOfWeek = jDate.day()
     return (dayOfWeek + 1) % 7
   }
 
@@ -23537,12 +24342,23 @@ export function CalendarProvider({
     day: number
   }): Date => {
     const jDate = moment(`${jalaliDate.year}/${jalaliDate.month}/${jalaliDate.day}`, 'jYYYY/jMM/jDD')
+    // Use UTC to avoid timezone issues
     const gregorian = jDate.toDate()
-    return gregorian
+    return new Date(Date.UTC(
+      gregorian.getFullYear(),
+      gregorian.getMonth(),
+      gregorian.getDate()
+    ))
   }
 
   const toJalali = (date: Date): { year: number; month: number; day: number } => {
-    const jDate = moment(date)
+    // Use UTC to avoid timezone issues
+    const utcDate = new Date(Date.UTC(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    ))
+    const jDate = moment(utcDate)
     return {
       year: jDate.jYear(),
       month: jDate.jMonth() + 1,
@@ -23563,13 +24379,28 @@ export function CalendarProvider({
         if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d)) {
           const jDate = moment(`${y}/${m}/${d}`, 'jYYYY/jMM/jDD')
           if (jDate.isValid()) {
-            return jDate.toDate()
+            const gregorian = jDate.toDate()
+            return new Date(Date.UTC(
+              gregorian.getFullYear(),
+              gregorian.getMonth(),
+              gregorian.getDate()
+            ))
           }
         }
       }
     }
 
     // Try parsing as Gregorian
+    const parts = value.split('-')
+    if (parts.length === 3) {
+      const y = Number(parts[0])
+      const m = Number(parts[1])
+      const d = Number(parts[2])
+      if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d)) {
+        return new Date(Date.UTC(y, m - 1, d))
+      }
+    }
+
     const date = new Date(value)
     return isNaN(date.getTime()) ? null : date
   }
@@ -23630,7 +24461,12 @@ export function CalendarProvider({
     }
 
     // Jalali format
-    const jDate = moment(date)
+    const utcDate = new Date(Date.UTC(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    ))
+    const jDate = moment(utcDate)
     const jYear = jDate.jYear()
     const jMonth = jDate.jMonth() + 1
     const jDay = jDate.jDate()
@@ -23653,6 +24489,39 @@ export function CalendarProvider({
     }
   }
 
+  // Format date for backend (always returns Gregorian YYYY-MM-DD)
+  const formatDateForBackend = (value: Date | string): string => {
+    if (!value) return ''
+
+    let date: Date
+    if (typeof value === 'string') {
+      const parsed = parseDate(value)
+      if (!parsed) return ''
+      date = parsed
+    } else {
+      date = value
+    }
+
+    // Always return Gregorian format for backend
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+    ].join('-')
+  }
+
+  // Helper function to check if a date is valid
+  const isValidDate = (date: any): boolean => {
+    if (!date) return false
+    if (date instanceof Date) {
+      return !isNaN(date.getTime())
+    }
+    if (typeof date === 'string') {
+      return parseDate(date) !== null
+    }
+    return false
+  }
+
   return (
     <CalendarContext.Provider
       value={{
@@ -23660,6 +24529,7 @@ export function CalendarProvider({
         toggleCalendar,
         setCalendarType,
         formatDate,
+        formatDateForBackend,
         parseDate,
         toGregorian,
         toJalali,
@@ -23669,6 +24539,7 @@ export function CalendarProvider({
         getJalaliFirstDayOfMonth,
         getJalaliMonths,
         isJalaliLeapYear,
+        isValidDate,
       }}
     >
       {children}
@@ -26825,7 +27696,7 @@ FILE: PublicRegisterPage.tsx
 Path: \frontend\src\features\guarantees\pages\PublicRegisterPage.tsx
 Size: 27 KB
 ----------------------------------------
-Lines: 664
+Lines: 670
 
 import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
@@ -26862,6 +27733,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Upload, X, FileText, Image } from 'lucide-react'
+import { DatePicker } from '@/components/ui/date-picker'
 
 const publicRegisterSchema = z.object({
   // Customer
@@ -27276,10 +28148,15 @@ export function PublicRegisterPage() {
                       control={form.control}
                       name="purchase_date"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex flex-col">
                           <FormLabel>Purchase Date *</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <DatePicker
+                              value={field.value}
+                              onChange={field.onChange}
+                              placeholder="Select purchase date"
+                              className="w-full"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -29215,6 +30092,715 @@ export const REPAIR_STATUS_COLORS: Record<RepairStatus, string> = {
 }
 
 ============================================
+DIRECTORY: \frontend\src\features\technicianPortal\api
+============================================
+
+----------------------------------------
+FILE: technicianAuth.ts
+Path: \frontend\src\features\technicianPortal\api\technicianAuth.ts
+Size: 2 KB
+----------------------------------------
+Lines: 52
+
+import { api } from '@/api/axios'
+import { TechnicianLoginCredentials, TechnicianLoginResponse, Repair, RepairListResponse } from '../types'
+
+const TECH_TOKEN_KEY = 'tech_token'
+
+export const technicianAuthService = {
+  async login(credentials: TechnicianLoginCredentials): Promise<TechnicianLoginResponse> {
+    const response = await api.post('/technician/login', credentials)
+    return response.data.data
+  },
+
+  async getProfile(): Promise<any> {
+    const response = await api.get('/technician/profile')
+    return response.data.data
+  },
+
+  async getMyRepairs(page: number = 1, limit: number = 10, status: string = ''): Promise<RepairListResponse> {
+    const response = await api.get('/technician/repairs', {
+      params: { page, limit, status: status || undefined }
+    })
+    return {
+      repairs: response.data.data,
+      total: response.data.meta.total,
+      page: response.data.meta.current_page,
+      limit: response.data.meta.per_page,
+      last_page: response.data.meta.last_page,
+    }
+  },
+
+  async updateRepair(id: number, data: { status?: string; description?: string }): Promise<Repair> {
+    const response = await api.put(`/technician/repairs/${id}`, data)
+    return response.data.data
+  },
+
+  setToken(token: string) {
+    localStorage.setItem(TECH_TOKEN_KEY, token)
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  },
+
+  getToken(): string | null {
+    return localStorage.getItem(TECH_TOKEN_KEY)
+  },
+
+  removeToken() {
+    localStorage.removeItem(TECH_TOKEN_KEY)
+    delete api.defaults.headers.common['Authorization']
+  },
+
+  isAuthenticated(): boolean {
+    return !!this.getToken()
+  }
+}
+
+============================================
+DIRECTORY: \frontend\src\features\technicianPortal\components
+============================================
+
+----------------------------------------
+FILE: TechnicianLayout.tsx
+Path: \frontend\src\features\technicianPortal\components\TechnicianLayout.tsx
+Size: 3 KB
+----------------------------------------
+Lines: 75
+
+import { Outlet, Link } from 'react-router-dom'
+import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
+import { LogOut, Wrench, ClipboardList, Home, User } from 'lucide-react'
+
+export function TechnicianLayout() {
+  const { technician, logout } = useTechnicianAuth()
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Header */}
+      <header className="bg-white border-b px-6 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Wrench className="h-6 w-6 text-primary" />
+            <h1 className="text-lg font-semibold text-gray-800">
+              Technician Portal
+            </h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <CalendarSwitcher />
+            <div className="flex items-center gap-3">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary text-white">
+                  {technician?.full_name ? getInitials(technician.full_name) : 'T'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium text-gray-700">
+                {technician?.full_name || 'Technician'}
+              </span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={logout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Navigation */}
+      <nav className="bg-gray-50 border-b px-6 py-2">
+        <div className="flex items-center gap-1">
+          <Link to="/technician/dashboard">
+            <Button variant="ghost" size="sm" className="gap-2">
+              <Home className="h-4 w-4" />
+              Dashboard
+            </Button>
+          </Link>
+          <Link to="/technician/profile">
+            <Button variant="ghost" size="sm" className="gap-2">
+              <User className="h-4 w-4" />
+              Profile
+            </Button>
+          </Link>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="flex-1 bg-gray-50 p-6 overflow-y-auto">
+        <Outlet />
+      </main>
+    </div>
+  )
+}
+
+----------------------------------------
+FILE: TechnicianProtectedRoute.tsx
+Path: \frontend\src\features\technicianPortal\components\TechnicianProtectedRoute.tsx
+Size: 1 KB
+----------------------------------------
+Lines: 24
+
+import { Navigate } from 'react-router-dom'
+import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
+
+interface TechnicianProtectedRouteProps {
+  children: React.ReactNode
+}
+
+export function TechnicianProtectedRoute({ children }: TechnicianProtectedRouteProps) {
+  const { isAuthenticated, isLoading } = useTechnicianAuth()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/technician/login" replace />
+  }
+
+  return <>{children}</>
+}
+
+============================================
+DIRECTORY: \frontend\src\features\technicianPortal\contexts
+============================================
+
+----------------------------------------
+FILE: TechnicianAuthContext.tsx
+Path: \frontend\src\features\technicianPortal\contexts\TechnicianAuthContext.tsx
+Size: 2 KB
+----------------------------------------
+Lines: 73
+
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import { technicianAuthService } from '../api/technicianAuth'
+import { Technician } from '../types'
+
+interface TechnicianAuthContextType {
+  technician: Technician | null
+  isAuthenticated: boolean
+  isLoading: boolean
+  login: (username: string, password: string) => Promise<void>
+  logout: () => void
+}
+
+const TechnicianAuthContext = createContext<TechnicianAuthContextType | undefined>(undefined)
+
+export function TechnicianAuthProvider({ children }: { children: React.ReactNode }) {
+  const [technician, setTechnician] = useState<Technician | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const loadTechnician = async () => {
+      const token = technicianAuthService.getToken()
+      
+      if (token) {
+        try {
+          technicianAuthService.setToken(token)
+          const profile = await technicianAuthService.getProfile()
+          setTechnician(profile)
+        } catch (error) {
+          console.error('Failed to load technician profile:', error)
+          technicianAuthService.removeToken()
+          setTechnician(null)
+        }
+      }
+      setIsLoading(false)
+    }
+
+    loadTechnician()
+  }, [])
+
+  const login = async (username: string, password: string) => {
+    const response = await technicianAuthService.login({ username, password })
+    const { token, technician } = response
+    technicianAuthService.setToken(token)
+    setTechnician(technician)
+  }
+
+  const logout = () => {
+    technicianAuthService.removeToken()
+    setTechnician(null)
+  }
+
+  return (
+    <TechnicianAuthContext.Provider
+      value={{
+        technician,
+        isAuthenticated: !!technician,
+        isLoading,
+        login,
+        logout,
+      }}
+    >
+      {children}
+    </TechnicianAuthContext.Provider>
+  )
+}
+
+export function useTechnicianAuth() {
+  const context = useContext(TechnicianAuthContext)
+  if (context === undefined) {
+    throw new Error('useTechnicianAuth must be used within a TechnicianAuthProvider')
+  }
+  return context
+}
+
+============================================
+DIRECTORY: \frontend\src\features\technicianPortal\pages
+============================================
+
+----------------------------------------
+FILE: TechnicianDashboardPage.tsx
+Path: \frontend\src\features\technicianPortal\pages\TechnicianDashboardPage.tsx
+Size: 10 KB
+----------------------------------------
+Lines: 237
+
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { technicianAuthService } from '../api/technicianAuth'
+import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
+import { REPAIR_STATUSES, REPAIR_STATUS_COLORS } from '../types'
+import { toast } from 'sonner'
+import { RefreshCw, ClipboardList, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { FormattedDate } from '@/components/common/FormattedDate'
+
+export function TechnicianDashboardPage() {
+  const { technician } = useTechnicianAuth()
+  const queryClient = useQueryClient()
+  const [page, setPage] = useState(1)
+  const [limit] = useState(10)
+  const [statusFilter, setStatusFilter] = useState<string>('')
+
+  // Fetch repairs assigned to this technician
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['my-repairs', page, limit, statusFilter],
+    queryFn: () => technicianAuthService.getMyRepairs(page, limit, statusFilter),
+  })
+
+  // Update repair mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      technicianAuthService.updateRepair(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-repairs'] })
+      toast.success('Repair status updated successfully')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update repair status')
+    },
+  })
+
+  const handleStatusChange = (repairId: number, status: string) => {
+    updateMutation.mutate({ id: repairId, status })
+  }
+
+  // Calculate stats
+  const repairs = data?.repairs || []
+  const total = data?.total || 0
+  const pending = repairs.filter(r => r.status === 'Pending').length
+  const inProgress = repairs.filter(r => r.status === 'InProgress').length
+  const completed = repairs.filter(r => r.status === 'Completed').length
+
+  const stats = [
+    { title: 'Total Repairs', value: total, icon: ClipboardList, color: 'text-blue-600' },
+    { title: 'Pending', value: pending, icon: Clock, color: 'text-yellow-600' },
+    { title: 'In Progress', value: inProgress, icon: RefreshCw, color: 'text-indigo-600' },
+    { title: 'Completed', value: completed, icon: CheckCircle, color: 'text-green-600' },
+  ]
+
+  return (
+    <div className="space-y-6">
+      {/* Welcome Section */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Welcome, {technician?.full_name}!
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Here are your assigned repairs and their current status.
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
+        {stats.map((stat) => {
+          const Icon = stat.icon
+          return (
+            <Card key={stat.title}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-500">
+                  {stat.title}
+                </CardTitle>
+                <Icon className={`h-5 w-5 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+
+      {/* Repairs Table */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>My Assigned Repairs</CardTitle>
+          <div className="flex items-center gap-4">
+            <Select
+              value={statusFilter || 'all'}
+              onValueChange={(value) => {
+                // Handle null/undefined value
+                const newValue = value || ''
+                setStatusFilter(newValue === 'all' ? '' : newValue)
+                setPage(1)
+              }}
+            >
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                {REPAIR_STATUSES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+          ) : repairs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+              <ClipboardList className="h-12 w-12 mb-4 text-gray-400" />
+              <p className="text-lg font-medium">No repairs assigned</p>
+              <p className="text-sm">You don't have any repairs assigned to you yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Guarantee</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Started</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {repairs.map((repair) => (
+                      <TableRow key={repair.id}>
+                        <TableCell className="font-medium">#{repair.id}</TableCell>
+                        <TableCell>#{repair.guarantee_id}</TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {repair.description}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={REPAIR_STATUS_COLORS[repair.status]}>
+                            {repair.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {repair.started_at ? (
+                            <FormattedDate date={repair.started_at} format="MMM DD, YYYY" />
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {repair.status !== 'Completed' && repair.status !== 'Cancelled' && (
+                            <Select
+                              value={repair.status}
+                              onValueChange={(value) => {
+                                if (value) {
+                                  handleStatusChange(repair.id, value)
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Pending">Pending</SelectItem>
+                                <SelectItem value="InProgress">In Progress</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
+                                <SelectItem value="Cancelled">Cancelled</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                          {repair.status === 'Completed' && (
+                            <Badge variant="outline" className="text-green-600">
+                              Completed
+                            </Badge>
+                          )}
+                          {repair.status === 'Cancelled' && (
+                            <Badge variant="outline" className="text-red-600">
+                              Cancelled
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              {data && data.total > 0 && (
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-gray-500">
+                    Showing {Math.min((data.page - 1) * data.limit + 1, data.total)} to{' '}
+                    {Math.min(data.page * data.limit, data.total)} of {data.total} repairs
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={data.page <= 1}
+                      onClick={() => setPage(data.page - 1)}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={data.page >= data.last_page}
+                      onClick={() => setPage(data.page + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+----------------------------------------
+FILE: TechnicianLoginPage.tsx
+Path: \frontend\src\features\technicianPortal\pages\TechnicianLoginPage.tsx
+Size: 4 KB
+----------------------------------------
+Lines: 118
+
+import { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Loader2, Wrench, ArrowLeft } from 'lucide-react'
+
+export function TechnicianLoginPage() {
+  const navigate = useNavigate()
+  const { login } = useTechnicianAuth()
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setIsLoading(true)
+
+    try {
+      await login(username, password)
+      navigate('/technician/dashboard')
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Invalid username or password')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-6">
+        {/* Brand */}
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+            <Wrench className="h-8 w-8 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Technician Portal</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Access your assigned repairs and update status
+          </p>
+        </div>
+
+        {/* Login Card */}
+        <Card className="shadow-lg">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-xl font-bold text-center">
+              Sign In
+            </CardTitle>
+            <CardDescription className="text-center">
+              Enter your credentials to access your dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-4 text-center">
+              <Link to="/login" className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1">
+                <ArrowLeft className="h-3 w-3" />
+                Back to Staff Login
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-muted-foreground">
+          Â© {new Date().getFullYear()} Guarantee Management System. All rights reserved.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+============================================
+DIRECTORY: \frontend\src\features\technicianPortal\types
+============================================
+
+----------------------------------------
+FILE: index.ts
+Path: \frontend\src\features\technicianPortal\types\index.ts
+Size: 1 KB
+----------------------------------------
+Lines: 54
+
+export interface Technician {
+  id: number
+  full_name: string
+  username: string
+  phone: string
+  national_id: string
+  address: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface TechnicianLoginCredentials {
+  username: string
+  password: string
+}
+
+export interface TechnicianLoginResponse {
+  token: string
+  token_type: string
+  expires_in: number
+  technician: Technician
+}
+
+// Repair types for technician
+export interface Repair {
+  id: number
+  guarantee_id: number
+  technician_id?: number
+  status: 'Pending' | 'InProgress' | 'Completed' | 'Cancelled'
+  description: string
+  started_at?: string
+  completed_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface RepairListResponse {
+  repairs: Repair[]
+  total: number
+  page: number
+  limit: number
+  last_page: number
+}
+
+export const REPAIR_STATUSES = ['Pending', 'InProgress', 'Completed', 'Cancelled'] as const
+export type RepairStatus = typeof REPAIR_STATUSES[number]
+
+export const REPAIR_STATUS_COLORS: Record<RepairStatus, string> = {
+  Pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  InProgress: 'bg-blue-100 text-blue-800 border-blue-200',
+  Completed: 'bg-green-100 text-green-800 border-green-200',
+  Cancelled: 'bg-red-100 text-red-800 border-red-200',
+}
+
+============================================
 DIRECTORY: \frontend\src\features\technicians\api
 ============================================
 
@@ -30552,9 +32138,9 @@ DIRECTORY: \frontend\src\routes
 ----------------------------------------
 FILE: index.tsx
 Path: \frontend\src\routes\index.tsx
-Size: 2 KB
+Size: 4 KB
 ----------------------------------------
-Lines: 59
+Lines: 95
 
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
@@ -30571,19 +32157,28 @@ import { RepairsPage } from '@/features/repairs/pages/RepairsPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
-import { CustomersPage } from '@/features/customers/pages/CustomersPage' // Add this import
+import { CustomersPage } from '@/features/customers/pages/CustomersPage'
 
 // Layouts
 import { MainLayout } from '@/layouts/MainLayout'
+
+// Technician Portal
+import { TechnicianAuthProvider } from '@/features/technicianPortal/contexts/TechnicianAuthContext'
+import { TechnicianProtectedRoute } from '@/features/technicianPortal/components/TechnicianProtectedRoute'
+import { TechnicianLayout } from '@/features/technicianPortal/components/TechnicianLayout'
+import { TechnicianLoginPage } from '@/features/technicianPortal/pages/TechnicianLoginPage'
+import { TechnicianDashboardPage } from '@/features/technicianPortal/pages/TechnicianDashboardPage'
 
 export function AppRoutes() {
   const { isAuthenticated } = useAuth()
 
   return (
     <Routes>
+      {/* Public routes */}
       <Route path="/register-guarantee" element={<PublicRegisterPage />} />
       <Route path="/check-guarantee" element={<CheckGuaranteePage />} />
       
+      {/* Admin Login */}
       <Route
         path="/login"
         element={
@@ -30593,6 +32188,17 @@ export function AppRoutes() {
         }
       />
       
+      {/* Technician Login */}
+      <Route
+        path="/technician/login"
+        element={
+          <TechnicianAuthProvider>
+            <TechnicianLoginPage />
+          </TechnicianAuthProvider>
+        }
+      />
+      
+      {/* Admin Routes */}
       <Route
         path="/"
         element={
@@ -30603,7 +32209,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="customers" element={<CustomersPage />} /> 
+        <Route path="customers" element={<CustomersPage />} />
         <Route path="catalog/categories" element={<CategoriesPage />} />
         <Route path="catalog/products" element={<ProductsPage />} />
         <Route path="guarantees" element={<GuaranteesPage />} />
@@ -30611,6 +32217,22 @@ export function AppRoutes() {
         <Route path="repairs" element={<RepairsPage />} />
       </Route>
 
+      {/* Technician Routes */}
+      <Route
+        path="/technician"
+        element={
+          <TechnicianAuthProvider>
+            <TechnicianProtectedRoute>
+              <TechnicianLayout />
+            </TechnicianProtectedRoute>
+          </TechnicianAuthProvider>
+        }
+      >
+        <Route index element={<Navigate to="/technician/dashboard" replace />} />
+        <Route path="dashboard" element={<TechnicianDashboardPage />} />
+      </Route>
+
+      {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
@@ -30711,11 +32333,11 @@ File Types:
   .json : 7 files
   .md : 2 files
   .mod : 1 files
-  .ps1 : 7 files
+  .ps1 : 8 files
   .sql : 12 files
   .sum : 1 files
-  .ts : 28 files
-  .tsx : 67 files
+  .ts : 30 files
+  .tsx : 75 files
   .yml : 1 files
 
 Languages:
@@ -30727,8 +32349,8 @@ Languages:
   Make : 1 files
   Markdown : 2 files
   Other : 3 files
-  PowerShell : 7 files
+  PowerShell : 8 files
   SQL : 12 files
-  TypeScript : 95 files
+  TypeScript : 105 files
   YAML : 1 files
 

@@ -8,29 +8,33 @@ import (
 )
 
 type Claims struct {
-	AdminID  uint   `json:"admin_id"`
-	Username string `json:"username"`
+	AdminID      uint   `json:"admin_id,omitempty"`
+	TechnicianID uint   `json:"technician_id,omitempty"`
+	Username     string `json:"username"`
+	Role         string `json:"role"` // "admin" or "technician"
 	jwt.RegisteredClaims
 }
 
 func GenerateToken(adminID uint, username, secret string, expiration time.Duration) (string, int64, error) {
-	expiresAt := time.Now().Add(expiration)
-	claims := &Claims{
-		AdminID:  adminID,
-		Username: username,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expiresAt),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-		},
-	}
+	return generate(Claims{AdminID: adminID, Username: username, Role: "admin"}, secret, expiration)
+}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+func GenerateTechnicianToken(techID uint, username, secret string, expiration time.Duration) (string, int64, error) {
+	return generate(Claims{TechnicianID: techID, Username: username, Role: "technician"}, secret, expiration)
+}
+
+func generate(claims Claims, secret string, expiration time.Duration) (string, int64, error) {
+	expiresAt := time.Now().Add(expiration)
+	claims.RegisteredClaims = jwt.RegisteredClaims{
+		ExpiresAt: jwt.NewNumericDate(expiresAt),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		NotBefore: jwt.NewNumericDate(time.Now()),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
 	tokenString, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return "", 0, err
 	}
-
 	return tokenString, int64(expiration.Seconds()), nil
 }
 

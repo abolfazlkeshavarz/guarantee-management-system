@@ -69,7 +69,7 @@ func main() {
 
 		// Initialize dashboard module
 		dashboardModule := dashboard.NewDashboardModule(database.GetDB())
-    	dashboardModule.RegisterRoutes(v1)
+		dashboardModule.RegisterRoutes(v1)
 
 		// Initialize product categories module
 		categoriesModule := categories.NewCategoryModule(database.GetDB())
@@ -79,17 +79,19 @@ func main() {
 		productsModule := products.NewProductModule(database.GetDB())
 		productsModule.RegisterRoutes(v1)
 
-		// Initialize guarantees module - MAKE SURE THIS IS HERE
+		// Initialize guarantees module
 		guaranteesModule := guarantees.NewGuaranteeModule(database.GetDB())
 		guaranteesModule.RegisterRoutes(v1)
-		
-		techniciansModule := technicians.NewTechnicianModule(database.GetDB())
-        techniciansModule.RegisterRoutes(v1)
 
+		// Initialize technicians module with config
+		techniciansModule := technicians.NewTechnicianModule(database.GetDB(), cfg)
+		techniciansModule.RegisterRoutes(v1)
+
+		// Initialize repairs module
 		repairsModule := repairs.NewRepairModule(database.GetDB())
-        repairsModule.RegisterRoutes(v1)
+		repairsModule.RegisterRoutes(v1)
 
-		log.Println("✅ Guarantees module registered successfully")
+		log.Println("✅ All modules registered successfully")
 	}
 
 	// Log all routes for debugging

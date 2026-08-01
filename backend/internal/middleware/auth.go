@@ -36,10 +36,40 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Set user context
-		c.Set("admin_id", claims.AdminID)
+		// Set user context with role
+		c.Set("role", claims.Role)
 		c.Set("username", claims.Username)
+		
+		if claims.Role == "admin" {
+			c.Set("admin_id", claims.AdminID)
+		} else if claims.Role == "technician" {
+			c.Set("technician_id", claims.TechnicianID)
+		}
 
+		c.Next()
+	}
+}
+
+func TechnicianOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists || role != "technician" {
+			responses.Forbidden(c, "Technician access only")
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+func AdminOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists || role != "admin" {
+			responses.Forbidden(c, "Admin access only")
+			c.Abort()
+			return
+		}
 		c.Next()
 	}
 }

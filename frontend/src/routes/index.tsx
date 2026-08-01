@@ -1,3 +1,4 @@
+// frontend/src/routes/index.tsx
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/common/ProtectedRoute'
@@ -13,19 +14,27 @@ import { RepairsPage } from '@/features/repairs/pages/RepairsPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
-import { CustomersPage } from '@/features/customers/pages/CustomersPage' // Add this import
+import { CustomersPage } from '@/features/customers/pages/CustomersPage'
 
 // Layouts
 import { MainLayout } from '@/layouts/MainLayout'
+
+// Technician Portal
+import { TechnicianProtectedRoute } from '@/features/technicianPortal/components/TechnicianProtectedRoute'
+import { TechnicianLayout } from '@/features/technicianPortal/components/TechnicianLayout'
+import { TechnicianLoginPage } from '@/features/technicianPortal/pages/TechnicianLoginPage'
+import { TechnicianDashboardPage } from '@/features/technicianPortal/pages/TechnicianDashboardPage'
 
 export function AppRoutes() {
   const { isAuthenticated } = useAuth()
 
   return (
     <Routes>
+      {/* Public routes */}
       <Route path="/register-guarantee" element={<PublicRegisterPage />} />
       <Route path="/check-guarantee" element={<CheckGuaranteePage />} />
       
+      {/* Admin Login */}
       <Route
         path="/login"
         element={
@@ -35,6 +44,13 @@ export function AppRoutes() {
         }
       />
       
+      {/* Technician Login - no provider wrapper needed anymore */}
+      <Route
+        path="/technician/login"
+        element={<TechnicianLoginPage />}
+      />
+      
+      {/* Admin Routes */}
       <Route
         path="/"
         element={
@@ -45,7 +61,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="customers" element={<CustomersPage />} /> 
+        <Route path="customers" element={<CustomersPage />} />
         <Route path="catalog/categories" element={<CategoriesPage />} />
         <Route path="catalog/products" element={<ProductsPage />} />
         <Route path="guarantees" element={<GuaranteesPage />} />
@@ -53,6 +69,20 @@ export function AppRoutes() {
         <Route path="repairs" element={<RepairsPage />} />
       </Route>
 
+      {/* Technician Routes - no provider wrapper needed anymore */}
+      <Route
+        path="/technician"
+        element={
+          <TechnicianProtectedRoute>
+            <TechnicianLayout />
+          </TechnicianProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/technician/dashboard" replace />} />
+        <Route path="dashboard" element={<TechnicianDashboardPage />} />
+      </Route>
+
+      {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
