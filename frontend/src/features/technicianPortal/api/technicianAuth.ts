@@ -32,6 +32,11 @@ export const technicianAuthService = {
     return response.data.data
   },
 
+  async createRepair(data: { guarantee_id: number; description: string }): Promise<Repair> {
+    const response = await api.post('/technician/repairs', data)
+    return response.data.data
+  },
+
   setToken(token: string) {
     localStorage.setItem(TECH_TOKEN_KEY, token)
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`

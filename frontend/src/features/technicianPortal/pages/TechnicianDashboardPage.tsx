@@ -1,3 +1,4 @@
+// frontend/src/features/technicianPortal/pages/TechnicianDashboardPage.tsx
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { technicianAuthService } from '../api/technicianAuth'
 import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
+import { NewRepairDialog } from '../components/NewRepairDialog'  // <-- Make sure this import exists
 import { REPAIR_STATUSES, REPAIR_STATUS_COLORS } from '../types'
 import { toast } from 'sonner'
 import { RefreshCw, ClipboardList, CheckCircle, Clock, AlertCircle } from 'lucide-react'
@@ -59,13 +61,16 @@ export function TechnicianDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          Welcome, {technician?.full_name}!
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Here are your assigned repairs and their current status.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome, {technician?.full_name}!
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Here are your assigned repairs and their current status.
+          </p>
+        </div>
+        <NewRepairDialog />  {/* <-- This is where the button appears */}
       </div>
 
       {/* Stats Cards */}
@@ -96,7 +101,6 @@ export function TechnicianDashboardPage() {
             <Select
               value={statusFilter || 'all'}
               onValueChange={(value) => {
-                // Handle null/undefined value
                 const newValue = value || ''
                 setStatusFilter(newValue === 'all' ? '' : newValue)
                 setPage(1)

@@ -36,6 +36,32 @@ func (h *RepairHandler) Create(c *gin.Context) {
 	responses.SuccessWithMessage(c, "Repair created successfully", repair)
 }
 
+func (h *RepairHandler) CreateMyRepair(c *gin.Context) {
+	techID, exists := c.Get("technician_id")
+	if !exists {
+		responses.Unauthorized(c, "Unauthorized")
+		return
+	}
+
+	var req CreateMyRepairRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid request")
+		return
+	}
+	if req.GuaranteeID == 0 || req.Description == "" {
+		responses.Error(c, http.StatusBadRequest, "guarantee_id and description are required")
+		return
+	}
+
+	repair, err := h.service.CreateByTechnician(techID.(uint), &req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Repair created successfully", repair)
+}
+
 func (h *RepairHandler) Get(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {

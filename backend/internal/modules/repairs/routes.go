@@ -1,3 +1,4 @@
+// backend/internal/modules/repairs/routes.go
 package repairs
 
 import (
@@ -36,6 +37,7 @@ func (m *RepairModule) RegisterRoutes(router *gin.RouterGroup) {
 	technician.Use(middleware.AuthMiddleware(), middleware.TechnicianOnly())
 	{
 		technician.GET("/repairs", m.handler.MyRepairs)
+		technician.POST("/repairs", m.handler.CreateMyRepair) // new
 		technician.PUT("/repairs/:id", m.handler.UpdateMyRepair)
 	}
 }

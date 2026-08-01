@@ -39,6 +39,31 @@ func (s *RepairService) Create(req *CreateRepairRequest) (*RepairDTO, error) {
 	return s.mapToDTO(repair), nil
 }
 
+func (s *RepairService) CreateByTechnician(techID uint, req *CreateMyRepairRequest) (*RepairDTO, error) {
+	var exists bool
+	if err := s.db.Table("guarantees").
+		Where("id = ? AND deleted_at IS NULL", req.GuaranteeID).
+		Select("count(*) > 0").Find(&exists).Error; err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify guarantee", 500)
+	}
+	if !exists {
+		return nil, errors.NewAppError(errors.ErrNotFound, "Guarantee not found", 404)
+	}
+
+	repair := &Repair{
+		GuaranteeID:  req.GuaranteeID,
+		TechnicianID: &techID, // forced server-side — cannot be spoofed by the client
+		Status:       StatusPending,
+		Description:  req.Description,
+	}
+
+	if err := s.repo.Create(repair); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create repair", 500)
+	}
+
+	return s.mapToDTO(repair), nil
+}
+
 func (s *RepairService) GetByID(id uint) (*RepairDTO, error) {
 	repair, err := s.repo.FindByID(id)
 	if err != nil {

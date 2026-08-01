@@ -1,3 +1,4 @@
+// backend/internal/modules/guarantees/routes.go
 package guarantees
 
 import (
@@ -21,7 +22,7 @@ func NewGuaranteeModule(db *gorm.DB) *GuaranteeModule {
 }
 
 func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
-
+	// Public routes - no auth required
 	public := router.Group("/guarantees/public")
 	{
 		public.POST("/register", m.handler.PublicRegister)
@@ -30,14 +31,21 @@ func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
 		public.POST("/upload", m.handler.UploadFile)
 	}
 
-	// Protected routes (authentication required)
+	// Read access — admins AND technicians (technicians need this to look up
+	// a guarantee before filing a repair against it)
+	readOnly := router.Group("/guarantees")
+	readOnly.Use(middleware.AuthMiddleware())
+	{
+		readOnly.GET("", m.handler.List)
+		readOnly.GET("/:id", m.handler.Get)
+	}
+
+	// Write access — admins only
 	protected := router.Group("/guarantees")
-	protected.Use(middleware.AuthMiddleware())
+	protected.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
 	{
 		protected.POST("", m.handler.Create)
-		protected.GET("", m.handler.List)
 		protected.GET("/expiring", m.handler.GetExpiringSoon)
-		protected.GET("/:id", m.handler.Get)
 		protected.PUT("/:id", m.handler.Update)
 		protected.POST("/:id/approve", m.handler.Approve)
 		protected.POST("/:id/renew", m.handler.Renew)

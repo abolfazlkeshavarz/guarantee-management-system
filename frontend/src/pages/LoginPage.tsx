@@ -1,9 +1,11 @@
+// frontend/src/pages/LoginPage.tsx
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
+import { useTechnicianAuth } from '@/features/technicianPortal/contexts/TechnicianAuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,6 +24,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 export function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { login: technicianLogin } = useTechnicianAuth()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -36,11 +39,27 @@ export function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setError(null)
     setIsLoading(true)
+
+    // First try admin login
     try {
       await login(data)
       navigate('/dashboard')
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid username or password')
+      return
+    } catch (adminErr: any) {
+      // Only fall through to technician login on auth failure
+      if (adminErr.response?.status !== 401) {
+        setError('Something went wrong. Please try again.')
+        setIsLoading(false)
+        return
+      }
+    }
+
+    // Then try technician login
+    try {
+      await technicianLogin(data.username, data.password)
+      navigate('/technician/dashboard')
+    } catch (techErr: any) {
+      setError(techErr.response?.data?.message || 'Invalid username or password')
     } finally {
       setIsLoading(false)
     }

@@ -1,3 +1,4 @@
+// backend/internal/modules/repairs/dto.go
 package repairs
 
 type RepairDTO struct {
@@ -16,6 +17,11 @@ type CreateRepairRequest struct {
     GuaranteeID  uint   `json:"guarantee_id" binding:"required"`
     TechnicianID *uint  `json:"technician_id"`
     Description  string `json:"description" binding:"required"`
+}
+
+type CreateMyRepairRequest struct {
+    GuaranteeID uint   `json:"guarantee_id" binding:"required"`
+    Description string `json:"description" binding:"required"`
 }
 
 type UpdateRepairRequest struct {
