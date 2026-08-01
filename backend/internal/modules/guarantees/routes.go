@@ -31,8 +31,7 @@ func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
 		public.POST("/upload", m.handler.UploadFile)
 	}
 
-	// Read access — admins AND technicians (technicians need this to look up
-	// a guarantee before filing a repair against it)
+	// Read access — admins AND technicians
 	readOnly := router.Group("/guarantees")
 	readOnly.Use(middleware.AuthMiddleware())
 	{
@@ -51,5 +50,9 @@ func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
 		protected.POST("/:id/renew", m.handler.Renew)
 		protected.POST("/:id/cancel", m.handler.Cancel)
 		protected.DELETE("/:id", m.handler.Delete)
+		
+		// IMPORTANT: This must be defined AFTER the routes with dynamic parameters
+		// or use a different path pattern to avoid conflicts
+		protected.POST("/admin-create", m.handler.CreateByAdmin)
 	}
 }

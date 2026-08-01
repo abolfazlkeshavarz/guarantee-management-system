@@ -23,6 +23,28 @@ type GuaranteeDTO struct {
 	UpdatedAt           string    `json:"updated_at"`
 }
 
+
+type AdminCreateGuaranteeRequest struct {
+    // Customer Information - either existing or new
+    CustomerID       *uint  `json:"customer_id"`
+    CustomerFullName string `json:"customer_full_name"`
+    CustomerPhone    string `json:"customer_phone"`
+    CustomerNationalID string `json:"customer_national_id"`
+    CustomerProvince string `json:"customer_province"`
+    CustomerCity     string `json:"customer_city"`
+    CustomerAddress  string `json:"customer_address"`
+    
+    // Guarantee Information
+    ProductID          uint   `json:"product_id" binding:"required"`
+    PurchaseDate       string `json:"purchase_date" binding:"required"`
+    ExpiryDate         string `json:"expiry_date" binding:"required"`
+    InvoiceImage       string `json:"invoice_image"`
+    GuaranteeCardImage string `json:"guarantee_card_image"`
+    Notes              string `json:"notes"`
+    // Admin can set status directly
+    Status             string `json:"status" binding:"omitempty,oneof=Pending Approved Rejected"`
+}
+
 type CreateGuaranteeRequest struct {
 	CustomerID         uint      `json:"customer_id" binding:"required"`
 	ProductID          uint      `json:"product_id" binding:"required"`

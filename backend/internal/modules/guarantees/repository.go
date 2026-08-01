@@ -25,13 +25,24 @@ func (r *GuaranteeRepository) FindByID(id uint) (*Guarantee, error) {
 		Preload("Product").
 		Preload("CreatedByAdmin").
 		Preload("ApprovedByAdmin").
-		Where("id = ?", id).
+		Where("id = ? AND deleted_at IS NULL", id).
 		First(&guarantee).Error
 	if err != nil {
 		return nil, err
 	}
 	return &guarantee, nil
 }
+
+// Add a simpler FindByIDWithoutPreload for cases where we don't need relations
+func (r *GuaranteeRepository) FindByIDSimple(id uint) (*Guarantee, error) {
+	var guarantee Guarantee
+	err := r.db.Where("id = ? AND deleted_at IS NULL", id).First(&guarantee).Error
+	if err != nil {
+		return nil, err
+	}
+	return &guarantee, nil
+}
+
 
 func (r *GuaranteeRepository) FindAll(page, limit int, search string, status string, customerID, productID *uint) ([]Guarantee, int64, error) {
 	var guarantees []Guarantee
@@ -59,22 +70,58 @@ func (r *GuaranteeRepository) FindAll(page, limit int, search string, status str
 		query = query.Where("guarantees.product_id = ?", productID)
 	}
 
+	// Count total
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * limit
+	
+	// Use Select to avoid preloading issues
 	err := query.
-		Preload("Customer").
-		Preload("Product").
-		Preload("CreatedByAdmin").
-		Preload("ApprovedByAdmin").
+		Select("guarantees.*").
 		Offset(offset).
 		Limit(limit).
 		Order("guarantees.created_at DESC").
 		Find(&guarantees).Error
 
-	return guarantees, total, err
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Load relations separately if needed
+	for i := range guarantees {
+		// Load customer name
+		if guarantees[i].CustomerID > 0 {
+			var customer Customer
+			if err := r.db.Table("customers").Where("id = ?", guarantees[i].CustomerID).Select("id, full_name, phone").Scan(&customer).Error; err == nil {
+				guarantees[i].Customer = customer
+			}
+		}
+		// Load product name
+		if guarantees[i].ProductID > 0 {
+			var product Product
+			if err := r.db.Table("products").Where("id = ?", guarantees[i].ProductID).Select("id, name").Scan(&product).Error; err == nil {
+				guarantees[i].Product = product
+			}
+		}
+		// Load created by admin
+		if guarantees[i].CreatedBy != nil && *guarantees[i].CreatedBy > 0 {
+			var admin Admin
+			if err := r.db.Table("admins").Where("id = ?", *guarantees[i].CreatedBy).Select("id, username").Scan(&admin).Error; err == nil {
+				guarantees[i].CreatedByAdmin = admin
+			}
+		}
+		// Load approved by admin
+		if guarantees[i].ApprovedBy != nil && *guarantees[i].ApprovedBy > 0 {
+			var admin Admin
+			if err := r.db.Table("admins").Where("id = ?", *guarantees[i].ApprovedBy).Select("id, username").Scan(&admin).Error; err == nil {
+				guarantees[i].ApprovedByAdmin = admin
+			}
+		}
+	}
+
+	return guarantees, total, nil
 }
 
 func (r *GuaranteeRepository) FindByCode(code string) (*Guarantee, error) {

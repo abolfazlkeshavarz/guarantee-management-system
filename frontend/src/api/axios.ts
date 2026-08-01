@@ -1,4 +1,3 @@
-// frontend/src/api/axios.ts
 import axios from 'axios'
 
 export const api = axios.create({
@@ -17,27 +16,16 @@ api.interceptors.request.use(
     }
     return config
   },
-  (error) => {
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      const onTechnicianRoute = window.location.pathname.startsWith('/technician')
-      
-      if (onTechnicianRoute) {
-        if (!window.location.pathname.includes('/login')) {
-          localStorage.removeItem('tech_token')
-          window.location.href = '/technician/login'
-        }
-      } else if (!window.location.pathname.includes('/login')) {
-        localStorage.removeItem('token')
-        window.location.href = '/login'
-      }
+    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
+      localStorage.removeItem('token')
+      window.location.href = '/login'
     }
     return Promise.reject(error)
   }

@@ -35,21 +35,25 @@ export interface GuaranteePeriod {
 }
 
 export const publicGuaranteeService = {
+  // Public registration
   async register(data: PublicRegisterData): Promise<PublicRegisterResponse> {
     const response = await api.post('/guarantees/public/register', data)
     return response.data.data
   },
 
+  // Get available guarantee periods
   async getPeriods(): Promise<GuaranteePeriod[]> {
     const response = await api.get('/guarantees/public/periods')
     return response.data.data
   },
 
+  // Check guarantee status by code
   async checkStatus(code: string): Promise<any> {
     const response = await api.get('/guarantees/public/check', { params: { code } })
     return response.data.data
   },
 
+  // Upload file
   async uploadFile(file: File): Promise<{ url: string; filename: string; size: number; type: string }> {
     const formData = new FormData()
     formData.append('file', file)

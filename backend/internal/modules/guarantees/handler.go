@@ -321,3 +321,29 @@ func (h *GuaranteeHandler) UploadFile(c *gin.Context) {
 		"type":     contentType,
 	})
 }
+
+func (h *GuaranteeHandler) CreateByAdmin(c *gin.Context) {
+    var req AdminCreateGuaranteeRequest
+    
+    // Log request body for debugging
+    body, _ := c.GetRawData()
+    fmt.Println("Admin create request body:", string(body))
+    
+    // Restore body
+    c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+    
+    if err := c.ShouldBindJSON(&req); err != nil {
+        responses.Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
+        return
+    }
+
+    adminID := c.GetUint("admin_id")
+
+    guarantee, err := h.service.CreateByAdmin(&req, adminID)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.SuccessWithMessage(c, "Guarantee created successfully by admin", guarantee)
+}

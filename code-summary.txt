@@ -2,10 +2,10 @@
   GUARANTEE MANAGEMENT SYSTEM - CODE SUMMARY
 ============================================
 
-Generated: 2026-08-01 06:48:23
+Generated: 2026-08-01 10:32:36
 Project Root: D:\Abolfazl Keshavarz\guarantee-management-system
-Total Files: 217
-Total Directories: 72
+Total Files: 222
+Total Directories: 73
 
 ============================================
   FILE CONTENTS
@@ -6000,9 +6000,9 @@ DIRECTORY: \backend\internal\modules\guarantees
 ----------------------------------------
 FILE: dto.go
 Path: \backend\internal\modules\guarantees\dto.go
-Size: 4 KB
+Size: 5 KB
 ----------------------------------------
-Lines: 99
+Lines: 121
 
 package guarantees
 
@@ -6027,6 +6027,28 @@ type GuaranteeDTO struct {
 	ApprovedAt          *string   `json:"approved_at,omitempty"`
 	CreatedAt           string    `json:"created_at"`
 	UpdatedAt           string    `json:"updated_at"`
+}
+
+
+type AdminCreateGuaranteeRequest struct {
+    // Customer Information - either existing or new
+    CustomerID       *uint  `json:"customer_id"`
+    CustomerFullName string `json:"customer_full_name"`
+    CustomerPhone    string `json:"customer_phone"`
+    CustomerNationalID string `json:"customer_national_id"`
+    CustomerProvince string `json:"customer_province"`
+    CustomerCity     string `json:"customer_city"`
+    CustomerAddress  string `json:"customer_address"`
+    
+    // Guarantee Information
+    ProductID          uint   `json:"product_id" binding:"required"`
+    PurchaseDate       string `json:"purchase_date" binding:"required"`
+    ExpiryDate         string `json:"expiry_date" binding:"required"`
+    InvoiceImage       string `json:"invoice_image"`
+    GuaranteeCardImage string `json:"guarantee_card_image"`
+    Notes              string `json:"notes"`
+    // Admin can set status directly
+    Status             string `json:"status" binding:"omitempty,oneof=Pending Approved Rejected"`
 }
 
 type CreateGuaranteeRequest struct {
@@ -6131,9 +6153,9 @@ var (
 ----------------------------------------
 FILE: handler.go
 Path: \backend\internal\modules\guarantees\handler.go
-Size: 8 KB
+Size: 9 KB
 ----------------------------------------
-Lines: 323
+Lines: 349
 
 package guarantees
 
@@ -6459,6 +6481,32 @@ func (h *GuaranteeHandler) UploadFile(c *gin.Context) {
 	})
 }
 
+func (h *GuaranteeHandler) CreateByAdmin(c *gin.Context) {
+    var req AdminCreateGuaranteeRequest
+    
+    // Log request body for debugging
+    body, _ := c.GetRawData()
+    fmt.Println("Admin create request body:", string(body))
+    
+    // Restore body
+    c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
+    
+    if err := c.ShouldBindJSON(&req); err != nil {
+        responses.Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
+        return
+    }
+
+    adminID := c.GetUint("admin_id")
+
+    guarantee, err := h.service.CreateByAdmin(&req, adminID)
+    if err != nil {
+        handleError(c, err)
+        return
+    }
+
+    responses.SuccessWithMessage(c, "Guarantee created successfully by admin", guarantee)
+}
+
 ----------------------------------------
 FILE: model.go
 Path: \backend\internal\modules\guarantees\model.go
@@ -6657,10 +6705,11 @@ func (r *GuaranteeRepository) UpdateExpiredStatus() error {
 ----------------------------------------
 FILE: routes.go
 Path: \backend\internal\modules\guarantees\routes.go
-Size: 1 KB
+Size: 2 KB
 ----------------------------------------
-Lines: 47
+Lines: 56
 
+// backend/internal/modules/guarantees/routes.go
 package guarantees
 
 import (
@@ -6684,7 +6733,7 @@ func NewGuaranteeModule(db *gorm.DB) *GuaranteeModule {
 }
 
 func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
-
+	// Public routes - no auth required
 	public := router.Group("/guarantees/public")
 	{
 		public.POST("/register", m.handler.PublicRegister)
@@ -6693,28 +6742,36 @@ func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
 		public.POST("/upload", m.handler.UploadFile)
 	}
 
-	// Protected routes (authentication required)
+	// Read access â€” admins AND technicians (technicians need this to look up
+	// a guarantee before filing a repair against it)
+	readOnly := router.Group("/guarantees")
+	readOnly.Use(middleware.AuthMiddleware())
+	{
+		readOnly.GET("", m.handler.List)
+		readOnly.GET("/:id", m.handler.Get)
+	}
+
+	// Write access â€” admins only
 	protected := router.Group("/guarantees")
-	protected.Use(middleware.AuthMiddleware())
+	protected.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
 	{
 		protected.POST("", m.handler.Create)
-		protected.GET("", m.handler.List)
 		protected.GET("/expiring", m.handler.GetExpiringSoon)
-		protected.GET("/:id", m.handler.Get)
 		protected.PUT("/:id", m.handler.Update)
 		protected.POST("/:id/approve", m.handler.Approve)
 		protected.POST("/:id/renew", m.handler.Renew)
 		protected.POST("/:id/cancel", m.handler.Cancel)
 		protected.DELETE("/:id", m.handler.Delete)
+		protected.POST("/admin-create", m.handler.CreateByAdmin)
 	}
 }
 
 ----------------------------------------
 FILE: service.go
 Path: \backend\internal\modules\guarantees\service.go
-Size: 18 KB
+Size: 24 KB
 ----------------------------------------
-Lines: 587
+Lines: 749
 
 package guarantees
 
@@ -7302,6 +7359,168 @@ func (s *GuaranteeService) GetByCode(code string) (*GuaranteeDTO, error) {
 		return nil, ErrGuaranteeNotFound
 	}
 	return s.mapToDTO(guarantee), nil
+}
+
+func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, adminID uint) (*GuaranteeDTO, error) {
+    // Start transaction
+    tx := s.db.Begin()
+    defer func() {
+        if r := recover(); r != nil {
+            tx.Rollback()
+        }
+    }()
+
+    var customerID uint
+    var err error
+
+    // Determine customer
+    if req.CustomerID != nil && *req.CustomerID > 0 {
+        // Use existing customer
+        var exists bool
+        if err := tx.Table("customers").Where("id = ? AND deleted_at IS NULL", *req.CustomerID).Select("count(*) > 0").Find(&exists).Error; err != nil {
+            tx.Rollback()
+            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify customer", 500)
+        }
+        if !exists {
+            tx.Rollback()
+            return nil, ErrCustomerNotFound
+        }
+        customerID = *req.CustomerID
+    } else {
+        // Create new customer (like public form)
+        if req.CustomerFullName == "" || req.CustomerPhone == "" || req.CustomerNationalID == "" {
+            tx.Rollback()
+            return nil, errors.NewAppError(errors.ErrValidation, "Customer information is required when not selecting existing customer", 400)
+        }
+
+        // Check if customer exists by National ID or Phone
+        var existingCustomer Customer
+        err := tx.Table("customers").
+            Where("national_id = ? OR phone = ?", req.CustomerNationalID, req.CustomerPhone).
+            First(&existingCustomer).Error
+        
+        if err == nil {
+            // Customer exists, use it
+            customerID = existingCustomer.ID
+        } else if err == gorm.ErrRecordNotFound {
+            // Create new customer
+            customer := map[string]interface{}{
+                "full_name":   req.CustomerFullName,
+                "phone":       req.CustomerPhone,
+                "national_id": req.CustomerNationalID,
+                "province":    req.CustomerProvince,
+                "city":        req.CustomerCity,
+                "address":     req.CustomerAddress,
+            }
+            
+            if err := tx.Table("customers").Create(&customer).Error; err != nil {
+                tx.Rollback()
+                return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
+            }
+            
+            // Get the created customer ID
+            var newCustomer Customer
+            if err := tx.Table("customers").Where("national_id = ?", req.CustomerNationalID).First(&newCustomer).Error; err != nil {
+                tx.Rollback()
+                return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created customer", 500)
+            }
+            customerID = newCustomer.ID
+        } else {
+            tx.Rollback()
+            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check customer existence", 500)
+        }
+    }
+
+    // Verify product exists
+    var productExists bool
+    if err := tx.Table("products").Where("id = ? AND deleted_at IS NULL", req.ProductID).Select("count(*) > 0").Find(&productExists).Error; err != nil {
+        tx.Rollback()
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify product", 500)
+    }
+    if !productExists {
+        tx.Rollback()
+        return nil, ErrProductNotFound
+    }
+
+    // Parse dates
+    purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
+    if err != nil {
+        tx.Rollback()
+        return nil, ErrInvalidDate
+    }
+    expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
+    if err != nil {
+        tx.Rollback()
+        return nil, ErrInvalidDate
+    }
+
+    if err := s.validateDates(purchaseDate, expiryDate); err != nil {
+        tx.Rollback()
+        return nil, err
+    }
+
+    // Generate unique code
+    var code string
+    for i := 0; i < 3; i++ {
+        code, err = s.generateCode()
+        if err != nil {
+            tx.Rollback()
+            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to generate code", 500)
+        }
+        existing, _ := s.repo.FindByCode(code)
+        if existing == nil {
+            break
+        }
+        if i == 2 {
+            tx.Rollback()
+            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to generate unique code", 500)
+        }
+    }
+
+    // Set status (default to Approved for admin-created)
+    status := StatusApproved
+    if req.Status != "" {
+        status = req.Status
+    }
+
+    // Create guarantee
+    guarantee := &Guarantee{
+        Code:               code,
+        CustomerID:         customerID,
+        ProductID:          req.ProductID,
+        PurchaseDate:       purchaseDate,
+        ExpiryDate:         expiryDate,
+        Status:             status,
+        InvoiceImage:       req.InvoiceImage,
+        GuaranteeCardImage: req.GuaranteeCardImage,
+        Notes:              req.Notes,
+        CreatedBy:          &adminID,
+    }
+
+    // If approved, set approval info
+    if status == StatusApproved {
+        now := time.Now()
+        guarantee.ApprovedBy = &adminID
+        guarantee.ApprovedAt = &now
+    }
+
+    if err := tx.Create(guarantee).Error; err != nil {
+        tx.Rollback()
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create guarantee", 500)
+    }
+
+    // Commit transaction
+    if err := tx.Commit().Error; err != nil {
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to commit transaction", 500)
+    }
+
+    // Reload with relations
+    created, err := s.repo.FindByID(guarantee.ID)
+    if err != nil {
+        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load created guarantee", 500)
+    }
+
+    return s.mapToDTO(created), nil
 }
 
 ----------------------------------------
@@ -7927,8 +8146,9 @@ FILE: dto.go
 Path: \backend\internal\modules\repairs\dto.go
 Size: 1 KB
 ----------------------------------------
-Lines: 33
+Lines: 39
 
+// backend/internal/modules/repairs/dto.go
 package repairs
 
 type RepairDTO struct {
@@ -7947,6 +8167,11 @@ type CreateRepairRequest struct {
     GuaranteeID  uint   `json:"guarantee_id" binding:"required"`
     TechnicianID *uint  `json:"technician_id"`
     Description  string `json:"description" binding:"required"`
+}
+
+type CreateMyRepairRequest struct {
+    GuaranteeID uint   `json:"guarantee_id" binding:"required"`
+    Description string `json:"description" binding:"required"`
 }
 
 type UpdateRepairRequest struct {
@@ -7983,9 +8208,9 @@ var (
 ----------------------------------------
 FILE: handler.go
 Path: \backend\internal\modules\repairs\handler.go
-Size: 4 KB
+Size: 5 KB
 ----------------------------------------
-Lines: 171
+Lines: 197
 
 package repairs
 
@@ -8017,6 +8242,32 @@ func (h *RepairHandler) Create(c *gin.Context) {
 	}
 
 	repair, err := h.service.Create(req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Repair created successfully", repair)
+}
+
+func (h *RepairHandler) CreateMyRepair(c *gin.Context) {
+	techID, exists := c.Get("technician_id")
+	if !exists {
+		responses.Unauthorized(c, "Unauthorized")
+		return
+	}
+
+	var req CreateMyRepairRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid request")
+		return
+	}
+	if req.GuaranteeID == 0 || req.Description == "" {
+		responses.Error(c, http.StatusBadRequest, "guarantee_id and description are required")
+		return
+	}
+
+	repair, err := h.service.CreateByTechnician(techID.(uint), &req)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -8280,8 +8531,9 @@ FILE: routes.go
 Path: \backend\internal\modules\repairs\routes.go
 Size: 1 KB
 ----------------------------------------
-Lines: 41
+Lines: 43
 
+// backend/internal/modules/repairs/routes.go
 package repairs
 
 import (
@@ -8320,6 +8572,7 @@ func (m *RepairModule) RegisterRoutes(router *gin.RouterGroup) {
 	technician.Use(middleware.AuthMiddleware(), middleware.TechnicianOnly())
 	{
 		technician.GET("/repairs", m.handler.MyRepairs)
+		technician.POST("/repairs", m.handler.CreateMyRepair) // new
 		technician.PUT("/repairs/:id", m.handler.UpdateMyRepair)
 	}
 }
@@ -8327,9 +8580,9 @@ func (m *RepairModule) RegisterRoutes(router *gin.RouterGroup) {
 ----------------------------------------
 FILE: service.go
 Path: \backend\internal\modules\repairs\service.go
-Size: 7 KB
+Size: 8 KB
 ----------------------------------------
-Lines: 262
+Lines: 287
 
 package repairs
 
@@ -8361,6 +8614,31 @@ func (s *RepairService) Create(req *CreateRepairRequest) (*RepairDTO, error) {
 	repair := &Repair{
 		GuaranteeID:  req.GuaranteeID,
 		TechnicianID: req.TechnicianID,
+		Status:       StatusPending,
+		Description:  req.Description,
+	}
+
+	if err := s.repo.Create(repair); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create repair", 500)
+	}
+
+	return s.mapToDTO(repair), nil
+}
+
+func (s *RepairService) CreateByTechnician(techID uint, req *CreateMyRepairRequest) (*RepairDTO, error) {
+	var exists bool
+	if err := s.db.Table("guarantees").
+		Where("id = ? AND deleted_at IS NULL", req.GuaranteeID).
+		Select("count(*) > 0").Find(&exists).Error; err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify guarantee", 500)
+	}
+	if !exists {
+		return nil, errors.NewAppError(errors.ErrNotFound, "Guarantee not found", 404)
+	}
+
+	repair := &Repair{
+		GuaranteeID:  req.GuaranteeID,
+		TechnicianID: &techID, // forced server-side â€” cannot be spoofed by the client
 		Status:       StatusPending,
 		Description:  req.Description,
 	}
@@ -20757,13 +21035,15 @@ FILE: App.tsx
 Path: \frontend\src\App.tsx
 Size: 1 KB
 ----------------------------------------
-Lines: 26
+Lines: 30
 
+// frontend/src/App.tsx
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/features/auth/contexts/AuthContext'
+import { TechnicianAuthProvider } from '@/features/technicianPortal/contexts/TechnicianAuthContext'
 import { AppRoutes } from '@/routes'
 import { queryClient } from '@/lib/query-client'
 import { CalendarProvider } from '@/contexts/CalendarContext'
@@ -20774,8 +21054,10 @@ function App() {
       <BrowserRouter>
         <CalendarProvider>
           <AuthProvider>
-            <AppRoutes />
-            <Toaster position="top-right" />
+            <TechnicianAuthProvider>
+              <AppRoutes />
+              <Toaster position="top-right" />
+            </TechnicianAuthProvider>
           </AuthProvider>
         </CalendarProvider>
       </BrowserRouter>
@@ -21024,7 +21306,7 @@ FILE: axios.ts
 Path: \frontend\src\api\axios.ts
 Size: 1 KB
 ----------------------------------------
-Lines: 34
+Lines: 32
 
 import axios from 'axios'
 
@@ -21044,9 +21326,7 @@ api.interceptors.request.use(
     }
     return config
   },
-  (error) => {
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
 // Response interceptor to handle errors
@@ -24185,6 +24465,95 @@ export {
 
 
 ----------------------------------------
+FILE: tabs.tsx
+Path: \frontend\src\components\ui\tabs.tsx
+Size: 3 KB
+----------------------------------------
+Lines: 81
+
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+function Tabs({
+  className,
+  orientation = "horizontal",
+  ...props
+}: TabsPrimitive.Root.Props) {
+  return (
+    <TabsPrimitive.Root
+      data-slot="tabs"
+      data-orientation={orientation}
+      className={cn(
+        "group/tabs flex gap-2 data-horizontal:flex-col",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+const tabsListVariants = cva(
+  "group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none",
+  {
+    variants: {
+      variant: {
+        default: "bg-muted",
+        line: "gap-1 bg-transparent",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+function TabsList({
+  className,
+  variant = "default",
+  ...props
+}: TabsPrimitive.List.Props & VariantProps<typeof tabsListVariants>) {
+  return (
+    <TabsPrimitive.List
+      data-slot="tabs-list"
+      data-variant={variant}
+      className={cn(tabsListVariants({ variant }), className)}
+      {...props}
+    />
+  )
+}
+
+function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
+  return (
+    <TabsPrimitive.Tab
+      data-slot="tabs-trigger"
+      className={cn(
+        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 aria-disabled:pointer-events-none aria-disabled:opacity-50 dark:text-muted-foreground dark:hover:text-foreground group-data-[variant=default]/tabs-list:data-active:shadow-sm group-data-[variant=line]/tabs-list:data-active:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
+        "data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground",
+        "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
+  return (
+    <TabsPrimitive.Panel
+      data-slot="tabs-content"
+      className={cn("flex-1 text-sm outline-none", className)}
+      {...props}
+    />
+  )
+}
+
+export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
+
+
+----------------------------------------
 FILE: textarea.tsx
 Path: \frontend\src\components\ui\textarea.tsx
 Size: 1 KB
@@ -25959,14 +26328,34 @@ DIRECTORY: \frontend\src\features\guarantees\api
 ----------------------------------------
 FILE: guarantees.ts
 Path: \frontend\src\features\guarantees\api\guarantees.ts
-Size: 2 KB
+Size: 3 KB
 ----------------------------------------
-Lines: 73
+Lines: 107
 
 import { api } from '@/api/axios'
 import { Guarantee, GuaranteeFormData, GuaranteeListResponse } from '../types'
 
+export interface AdminCreateGuaranteeData {
+  // Customer - either existing or new
+  customer_id?: number
+  customer_full_name?: string
+  customer_phone?: string
+  customer_national_id?: string
+  customer_province?: string
+  customer_city?: string
+  customer_address?: string
+  // Guarantee
+  product_id: number
+  purchase_date: string
+  expiry_date: string
+  invoice_image?: string
+  guarantee_card_image?: string
+  notes?: string
+  status?: 'Pending' | 'Approved'
+}
+
 export const guaranteeService = {
+  // List guarantees
   async list(
     page: number = 1,
     limit: number = 10,
@@ -25994,26 +26383,37 @@ export const guaranteeService = {
     }
   },
 
+  // Get single guarantee
   async getById(id: number): Promise<Guarantee> {
     const response = await api.get(`/guarantees/${id}`)
     return response.data.data
   },
 
+  // Create guarantee (regular - for customer registration)
   async create(data: GuaranteeFormData): Promise<Guarantee> {
     const response = await api.post('/guarantees', data)
     return response.data.data
   },
 
+  // Admin create guarantee
+  async adminCreate(data: AdminCreateGuaranteeData): Promise<Guarantee> {
+    const response = await api.post('/guarantees/admin-create', data)
+    return response.data.data
+  },
+
+  // Update guarantee
   async update(id: number, data: Partial<GuaranteeFormData>): Promise<Guarantee> {
     const response = await api.put(`/guarantees/${id}`, data)
     return response.data.data
   },
 
+  // Approve or reject guarantee
   async approve(id: number, status: 'Approved' | 'Rejected', notes?: string): Promise<Guarantee> {
     const response = await api.post(`/guarantees/${id}/approve`, { status, notes })
     return response.data.data
   },
 
+  // Renew guarantee
   async renew(id: number, newExpiryDate: string, notes?: string): Promise<Guarantee> {
     const response = await api.post(`/guarantees/${id}/renew`, {
       new_expiry_date: newExpiryDate,
@@ -26022,15 +26422,18 @@ export const guaranteeService = {
     return response.data.data
   },
 
+  // Cancel guarantee
   async cancel(id: number): Promise<Guarantee> {
     const response = await api.post(`/guarantees/${id}/cancel`)
     return response.data.data
   },
 
+  // Delete guarantee
   async delete(id: number): Promise<void> {
     await api.delete(`/guarantees/${id}`)
   },
 
+  // Get expiring soon
   async getExpiringSoon(days: number = 30): Promise<Guarantee[]> {
     const response = await api.get('/guarantees/expiring', { params: { days } })
     return response.data.data
@@ -26042,7 +26445,7 @@ FILE: publicGuarantee.ts
 Path: \frontend\src\features\guarantees\api\publicGuarantee.ts
 Size: 2 KB
 ----------------------------------------
-Lines: 64
+Lines: 68
 
 import { api } from '@/api/axios'
 
@@ -26081,21 +26484,25 @@ export interface GuaranteePeriod {
 }
 
 export const publicGuaranteeService = {
+  // Public registration
   async register(data: PublicRegisterData): Promise<PublicRegisterResponse> {
     const response = await api.post('/guarantees/public/register', data)
     return response.data.data
   },
 
+  // Get available guarantee periods
   async getPeriods(): Promise<GuaranteePeriod[]> {
     const response = await api.get('/guarantees/public/periods')
     return response.data.data
   },
 
+  // Check guarantee status by code
   async checkStatus(code: string): Promise<any> {
     const response = await api.get('/guarantees/public/check', { params: { code } })
     return response.data.data
   },
 
+  // Upload file
   async uploadFile(file: File): Promise<{ url: string; filename: string; size: number; type: string }> {
     const formData = new FormData()
     formData.append('file', file)
@@ -26112,6 +26519,477 @@ export const publicGuaranteeService = {
 ============================================
 DIRECTORY: \frontend\src\features\guarantees\components
 ============================================
+
+----------------------------------------
+FILE: AdminGuaranteeForm.tsx
+Path: \frontend\src\features\guarantees\components\AdminGuaranteeForm.tsx
+Size: 18 KB
+----------------------------------------
+Lines: 463
+
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
+import { z } from 'zod'
+import { Button } from '@/components/ui/button'
+import {
+  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Separator } from '@/components/ui/separator'
+import { DatePicker } from '@/components/ui/date-picker'
+import { customerService } from '@/features/customers/api/customers'
+import { productService } from '@/features/products/api/products'
+import { Customer } from '@/features/customers/types'
+
+// Define the schema with status as required (not optional)
+const adminGuaranteeSchema = z.object({
+  // Customer - either existing or new
+  customer_id: z.string().optional(),
+  customer_full_name: z.string().optional(),
+  customer_phone: z.string().optional(),
+  customer_national_id: z.string().optional(),
+  customer_province: z.string().optional(),
+  customer_city: z.string().optional(),
+  customer_address: z.string().optional(),
+  // Guarantee - all required
+  product_id: z.string().min(1, 'Please select a product'),
+  purchase_date: z.string().min(1, 'Purchase date is required'),
+  expiry_date: z.string().min(1, 'Expiry date is required'),
+  invoice_image: z.string().optional(),
+  guarantee_card_image: z.string().optional(),
+  notes: z.string().optional(),
+  // Status is required with a default
+  status: z.enum(['Pending', 'Approved']),
+})
+
+// Infer the type from the schema
+type AdminGuaranteeFormValues = z.infer<typeof adminGuaranteeSchema>
+
+interface AdminGuaranteeFormProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSubmit: (data: AdminGuaranteeFormValues) => Promise<void>
+  isLoading?: boolean
+}
+
+export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: AdminGuaranteeFormProps) {
+  const [activeTab, setActiveTab] = useState<'existing' | 'new'>('existing')
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+
+  const { data: customers = [], isLoading: customersLoading } = useQuery({
+    queryKey: ['customers-list-for-admin'],
+    queryFn: () => customerService.list(1, 100).then(r => r.customers),
+    enabled: open,
+  })
+
+  const { data: products = [], isLoading: productsLoading } = useQuery({
+    queryKey: ['products-list-for-admin'],
+    queryFn: () => productService.list(1, 100).then(r => r.products),
+    enabled: open,
+  })
+
+  const form = useForm<AdminGuaranteeFormValues>({
+    resolver: zodResolver(adminGuaranteeSchema),
+    defaultValues: {
+      customer_id: '',
+      customer_full_name: '',
+      customer_phone: '',
+      customer_national_id: '',
+      customer_province: '',
+      customer_city: '',
+      customer_address: '',
+      product_id: '',
+      purchase_date: '',
+      expiry_date: '',
+      invoice_image: '',
+      guarantee_card_image: '',
+      notes: '',
+      status: 'Approved',
+    },
+  })
+
+  useEffect(() => {
+    if (!open) {
+      form.reset()
+      setActiveTab('existing')
+      setSelectedCustomer(null)
+    }
+  }, [open, form])
+
+  const handleCustomerSelect = (customerId: string) => {
+    const customer = customers.find(c => String(c.id) === customerId)
+    if (customer) {
+      setSelectedCustomer(customer)
+      form.setValue('customer_full_name', customer.full_name)
+      form.setValue('customer_phone', customer.phone)
+      form.setValue('customer_national_id', customer.national_id)
+      form.setValue('customer_province', customer.province || '')
+      form.setValue('customer_city', customer.city || '')
+      form.setValue('customer_address', customer.address || '')
+    }
+  }
+
+  const handleSubmit = async (data: AdminGuaranteeFormValues) => {
+    // Build the submit data
+    const submitData: any = {
+      product_id: Number(data.product_id),
+      purchase_date: data.purchase_date,
+      expiry_date: data.expiry_date,
+      invoice_image: data.invoice_image || undefined,
+      guarantee_card_image: data.guarantee_card_image || undefined,
+      notes: data.notes || undefined,
+      status: data.status || 'Approved',
+    }
+
+    // Handle customer selection based on active tab
+    if (activeTab === 'existing' && data.customer_id && data.customer_id !== '') {
+      submitData.customer_id = Number(data.customer_id)
+    } else {
+      // New customer - validate required fields
+      if (!data.customer_full_name || !data.customer_phone || !data.customer_national_id) {
+        form.setError('customer_full_name', { 
+          type: 'manual', 
+          message: 'Full name, phone, and national ID are required for new customer registration' 
+        })
+        return
+      }
+      submitData.customer_full_name = data.customer_full_name
+      submitData.customer_phone = data.customer_phone
+      submitData.customer_national_id = data.customer_national_id
+      submitData.customer_province = data.customer_province
+      submitData.customer_city = data.customer_city
+      submitData.customer_address = data.customer_address
+    }
+
+    await onSubmit(submitData as AdminGuaranteeFormValues)
+    if (!isLoading) {
+      form.reset()
+      onOpenChange(false)
+    }
+  }
+
+  const isLoadingData = customersLoading || productsLoading
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create Guarantee (Admin)</DialogTitle>
+          <DialogDescription>
+            Register a guarantee as an admin. You can choose an existing customer or register a new one.
+            <br />
+            <span className="text-sm font-medium text-blue-600">
+              Guarantees created by admin are approved by default (unless set to Pending).
+            </span>
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoadingData ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          </div>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'existing' | 'new')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="existing">Existing Customer</TabsTrigger>
+                  <TabsTrigger value="new">New Customer</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="existing" className="space-y-4 mt-4">
+                  <FormField
+                    control={form.control}
+                    name="customer_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select Customer *</FormLabel>
+                        <Select
+                          value={field.value || ''}
+                          onValueChange={(value) => {
+                            field.onChange(value)
+                            if (value) {
+                              handleCustomerSelect(value)
+                            } else {
+                              setSelectedCustomer(null)
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a customer" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {customers.map((c) => (
+                              <SelectItem key={c.id} value={String(c.id)}>
+                                {c.full_name} - {c.phone}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+
+                <TabsContent value="new" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="customer_full_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="John Doe" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="customer_phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="+1234567890" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="customer_national_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>National ID *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="123456789" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="customer_province"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Province</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Province" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="customer_city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City</FormLabel>
+                          <FormControl>
+                            <Input placeholder="City" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="customer_address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Street, Building, Apartment..."
+                            className="resize-none min-h-[60px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+              </Tabs>
+
+              <Separator />
+
+              {/* Guarantee Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Guarantee Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="product_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Product *</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={(value) => field.onChange(value || '')}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a product" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {products.map((p) => (
+                              <SelectItem key={p.id} value={String(p.id)}>
+                                {p.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={(value) => field.onChange(value as 'Pending' | 'Approved')}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Approved">Approved (Default)</SelectItem>
+                            <SelectItem value="Pending">Pending</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="purchase_date"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Purchase Date *</FormLabel>
+                        <FormControl>
+                          <DatePicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select purchase date"
+                            className="w-full"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="expiry_date"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Expiry Date *</FormLabel>
+                        <FormControl>
+                          <DatePicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select expiry date"
+                            className="w-full"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="invoice_image"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Invoice Image URL</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="https://example.com/invoice.jpg" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="guarantee_card_image"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Guarantee Card URL</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="https://example.com/card.jpg" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Additional notes about this guarantee"
+                          className="resize-none min-h-[80px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+                  {isLoading ? 'Creating...' : 'Create Guarantee'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 ----------------------------------------
 FILE: ApproveDialog.tsx
@@ -27294,9 +28172,9 @@ export function CheckGuaranteePage() {
 ----------------------------------------
 FILE: GuaranteesPage.tsx
 Path: \frontend\src\features\guarantees\pages\GuaranteesPage.tsx
-Size: 14 KB
+Size: 15 KB
 ----------------------------------------
-Lines: 392
+Lines: 412
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -27309,7 +28187,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Search, RefreshCw, Filter } from 'lucide-react'
+import { Plus, Search, RefreshCw, Filter, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { GuaranteeTable } from '../components/GuaranteeTable'
 import { GuaranteeForm } from '../components/GuaranteeForm'
@@ -27317,6 +28195,7 @@ import { GuaranteeDeleteDialog } from '../components/GuaranteeDeleteDialog'
 import { ApproveDialog } from '../components/ApproveDialog'
 import { RenewDialog } from '../components/RenewDialog'
 import { GuaranteeViewDialog } from '../components/GuaranteeViewDialog'
+import { AdminGuaranteeForm } from '../components/AdminGuaranteeForm'
 import { guaranteeService } from '../api/guarantees'
 import { Guarantee, GUARANTEE_STATUSES } from '../types'
 import { customerService } from '@/features/customers/api/customers'
@@ -27334,6 +28213,7 @@ export function GuaranteesPage() {
   const [productFilter, setProductFilter] = useState<string>('all')
   const [selectedGuarantee, setSelectedGuarantee] = useState<Guarantee | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isAdminFormOpen, setIsAdminFormOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isApproveOpen, setIsApproveOpen] = useState(false)
   const [isRenewOpen, setIsRenewOpen] = useState(false)
@@ -27374,7 +28254,7 @@ export function GuaranteesPage() {
       ),
   })
 
-  // Mutations
+  // Create mutation (regular)
   const createMutation = useMutation({
     mutationFn: guaranteeService.create,
     onSuccess: () => {
@@ -27386,6 +28266,19 @@ export function GuaranteesPage() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create guarantee'),
   })
 
+  // Admin create mutation
+  const adminCreateMutation = useMutation({
+    mutationFn: guaranteeService.adminCreate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guarantees'] })
+      invalidateDashboard()
+      toast.success('Guarantee created successfully by admin')
+      setIsAdminFormOpen(false)
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create guarantee'),
+  })
+
+  // Update mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => guaranteeService.update(id, data),
     onSuccess: () => {
@@ -27398,6 +28291,7 @@ export function GuaranteesPage() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to update guarantee'),
   })
 
+  // Approve mutation
   const approveMutation = useMutation({
     mutationFn: ({ id, status, notes }: { id: number; status: 'Approved' | 'Rejected'; notes?: string }) =>
       guaranteeService.approve(id, status, notes),
@@ -27411,6 +28305,7 @@ export function GuaranteesPage() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to process guarantee'),
   })
 
+  // Renew mutation
   const renewMutation = useMutation({
     mutationFn: ({ id, newExpiryDate, notes }: { id: number; newExpiryDate: string; notes?: string }) =>
       guaranteeService.renew(id, newExpiryDate, notes),
@@ -27424,6 +28319,7 @@ export function GuaranteesPage() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to renew guarantee'),
   })
 
+  // Cancel mutation
   const cancelMutation = useMutation({
     mutationFn: guaranteeService.cancel,
     onSuccess: () => {
@@ -27435,6 +28331,7 @@ export function GuaranteesPage() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to cancel guarantee'),
   })
 
+  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: guaranteeService.delete,
     onSuccess: () => {
@@ -27450,6 +28347,10 @@ export function GuaranteesPage() {
   // Handlers
   const handleCreate = async (data: any) => {
     await createMutation.mutateAsync(data)
+  }
+
+  const handleAdminCreate = async (data: any) => {
+    await adminCreateMutation.mutateAsync(data)
   }
 
   const handleUpdate = async (data: any) => {
@@ -27513,10 +28414,16 @@ export function GuaranteesPage() {
             Manage product guarantees and warranties
           </p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Guarantee
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsAdminFormOpen(true)} variant="outline" className="gap-2">
+            <UserCog className="h-4 w-4" />
+            Admin Create
+          </Button>
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Guarantee
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -27598,25 +28505,9 @@ export function GuaranteesPage() {
         onRenew={(g) => { setSelectedGuarantee(g); setIsRenewOpen(true) }}
         onCancel={(g) => { 
           setSelectedGuarantee(g)
-          toast.custom((t) => (
-            <div className="bg-white p-4 rounded-lg shadow-lg border max-w-sm">
-              <p className="font-medium">Cancel Guarantee?</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Are you sure you want to cancel {g.code} for {g.customer_name}?
-              </p>
-              <div className="flex gap-2 mt-3">
-                <Button size="sm" variant="outline" onClick={() => toast.dismiss(t)}>
-                  No
-                </Button>
-                <Button size="sm" variant="destructive" onClick={() => {
-                  toast.dismiss(t)
-                  handleCancel()
-                }}>
-                  Yes, Cancel
-                </Button>
-              </div>
-            </div>
-          ), { duration: 10000 })
+          if (confirm(`Are you sure you want to cancel ${g.code} for ${g.customer_name}?`)) {
+            handleCancel()
+          }
         }}
         onDelete={(g) => { setSelectedGuarantee(g); setIsDeleteOpen(true) }}
         isLoading={isLoading}
@@ -27655,6 +28546,13 @@ export function GuaranteesPage() {
         guarantee={selectedGuarantee}
         onSubmit={selectedGuarantee ? handleUpdate : handleCreate}
         isLoading={createMutation.isPending || updateMutation.isPending}
+      />
+
+      <AdminGuaranteeForm
+        open={isAdminFormOpen}
+        onOpenChange={setIsAdminFormOpen}
+        onSubmit={handleAdminCreate}
+        isLoading={adminCreateMutation.isPending}
       />
 
       <GuaranteeDeleteDialog
@@ -30100,7 +30998,7 @@ FILE: technicianAuth.ts
 Path: \frontend\src\features\technicianPortal\api\technicianAuth.ts
 Size: 2 KB
 ----------------------------------------
-Lines: 52
+Lines: 57
 
 import { api } from '@/api/axios'
 import { TechnicianLoginCredentials, TechnicianLoginResponse, Repair, RepairListResponse } from '../types'
@@ -30136,6 +31034,11 @@ export const technicianAuthService = {
     return response.data.data
   },
 
+  async createRepair(data: { guarantee_id: number; description: string }): Promise<Repair> {
+    const response = await api.post('/technician/repairs', data)
+    return response.data.data
+  },
+
   setToken(token: string) {
     localStorage.setItem(TECH_TOKEN_KEY, token)
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`
@@ -30155,9 +31058,181 @@ export const technicianAuthService = {
   }
 }
 
+----------------------------------------
+FILE: technicianGuarantees.ts
+Path: \frontend\src\features\technicianPortal\api\technicianGuarantees.ts
+Size: 0 KB
+----------------------------------------
+Lines: 17
+
+import { api } from '@/api/axios'
+
+export interface Guarantee {
+  id: number
+  code: string
+  customer_name: string
+  product_name: string
+  status: string
+}
+
+export const technicianGuaranteeService = {
+  async search(query: string): Promise<Guarantee[]> {
+    if (!query.trim()) return []
+    const response = await api.get('/guarantees', { params: { search: query, limit: 10 } })
+    return response.data.data
+  },
+}
+
 ============================================
 DIRECTORY: \frontend\src\features\technicianPortal\components
 ============================================
+
+----------------------------------------
+FILE: NewRepairDialog.tsx
+Path: \frontend\src\features\technicianPortal\components\NewRepairDialog.tsx
+Size: 5 KB
+----------------------------------------
+Lines: 139
+
+// frontend/src/features/technicianPortal/components/NewRepairDialog.tsx
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { technicianAuthService } from '../api/technicianAuth'
+import { technicianGuaranteeService } from '../api/technicianGuarantees'
+import { toast } from 'sonner'
+import { Plus } from 'lucide-react'
+import { useDebounce } from '@/hooks/useDebounce'
+
+export function NewRepairDialog() {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [guaranteeId, setGuaranteeId] = useState<number | null>(null)
+  const [description, setDescription] = useState('')
+  
+  const debouncedSearch = useDebounce(search, 300)
+  const queryClient = useQueryClient()
+
+  const { data: results = [], isLoading: searchLoading } = useQuery({
+    queryKey: ['guarantee-search', debouncedSearch],
+    queryFn: () => technicianGuaranteeService.search(debouncedSearch),
+    enabled: debouncedSearch.length > 1,
+  })
+
+  const createMutation = useMutation({
+    mutationFn: () => technicianAuthService.createRepair({ guarantee_id: guaranteeId!, description }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-repairs'] })
+      toast.success('Repair created')
+      setOpen(false)
+      setGuaranteeId(null)
+      setSearch('')
+      setDescription('')
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create repair'),
+  })
+
+  const handleCreate = () => {
+    if (!guaranteeId || !description.trim()) return
+    createMutation.mutate()
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      setSearch('')
+      setGuaranteeId(null)
+      setDescription('')
+    }
+    setOpen(newOpen)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger
+        render={
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Repair
+          </Button>
+        }
+      />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New Repair Report</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label>Guarantee (search by code, customer, or product)</Label>
+            <Input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setGuaranteeId(null)
+              }}
+              placeholder="Search for a guarantee..."
+            />
+            {searchLoading && (
+              <p className="text-sm text-muted-foreground">Searching...</p>
+            )}
+            {results.length > 0 && !guaranteeId && (
+              <div className="border rounded-md divide-y max-h-40 overflow-y-auto">
+                {results.map((g: any) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
+                    onClick={() => {
+                      setGuaranteeId(g.id)
+                      setSearch(`#${g.id} â€” ${g.customer_name} â€” ${g.product_name}`)
+                    }}
+                  >
+                    #{g.id} â€” {g.customer_name} â€” {g.product_name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {guaranteeId && (
+              <p className="text-sm text-green-600">
+                âœ“ Guarantee selected
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Issue Description</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe the issue..."
+              rows={4}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            disabled={!guaranteeId || !description.trim() || createMutation.isPending}
+            onClick={handleCreate}
+          >
+            {createMutation.isPending ? 'Creating...' : 'Create Repair'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 ----------------------------------------
 FILE: TechnicianLayout.tsx
@@ -30368,8 +31443,9 @@ FILE: TechnicianDashboardPage.tsx
 Path: \frontend\src\features\technicianPortal\pages\TechnicianDashboardPage.tsx
 Size: 10 KB
 ----------------------------------------
-Lines: 237
+Lines: 241
 
+// frontend/src/features/technicianPortal/pages/TechnicianDashboardPage.tsx
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30379,6 +31455,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { technicianAuthService } from '../api/technicianAuth'
 import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
+import { NewRepairDialog } from '../components/NewRepairDialog'  // <-- Make sure this import exists
 import { REPAIR_STATUSES, REPAIR_STATUS_COLORS } from '../types'
 import { toast } from 'sonner'
 import { RefreshCw, ClipboardList, CheckCircle, Clock, AlertCircle } from 'lucide-react'
@@ -30431,13 +31508,16 @@ export function TechnicianDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          Welcome, {technician?.full_name}!
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Here are your assigned repairs and their current status.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome, {technician?.full_name}!
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Here are your assigned repairs and their current status.
+          </p>
+        </div>
+        <NewRepairDialog />  {/* <-- This is where the button appears */}
       </div>
 
       {/* Stats Cards */}
@@ -30468,7 +31548,6 @@ export function TechnicianDashboardPage() {
             <Select
               value={statusFilter || 'all'}
               onValueChange={(value) => {
-                // Handle null/undefined value
                 const newValue = value || ''
                 setStatusFilter(newValue === 'all' ? '' : newValue)
                 setPage(1)
@@ -31629,6 +32708,35 @@ export interface TechnicianListResponse {
 }
 
 ============================================
+DIRECTORY: \frontend\src\hooks
+============================================
+
+----------------------------------------
+FILE: useDebounce.ts
+Path: \frontend\src\hooks\useDebounce.ts
+Size: 0 KB
+----------------------------------------
+Lines: 17
+
+import { useState, useEffect } from 'react'
+
+export function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [value, delay])
+
+  return debouncedValue
+}
+
+============================================
 DIRECTORY: \frontend\src\layouts
 ============================================
 
@@ -31927,16 +33035,18 @@ export function DashboardPage() {
 ----------------------------------------
 FILE: LoginPage.tsx
 Path: \frontend\src\pages\LoginPage.tsx
-Size: 6 KB
+Size: 7 KB
 ----------------------------------------
-Lines: 168
+Lines: 187
 
+// frontend/src/pages/LoginPage.tsx
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
+import { useTechnicianAuth } from '@/features/technicianPortal/contexts/TechnicianAuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31955,6 +33065,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 export function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { login: technicianLogin } = useTechnicianAuth()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -31969,11 +33080,27 @@ export function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setError(null)
     setIsLoading(true)
+
+    // First try admin login
     try {
       await login(data)
       navigate('/dashboard')
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid username or password')
+      return
+    } catch (adminErr: any) {
+      // Only fall through to technician login on auth failure
+      if (adminErr.response?.status !== 401) {
+        setError('Something went wrong. Please try again.')
+        setIsLoading(false)
+        return
+      }
+    }
+
+    // Then try technician login
+    try {
+      await technicianLogin(data.username, data.password)
+      navigate('/technician/dashboard')
+    } catch (techErr: any) {
+      setError(techErr.response?.data?.message || 'Invalid username or password')
     } finally {
       setIsLoading(false)
     }
@@ -32138,10 +33265,11 @@ DIRECTORY: \frontend\src\routes
 ----------------------------------------
 FILE: index.tsx
 Path: \frontend\src\routes\index.tsx
-Size: 4 KB
+Size: 3 KB
 ----------------------------------------
-Lines: 95
+Lines: 89
 
+// frontend/src/routes/index.tsx
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/common/ProtectedRoute'
@@ -32163,7 +33291,6 @@ import { CustomersPage } from '@/features/customers/pages/CustomersPage'
 import { MainLayout } from '@/layouts/MainLayout'
 
 // Technician Portal
-import { TechnicianAuthProvider } from '@/features/technicianPortal/contexts/TechnicianAuthContext'
 import { TechnicianProtectedRoute } from '@/features/technicianPortal/components/TechnicianProtectedRoute'
 import { TechnicianLayout } from '@/features/technicianPortal/components/TechnicianLayout'
 import { TechnicianLoginPage } from '@/features/technicianPortal/pages/TechnicianLoginPage'
@@ -32188,14 +33315,10 @@ export function AppRoutes() {
         }
       />
       
-      {/* Technician Login */}
+      {/* Technician Login - no provider wrapper needed anymore */}
       <Route
         path="/technician/login"
-        element={
-          <TechnicianAuthProvider>
-            <TechnicianLoginPage />
-          </TechnicianAuthProvider>
-        }
+        element={<TechnicianLoginPage />}
       />
       
       {/* Admin Routes */}
@@ -32217,15 +33340,13 @@ export function AppRoutes() {
         <Route path="repairs" element={<RepairsPage />} />
       </Route>
 
-      {/* Technician Routes */}
+      {/* Technician Routes - no provider wrapper needed anymore */}
       <Route
         path="/technician"
         element={
-          <TechnicianAuthProvider>
-            <TechnicianProtectedRoute>
-              <TechnicianLayout />
-            </TechnicianProtectedRoute>
-          </TechnicianAuthProvider>
+          <TechnicianProtectedRoute>
+            <TechnicianLayout />
+          </TechnicianProtectedRoute>
         }
       >
         <Route index element={<Navigate to="/technician/dashboard" replace />} />
@@ -32336,8 +33457,8 @@ File Types:
   .ps1 : 8 files
   .sql : 12 files
   .sum : 1 files
-  .ts : 30 files
-  .tsx : 75 files
+  .ts : 32 files
+  .tsx : 78 files
   .yml : 1 files
 
 Languages:
@@ -32351,6 +33472,6 @@ Languages:
   Other : 3 files
   PowerShell : 8 files
   SQL : 12 files
-  TypeScript : 105 files
+  TypeScript : 110 files
   YAML : 1 files
 

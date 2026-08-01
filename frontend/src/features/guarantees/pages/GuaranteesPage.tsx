@@ -1,3 +1,5 @@
+// frontend/src/features/guarantees/pages/GuaranteesPage.tsx
+
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -9,14 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Search, RefreshCw, Filter } from 'lucide-react'
+import { Plus, Search, RefreshCw, Filter, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { GuaranteeTable } from '../components/GuaranteeTable'
-import { GuaranteeForm } from '../components/GuaranteeForm'
 import { GuaranteeDeleteDialog } from '../components/GuaranteeDeleteDialog'
 import { ApproveDialog } from '../components/ApproveDialog'
 import { RenewDialog } from '../components/RenewDialog'
 import { GuaranteeViewDialog } from '../components/GuaranteeViewDialog'
+import { AdminGuaranteeForm } from '../components/AdminGuaranteeForm'
 import { guaranteeService } from '../api/guarantees'
 import { Guarantee, GUARANTEE_STATUSES } from '../types'
 import { customerService } from '@/features/customers/api/customers'
@@ -74,9 +76,9 @@ export function GuaranteesPage() {
       ),
   })
 
-  // Mutations
-  const createMutation = useMutation({
-    mutationFn: guaranteeService.create,
+  // Admin create mutation (this handles both existing and new customers)
+  const adminCreateMutation = useMutation({
+    mutationFn: guaranteeService.adminCreate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guarantees'] })
       invalidateDashboard()
@@ -86,6 +88,7 @@ export function GuaranteesPage() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create guarantee'),
   })
 
+  // Update mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => guaranteeService.update(id, data),
     onSuccess: () => {
@@ -98,6 +101,7 @@ export function GuaranteesPage() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to update guarantee'),
   })
 
+  // Approve mutation
   const approveMutation = useMutation({
     mutationFn: ({ id, status, notes }: { id: number; status: 'Approved' | 'Rejected'; notes?: string }) =>
       guaranteeService.approve(id, status, notes),
@@ -111,6 +115,7 @@ export function GuaranteesPage() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to process guarantee'),
   })
 
+  // Renew mutation
   const renewMutation = useMutation({
     mutationFn: ({ id, newExpiryDate, notes }: { id: number; newExpiryDate: string; notes?: string }) =>
       guaranteeService.renew(id, newExpiryDate, notes),
@@ -124,6 +129,7 @@ export function GuaranteesPage() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to renew guarantee'),
   })
 
+  // Cancel mutation
   const cancelMutation = useMutation({
     mutationFn: guaranteeService.cancel,
     onSuccess: () => {
@@ -135,6 +141,7 @@ export function GuaranteesPage() {
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to cancel guarantee'),
   })
 
+  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: guaranteeService.delete,
     onSuccess: () => {
@@ -149,7 +156,7 @@ export function GuaranteesPage() {
 
   // Handlers
   const handleCreate = async (data: any) => {
-    await createMutation.mutateAsync(data)
+    await adminCreateMutation.mutateAsync(data)
   }
 
   const handleUpdate = async (data: any) => {
@@ -215,7 +222,7 @@ export function GuaranteesPage() {
         </div>
         <Button onClick={() => setIsFormOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          New Guarantee
+          Create Guarantee
         </Button>
       </div>
 
@@ -298,25 +305,9 @@ export function GuaranteesPage() {
         onRenew={(g) => { setSelectedGuarantee(g); setIsRenewOpen(true) }}
         onCancel={(g) => { 
           setSelectedGuarantee(g)
-          toast.custom((t) => (
-            <div className="bg-white p-4 rounded-lg shadow-lg border max-w-sm">
-              <p className="font-medium">Cancel Guarantee?</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Are you sure you want to cancel {g.code} for {g.customer_name}?
-              </p>
-              <div className="flex gap-2 mt-3">
-                <Button size="sm" variant="outline" onClick={() => toast.dismiss(t)}>
-                  No
-                </Button>
-                <Button size="sm" variant="destructive" onClick={() => {
-                  toast.dismiss(t)
-                  handleCancel()
-                }}>
-                  Yes, Cancel
-                </Button>
-              </div>
-            </div>
-          ), { duration: 10000 })
+          if (confirm(`Are you sure you want to cancel ${g.code} for ${g.customer_name}?`)) {
+            handleCancel()
+          }
         }}
         onDelete={(g) => { setSelectedGuarantee(g); setIsDeleteOpen(true) }}
         isLoading={isLoading}
@@ -348,13 +339,12 @@ export function GuaranteesPage() {
         </div>
       )}
 
-      {/* Dialogs */}
-      <GuaranteeForm
+      {/* Dialogs - Only AdminGuaranteeForm, no regular GuaranteeForm */}
+      <AdminGuaranteeForm
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
-        guarantee={selectedGuarantee}
-        onSubmit={selectedGuarantee ? handleUpdate : handleCreate}
-        isLoading={createMutation.isPending || updateMutation.isPending}
+        onSubmit={handleCreate}
+        isLoading={adminCreateMutation.isPending}
       />
 
       <GuaranteeDeleteDialog
