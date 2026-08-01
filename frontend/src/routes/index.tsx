@@ -1,4 +1,3 @@
-// frontend/src/routes/index.tsx
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/common/ProtectedRoute'
@@ -20,6 +19,7 @@ import { CustomersPage } from '@/features/customers/pages/CustomersPage'
 import { MainLayout } from '@/layouts/MainLayout'
 
 // Technician Portal
+import { TechnicianAuthProvider } from '@/features/technicianPortal/contexts/TechnicianAuthContext'
 import { TechnicianProtectedRoute } from '@/features/technicianPortal/components/TechnicianProtectedRoute'
 import { TechnicianLayout } from '@/features/technicianPortal/components/TechnicianLayout'
 import { TechnicianLoginPage } from '@/features/technicianPortal/pages/TechnicianLoginPage'
@@ -44,10 +44,14 @@ export function AppRoutes() {
         }
       />
       
-      {/* Technician Login - no provider wrapper needed anymore */}
+      {/* Technician Login */}
       <Route
         path="/technician/login"
-        element={<TechnicianLoginPage />}
+        element={
+          <TechnicianAuthProvider>
+            <TechnicianLoginPage />
+          </TechnicianAuthProvider>
+        }
       />
       
       {/* Admin Routes */}
@@ -69,13 +73,15 @@ export function AppRoutes() {
         <Route path="repairs" element={<RepairsPage />} />
       </Route>
 
-      {/* Technician Routes - no provider wrapper needed anymore */}
+      {/* Technician Routes */}
       <Route
         path="/technician"
         element={
-          <TechnicianProtectedRoute>
-            <TechnicianLayout />
-          </TechnicianProtectedRoute>
+          <TechnicianAuthProvider>
+            <TechnicianProtectedRoute>
+              <TechnicianLayout />
+            </TechnicianProtectedRoute>
+          </TechnicianAuthProvider>
         }
       >
         <Route index element={<Navigate to="/technician/dashboard" replace />} />
