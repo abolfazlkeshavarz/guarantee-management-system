@@ -9,6 +9,23 @@ type ProductDTO struct {
 	IsActive     bool   `json:"is_active"`
 	CreatedAt    string `json:"created_at"`
 	UpdatedAt    string `json:"updated_at"`
+
+	// Warranty is only populated by LookupByCode for products whose
+	// CodeFormat is "jalali_encoded" -- it carries the manufacture date
+	// parsed from the guarantee code plus the season/expiry rules.
+	Warranty *WarrantyInfoDTO `json:"warranty,omitempty"`
+}
+
+type WarrantyInfoDTO struct {
+	ManufactureYear        int    `json:"manufacture_year"`
+	ManufactureMonth       int    `json:"manufacture_month"`
+	ManufactureMonthName   string `json:"manufacture_month_name"`
+	SeasonName             string `json:"season_name"`
+	SeasonPeriod           string `json:"season_period"`
+	IsExpired              bool   `json:"is_expired"`
+	MonthsSinceManufacture int    `json:"months_since_manufacture"`
+	Message                string `json:"message"`
+	MessageType            string `json:"message_type"`
 }
 
 type CreateProductRequest struct {

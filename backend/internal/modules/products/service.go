@@ -5,6 +5,7 @@ import (
 
 	"guarantee-management-system/internal/modules/categories"
 	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/warrantycode"
 
 	"gorm.io/gorm"
 )
@@ -155,6 +156,41 @@ func (s *ProductService) lookupCategoryName(categoryID uint) string {
 		return ""
 	}
 	return category.Name
+}
+
+func (s *ProductService) LookupByCode(code string) (*ProductDTO, error) {
+	product, err := s.repo.FindByGuaranteeCode(code)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Lookup failed", 500)
+	}
+	if product == nil {
+		return nil, errors.NewAppError(errors.ErrNotFound, "No product matches this guarantee code", 404)
+	}
+
+	dto := s.mapToDTO(product, s.lookupCategoryName(product.CategoryID))
+
+	if product.CodeFormat == CodeFormatJalaliEncoded {
+		result := warrantycode.ValidateCodeFormat(code, product.CodePrefix)
+		if !result.Valid {
+			return nil, errors.NewAppError(errors.ErrValidation, result.Message, 400)
+		}
+		if !result.CanRegister {
+			return nil, errors.NewAppError(errors.ErrValidation, result.Message, 409)
+		}
+		dto.Warranty = &WarrantyInfoDTO{
+			ManufactureYear:        result.Year,
+			ManufactureMonth:       result.Month,
+			ManufactureMonthName:   result.MonthName,
+			SeasonName:             result.SeasonName,
+			SeasonPeriod:           result.SeasonPeriod,
+			IsExpired:              result.IsExpired,
+			MonthsSinceManufacture: result.MonthsSinceManufacture,
+			Message:                result.Message,
+			MessageType:            result.MessageType,
+		}
+	}
+
+	return dto, nil
 }
 
 func (s *ProductService) mapToDTO(product *Product, categoryName string) *ProductDTO {

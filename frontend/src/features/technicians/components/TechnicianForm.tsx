@@ -229,6 +229,7 @@ export function TechnicianForm({
                 <FormItem>
                   <FormLabel>Status</FormLabel>
                   <Select
+                    items={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
                     value={field.value ? 'true' : 'false'}
                     onValueChange={(value) => field.onChange(value === 'true')}
                   >

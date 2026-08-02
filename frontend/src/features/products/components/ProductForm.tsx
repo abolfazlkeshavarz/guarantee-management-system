@@ -89,7 +89,11 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category *</FormLabel>
-                  <Select value={field.value ? String(field.value) : ''} onValueChange={(value) => field.onChange(Number(value))}>
+                  <Select
+                    items={categories.map((cat) => ({ value: String(cat.id), label: cat.name }))}
+                    value={field.value ? String(field.value) : ''}
+                    onValueChange={(value) => field.onChange(Number(value))}
+                  >
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a category" />
@@ -124,7 +128,11 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select value={field.value ? 'true' : 'false'} onValueChange={(value) => field.onChange(value === 'true')}>
+                  <Select
+                    items={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
+                    value={field.value ? 'true' : 'false'}
+                    onValueChange={(value) => field.onChange(value === 'true')}
+                  >
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue />

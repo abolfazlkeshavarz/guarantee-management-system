@@ -1,10 +1,14 @@
-import { useState, useRef } from 'react'
+// frontend/src/features/guarantees/pages/PublicRegisterPage.tsx
+// Replace the product_name field with guarantee_code lookup
+
+import { useState, useRef, useMemo, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { useNavigate } from 'react-router-dom'
 import { publicGuaranteeService } from '../api/publicGuarantee'
+import { api } from '@/api/axios'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -34,6 +38,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Upload, X, FileText, Image } from 'lucide-react'
 import { DatePicker } from '@/components/ui/date-picker'
+import { useDebounce } from '@/hooks/useDebounce'
 
 const publicRegisterSchema = z.object({
   // Customer
@@ -46,7 +51,6 @@ const publicRegisterSchema = z.object({
   
   // Guarantee
   guarantee_code: z.string().min(3, 'Guarantee code is required').max(50),
-  product_name: z.string().min(2, 'Product name is required').max(100),
   purchase_date: z.string().min(1, 'Purchase date is required'),
   guarantee_period: z.number().min(1, 'Please select a guarantee period'),
   invoice_image: z.string().optional(),
@@ -55,6 +59,19 @@ const publicRegisterSchema = z.object({
 })
 
 type PublicRegisterFormValues = z.infer<typeof publicRegisterSchema>
+
+interface ProductLookupResult {
+  id: number
+  name: string
+  category_name: string
+  warranty?: {
+    manufacture_year: number
+    manufacture_month_name: string
+    season_name: string
+    message: string
+    message_type: 'success' | 'warning' | 'error'
+  }
+}
 
 export function PublicRegisterPage() {
   const navigate = useNavigate()
@@ -65,6 +82,9 @@ export function PublicRegisterPage() {
     message: string
     data?: any
   } | null>(null)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [lookupResult, setLookupResult] = useState<ProductLookupResult | null>(null)
+  const [isLookupLoading, setIsLookupLoading] = useState(false)
   
   // File upload states
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
@@ -92,7 +112,6 @@ export function PublicRegisterPage() {
       city: '',
       address: '',
       guarantee_code: '',
-      product_name: '',
       purchase_date: '',
       guarantee_period: 0,
       invoice_image: '',
@@ -100,6 +119,52 @@ export function PublicRegisterPage() {
       notes: '',
     },
   })
+
+  // Debounced guarantee code lookup
+  const guaranteeCode = form.watch('guarantee_code')
+  const debouncedCode = useDebounce(guaranteeCode, 500)
+
+  // Product lookup by guarantee code
+  const lookupProduct = useCallback(async (code: string) => {
+    if (!code || code.length < 3) {
+      setLookupResult(null)
+      setLookupError(null)
+      return
+    }
+
+    setIsLookupLoading(true)
+    setLookupError(null)
+    setLookupResult(null)
+
+    try {
+      const response = await api.get('/products/public/lookup-by-code', {
+        params: { code }
+      })
+      const product = response.data.data
+      setLookupResult(product)
+      setLookupError(null)
+      toast.success(`Product matched: ${product.name}`)
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        setLookupError('No product matches this guarantee code. Please check the code.')
+      } else {
+        setLookupError('Failed to lookup product. Please try again.')
+      }
+      setLookupResult(null)
+    } finally {
+      setIsLookupLoading(false)
+    }
+  }, [])
+
+  // Trigger lookup when debounced code changes
+  useMemo(() => {
+    if (debouncedCode && debouncedCode.length >= 3) {
+      lookupProduct(debouncedCode)
+    } else {
+      setLookupResult(null)
+      setLookupError(null)
+    }
+  }, [debouncedCode, lookupProduct])
 
   const handleFileUpload = async (file: File, type: 'invoice' | 'card') => {
     setIsUploading(true)
@@ -125,13 +190,11 @@ export function PublicRegisterPage() {
   const handleInvoiceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Validate file size (10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error('File size exceeds 10MB limit')
         return
       }
       
-      // Validate file type
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
@@ -147,13 +210,11 @@ export function PublicRegisterPage() {
   const handleCardFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Validate file size (10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error('File size exceeds 10MB limit')
         return
       }
       
-      // Validate file type
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
@@ -187,16 +248,23 @@ export function PublicRegisterPage() {
   }
 
   const onSubmit = async (data: PublicRegisterFormValues) => {
+    // Validate that product was found
+    if (!lookupResult) {
+      toast.error('Please enter a valid guarantee code that matches a product')
+      return
+    }
+
     setIsSubmitting(true)
     setRegistrationResult(null)
     
     try {
-      // Clean up data
+      // Clean up data - remove product_name (not needed anymore)
       const cleanedData = {
         ...data,
         invoice_image: data.invoice_image || undefined,
         guarantee_card_image: data.guarantee_card_image || undefined,
         notes: data.notes || undefined,
+        // product_name is removed - backend resolves from guarantee_code
       }
       
       const response = await publicGuaranteeService.register(cleanedData)
@@ -207,7 +275,6 @@ export function PublicRegisterPage() {
       })
       toast.success('Guarantee registered successfully!')
       
-      // Reset form after successful registration
       form.reset()
       setInvoiceFile(null)
       setInvoicePreview(null)
@@ -215,6 +282,7 @@ export function PublicRegisterPage() {
       setCardFile(null)
       setCardPreview(null)
       setCardUploadedUrl('')
+      setLookupResult(null)
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to register guarantee'
       setRegistrationResult({
@@ -277,6 +345,7 @@ export function PublicRegisterPage() {
                 onClick={() => {
                   setRegistrationResult(null)
                   form.reset()
+                  setLookupResult(null)
                 }}
               >
                 Register Another
@@ -306,7 +375,8 @@ export function PublicRegisterPage() {
             </div>
             <CardTitle className="text-3xl font-bold">Guarantee Registration</CardTitle>
             <CardDescription className="text-base">
-              Register your product guarantee. All fields marked with * are required.
+              Enter your product's guarantee code to automatically identify your product.
+              All fields marked with * are required.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
@@ -417,7 +487,8 @@ export function PublicRegisterPage() {
                     <span className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold">2</span>
                     Guarantee Information
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    {/* Guarantee Code with Product Lookup */}
                     <FormField
                       control={form.control}
                       name="guarantee_code"
@@ -425,71 +496,91 @@ export function PublicRegisterPage() {
                         <FormItem>
                           <FormLabel>Guarantee Code (Printed on Product) *</FormLabel>
                           <FormControl>
-                            <Input placeholder="GUA-XXXXXX" {...field} />
+                            <div className="space-y-2">
+                              <Input 
+                                placeholder="Enter the code from your product" 
+                                {...field} 
+                                onChange={(e) => {
+                                  field.onChange(e.target.value.toUpperCase())
+                                }}
+                              />
+                              {isLookupLoading && (
+                                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  Checking code...
+                                </p>
+                              )}
+                              {lookupResult && !lookupError && (
+                                <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800">
+                                  <p className="font-medium">✓ Product Matched:</p>
+                                  <p>{lookupResult.name}</p>
+                                  <p className="text-xs text-green-600">{lookupResult.category_name}</p>
+                                  {lookupResult.warranty && (
+                                    <p className="text-xs text-green-600 mt-1">{lookupResult.warranty.message}</p>
+                                  )}
+                                </div>
+                              )}
+                              {lookupError && (
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">
+                                  <p className="font-medium">✗ {lookupError}</p>
+                                </div>
+                              )}
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="product_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Product Name *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Product Model/Name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="purchase_date"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Purchase Date *</FormLabel>
-                          <FormControl>
-                            <DatePicker
-                              value={field.value}
-                              onChange={field.onChange}
-                              placeholder="Select purchase date"
-                              className="w-full"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="guarantee_period"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Guarantee Period *</FormLabel>
-                          <Select
-                            value={field.value ? String(field.value) : ''}
-                            onValueChange={(value) => field.onChange(Number(value))}
-                            disabled={periodsLoading}
-                          >
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="purchase_date"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Purchase Date *</FormLabel>
                             <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select guarantee period" />
-                              </SelectTrigger>
+                              <DatePicker
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="Select purchase date"
+                                className="w-full"
+                              />
                             </FormControl>
-                            <SelectContent>
-                              {periods.map((period) => (
-                                <SelectItem key={period.value} value={String(period.value)}>
-                                  {period.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="guarantee_period"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Guarantee Period *</FormLabel>
+                            <Select
+                              items={periods.map((period) => ({ value: String(period.value), label: period.label }))}
+                              value={field.value ? String(field.value) : ''}
+                              onValueChange={(value) => field.onChange(Number(value))}
+                              disabled={periodsLoading}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select guarantee period" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {periods.map((period) => (
+                                  <SelectItem key={period.value} value={String(period.value)}>
+                                    {period.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
                   
                   {/* File Upload Section */}
@@ -643,7 +734,7 @@ export function PublicRegisterPage() {
                     <Button 
                       type="submit" 
                       className="flex-1" 
-                      disabled={isSubmitting || isUploading}
+                      disabled={isSubmitting || isUploading || !lookupResult}
                     >
                       {isSubmitting ? (
                         <>

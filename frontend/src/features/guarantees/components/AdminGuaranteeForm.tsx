@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react'
+// frontend/src/features/guarantees/components/AdminGuaranteeForm.tsx
+// Add guarantee_code field with product lookup
+
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
@@ -19,10 +22,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { DatePicker } from '@/components/ui/date-picker'
 import { customerService } from '@/features/customers/api/customers'
-import { productService } from '@/features/products/api/products'
+import { api } from '@/api/axios'
 import { Customer } from '@/features/customers/types'
+import { Loader2 } from 'lucide-react'
+import { useDebounce } from '@/hooks/useDebounce'
 
-// Define the schema with status as required (not optional)
+// Define the schema with status as required
 const adminGuaranteeSchema = z.object({
   // Customer - either existing or new
   customer_id: z.string().optional(),
@@ -33,7 +38,7 @@ const adminGuaranteeSchema = z.object({
   customer_city: z.string().optional(),
   customer_address: z.string().optional(),
   // Guarantee - all required
-  product_id: z.string().min(1, 'Please select a product'),
+  guarantee_code: z.string().min(3, 'Guarantee code is required').max(50),
   purchase_date: z.string().min(1, 'Purchase date is required'),
   expiry_date: z.string().min(1, 'Expiry date is required'),
   invoice_image: z.string().optional(),
@@ -43,29 +48,38 @@ const adminGuaranteeSchema = z.object({
   status: z.enum(['Pending', 'Approved']),
 })
 
-// Infer the type from the schema
 type AdminGuaranteeFormValues = z.infer<typeof adminGuaranteeSchema>
+
+interface ProductLookupResult {
+  id: number
+  name: string
+  category_name: string
+  warranty?: {
+    manufacture_year: number
+    manufacture_month_name: string
+    season_name: string
+    message: string
+    message_type: 'success' | 'warning' | 'error'
+  }
+}
 
 interface AdminGuaranteeFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: AdminGuaranteeFormValues) => Promise<void>
+  onSubmit: (data: any) => Promise<void>
   isLoading?: boolean
 }
 
 export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: AdminGuaranteeFormProps) {
   const [activeTab, setActiveTab] = useState<'existing' | 'new'>('existing')
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [lookupResult, setLookupResult] = useState<ProductLookupResult | null>(null)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [isLookupLoading, setIsLookupLoading] = useState(false)
 
   const { data: customers = [], isLoading: customersLoading } = useQuery({
     queryKey: ['customers-list-for-admin'],
     queryFn: () => customerService.list(1, 100).then(r => r.customers),
-    enabled: open,
-  })
-
-  const { data: products = [], isLoading: productsLoading } = useQuery({
-    queryKey: ['products-list-for-admin'],
-    queryFn: () => productService.list(1, 100).then(r => r.products),
     enabled: open,
   })
 
@@ -79,7 +93,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
       customer_province: '',
       customer_city: '',
       customer_address: '',
-      product_id: '',
+      guarantee_code: '',
       purchase_date: '',
       expiry_date: '',
       invoice_image: '',
@@ -89,11 +103,57 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     },
   })
 
+  const guaranteeCode = form.watch('guarantee_code')
+  const debouncedCode = useDebounce(guaranteeCode, 500)
+
+  // Product lookup by guarantee code
+  const lookupProduct = async (code: string) => {
+    if (!code || code.length < 3) {
+      setLookupResult(null)
+      setLookupError(null)
+      return
+    }
+
+    setIsLookupLoading(true)
+    setLookupError(null)
+    setLookupResult(null)
+
+    try {
+      const response = await api.get('/products/public/lookup-by-code', {
+        params: { code }
+      })
+      const product = response.data.data
+      setLookupResult(product)
+      setLookupError(null)
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        setLookupError('No product matches this guarantee code')
+      } else {
+        setLookupError('Failed to lookup product')
+      }
+      setLookupResult(null)
+    } finally {
+      setIsLookupLoading(false)
+    }
+  }
+
+  // Trigger lookup when debounced code changes
+  useMemo(() => {
+    if (debouncedCode && debouncedCode.length >= 3) {
+      lookupProduct(debouncedCode)
+    } else {
+      setLookupResult(null)
+      setLookupError(null)
+    }
+  }, [debouncedCode])
+
   useEffect(() => {
     if (!open) {
       form.reset()
       setActiveTab('existing')
       setSelectedCustomer(null)
+      setLookupResult(null)
+      setLookupError(null)
     }
   }, [open, form])
 
@@ -111,9 +171,18 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
   }
 
   const handleSubmit = async (data: AdminGuaranteeFormValues) => {
+    // Validate that product was found
+    if (!lookupResult) {
+      form.setError('guarantee_code', { 
+        type: 'manual', 
+        message: 'Please enter a valid guarantee code that matches a product' 
+      })
+      return
+    }
+
     // Build the submit data
     const submitData: any = {
-      product_id: Number(data.product_id),
+      guarantee_code: data.guarantee_code,
       purchase_date: data.purchase_date,
       expiry_date: data.expiry_date,
       invoice_image: data.invoice_image || undefined,
@@ -142,14 +211,15 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
       submitData.customer_address = data.customer_address
     }
 
-    await onSubmit(submitData as AdminGuaranteeFormValues)
+    await onSubmit(submitData)
     if (!isLoading) {
       form.reset()
       onOpenChange(false)
+      setLookupResult(null)
     }
   }
 
-  const isLoadingData = customersLoading || productsLoading
+  const isLoadingData = customersLoading
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -157,7 +227,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
         <DialogHeader>
           <DialogTitle>Create Guarantee (Admin)</DialogTitle>
           <DialogDescription>
-            Register a guarantee as an admin. You can choose an existing customer or register a new one.
+            Enter the guarantee code to automatically resolve the product.
             <br />
             <span className="text-sm font-medium text-blue-600">
               Guarantees created by admin are approved by default (unless set to Pending).
@@ -186,6 +256,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       <FormItem>
                         <FormLabel>Select Customer *</FormLabel>
                         <Select
+                          items={customers.map((c) => ({ value: String(c.id), label: `${c.full_name} - ${c.phone}` }))}
                           value={field.value || ''}
                           onValueChange={(value) => {
                             field.onChange(value)
@@ -306,32 +377,52 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
               {/* Guarantee Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Guarantee Information</h3>
+                
+                {/* Guarantee Code with Product Lookup */}
+                <FormField
+                  control={form.control}
+                  name="guarantee_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Guarantee Code (Printed on Product) *</FormLabel>
+                      <FormControl>
+                        <div className="space-y-2">
+                          <Input 
+                            placeholder="Enter the code from the product" 
+                            {...field} 
+                            onChange={(e) => {
+                              field.onChange(e.target.value.toUpperCase())
+                            }}
+                          />
+                          {isLookupLoading && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-2">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Checking code...
+                            </p>
+                          )}
+                          {lookupResult && !lookupError && (
+                            <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800">
+                              <p className="font-medium">✓ Product Matched:</p>
+                              <p>{lookupResult.name}</p>
+                              <p className="text-xs text-green-600">{lookupResult.category_name}</p>
+                              {lookupResult.warranty && (
+                                <p className="text-xs text-green-600 mt-1">{lookupResult.warranty.message}</p>
+                              )}
+                            </div>
+                          )}
+                          {lookupError && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">
+                              <p className="font-medium">✗ {lookupError}</p>
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="product_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Product *</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={(value) => field.onChange(value || '')}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a product" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {products.map((p) => (
-                              <SelectItem key={p.id} value={String(p.id)}>
-                                {p.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                   <FormField
                     control={form.control}
                     name="status"
@@ -354,6 +445,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       </FormItem>
                     )}
                   />
+                  <div></div> {/* Spacer */}
                   <FormField
                     control={form.control}
                     name="purchase_date"
@@ -450,7 +542,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+                <Button type="submit" disabled={isLoading || !lookupResult} className="bg-blue-600 hover:bg-blue-700">
                   {isLoading ? 'Creating...' : 'Create Guarantee'}
                 </Button>
               </DialogFooter>

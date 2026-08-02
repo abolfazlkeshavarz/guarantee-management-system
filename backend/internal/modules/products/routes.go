@@ -23,6 +23,13 @@ func NewProductModule(db *gorm.DB) *ProductModule {
 }
 
 func (m *ProductModule) RegisterRoutes(router *gin.RouterGroup) {
+	// Public route for product lookup by guarantee code
+	public := router.Group("/products/public")
+	{
+		public.GET("/lookup-by-code", m.handler.LookupByCode)
+	}
+
+	// Protected admin routes
 	products := router.Group("/products")
 	products.Use(middleware.AuthMiddleware())
 	{

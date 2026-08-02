@@ -29,26 +29,24 @@ type Guarantee struct {
 	DeletedAt           gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
-// Customer - mirror of the actual Customer model from the customers module
+// backend/internal/modules/guarantees/model.go
+
 type Customer struct {
-	ID       uint   `gorm:"-" json:"id"`
-	FullName string `gorm:"-" json:"full_name"`
-	Phone    string `gorm:"-" json:"phone,omitempty"`
-	Email    string `gorm:"-" json:"email,omitempty"`
+	ID       uint   `json:"id"`
+	FullName string `json:"full_name"`
+	Phone    string `json:"phone,omitempty"`
 }
 
-// Product - mirror of the actual Product model from the products module
 type Product struct {
-	ID          uint   `gorm:"-" json:"id"`
-	Name        string `gorm:"-" json:"name"`
-	Description string `gorm:"-" json:"description,omitempty"`
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
 }
 
-// Admin - mirror of the actual Admin model from the auth module
 type Admin struct {
-	ID       uint   `gorm:"-" json:"id"`
-	Username string `gorm:"-" json:"username"`
-	FullName string `gorm:"-" json:"full_name,omitempty"`
+	ID       uint   `json:"id"`
+	Username string `json:"username"`
+	FullName string `json:"full_name,omitempty"`
 }
 
 func (Guarantee) TableName() string {

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type GuaranteeRepository struct {
@@ -138,7 +139,9 @@ func (r *GuaranteeRepository) FindByCode(code string) (*Guarantee, error) {
 
 
 func (r *GuaranteeRepository) Update(guarantee *Guarantee) error {
-	return r.db.Save(guarantee).Error
+	// Omit associations so Save doesn't try to upsert the preloaded
+	// Customer/Product/Admin structs (which can drift from their table schemas).
+	return r.db.Omit(clause.Associations).Save(guarantee).Error
 }
 
 func (r *GuaranteeRepository) Delete(id uint) error {

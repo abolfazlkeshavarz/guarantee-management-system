@@ -93,7 +93,11 @@ export function CategoryForm({ open, onOpenChange, category, onSubmit, isLoading
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select value={field.value ? 'true' : 'false'} onValueChange={(value) => field.onChange(value === 'true')}>
+                  <Select
+                    items={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
+                    value={field.value ? 'true' : 'false'}
+                    onValueChange={(value) => field.onChange(value === 'true')}
+                  >
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue />

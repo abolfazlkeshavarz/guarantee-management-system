@@ -2,9 +2,9 @@
   GUARANTEE MANAGEMENT SYSTEM - CODE SUMMARY
 ============================================
 
-Generated: 2026-08-01 10:32:36
+Generated: 2026-08-02 08:02:58
 Project Root: D:\Abolfazl Keshavarz\guarantee-management-system
-Total Files: 222
+Total Files: 223
 Total Directories: 73
 
 ============================================
@@ -6002,7 +6002,7 @@ FILE: dto.go
 Path: \backend\internal\modules\guarantees\dto.go
 Size: 5 KB
 ----------------------------------------
-Lines: 121
+Lines: 119
 
 package guarantees
 
@@ -6031,24 +6031,23 @@ type GuaranteeDTO struct {
 
 
 type AdminCreateGuaranteeRequest struct {
-    // Customer Information - either existing or new
-    CustomerID       *uint  `json:"customer_id"`
-    CustomerFullName string `json:"customer_full_name"`
-    CustomerPhone    string `json:"customer_phone"`
-    CustomerNationalID string `json:"customer_national_id"`
-    CustomerProvince string `json:"customer_province"`
-    CustomerCity     string `json:"customer_city"`
-    CustomerAddress  string `json:"customer_address"`
-    
-    // Guarantee Information
-    ProductID          uint   `json:"product_id" binding:"required"`
-    PurchaseDate       string `json:"purchase_date" binding:"required"`
-    ExpiryDate         string `json:"expiry_date" binding:"required"`
-    InvoiceImage       string `json:"invoice_image"`
-    GuaranteeCardImage string `json:"guarantee_card_image"`
-    Notes              string `json:"notes"`
-    // Admin can set status directly
-    Status             string `json:"status" binding:"omitempty,oneof=Pending Approved Rejected"`
+	// Customer Information - either existing or new
+	CustomerID         *uint  `json:"customer_id"`
+	CustomerFullName   string `json:"customer_full_name"`
+	CustomerPhone      string `json:"customer_phone"`
+	CustomerNationalID string `json:"customer_national_id"`
+	CustomerProvince   string `json:"customer_province"`
+	CustomerCity       string `json:"customer_city"`
+	CustomerAddress    string `json:"customer_address"`
+	
+	// Guarantee Information
+	GuaranteeCode      string `json:"guarantee_code" binding:"required,min=3,max=50"`
+	PurchaseDate       string `json:"purchase_date" binding:"required"`
+	ExpiryDate         string `json:"expiry_date" binding:"required"`
+	InvoiceImage       string `json:"invoice_image"`
+	GuaranteeCardImage string `json:"guarantee_card_image"`
+	Notes              string `json:"notes"`
+	Status             string `json:"status" binding:"omitempty,oneof=Pending Approved Rejected"`
 }
 
 type CreateGuaranteeRequest struct {
@@ -6102,7 +6101,6 @@ type PublicRegisterRequest struct {
 	
 	// Guarantee Information
 	GuaranteeCode      string `json:"guarantee_code" binding:"required,min=3,max=50"`
-	ProductName        string `json:"product_name" binding:"required,min=2,max=100"`
 	PurchaseDate       string `json:"purchase_date" binding:"required"`
 	GuaranteePeriod    int    `json:"guarantee_period" binding:"required,oneof=3 6 9 12 15 18 21 24 30 36"`
 	InvoiceImage       string `json:"invoice_image"`
@@ -6510,9 +6508,9 @@ func (h *GuaranteeHandler) CreateByAdmin(c *gin.Context) {
 ----------------------------------------
 FILE: model.go
 Path: \backend\internal\modules\guarantees\model.go
-Size: 3 KB
+Size: 2 KB
 ----------------------------------------
-Lines: 66
+Lines: 65
 
 package guarantees
 
@@ -6545,26 +6543,25 @@ type Guarantee struct {
 	DeletedAt           gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
-// Customer - mirror of the actual Customer model from the customers module
+// backend/internal/modules/guarantees/model.go
+
 type Customer struct {
-	ID       uint   `gorm:"-" json:"id"`
-	FullName string `gorm:"-" json:"full_name"`
-	Phone    string `gorm:"-" json:"phone,omitempty"`
-	Email    string `gorm:"-" json:"email,omitempty"`
+	ID       uint   `json:"id"`
+	FullName string `json:"full_name"`
+	Phone    string `json:"phone,omitempty"`
+	Email    string `json:"email,omitempty"`
 }
 
-// Product - mirror of the actual Product model from the products module
 type Product struct {
-	ID          uint   `gorm:"-" json:"id"`
-	Name        string `gorm:"-" json:"name"`
-	Description string `gorm:"-" json:"description,omitempty"`
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
 }
 
-// Admin - mirror of the actual Admin model from the auth module
 type Admin struct {
-	ID       uint   `gorm:"-" json:"id"`
-	Username string `gorm:"-" json:"username"`
-	FullName string `gorm:"-" json:"full_name,omitempty"`
+	ID       uint   `json:"id"`
+	Username string `json:"username"`
+	FullName string `json:"full_name,omitempty"`
 }
 
 func (Guarantee) TableName() string {
@@ -6584,9 +6581,9 @@ const (
 ----------------------------------------
 FILE: repository.go
 Path: \backend\internal\modules\guarantees\repository.go
-Size: 3 KB
+Size: 5 KB
 ----------------------------------------
-Lines: 113
+Lines: 160
 
 package guarantees
 
@@ -6615,13 +6612,24 @@ func (r *GuaranteeRepository) FindByID(id uint) (*Guarantee, error) {
 		Preload("Product").
 		Preload("CreatedByAdmin").
 		Preload("ApprovedByAdmin").
-		Where("id = ?", id).
+		Where("id = ? AND deleted_at IS NULL", id).
 		First(&guarantee).Error
 	if err != nil {
 		return nil, err
 	}
 	return &guarantee, nil
 }
+
+// Add a simpler FindByIDWithoutPreload for cases where we don't need relations
+func (r *GuaranteeRepository) FindByIDSimple(id uint) (*Guarantee, error) {
+	var guarantee Guarantee
+	err := r.db.Where("id = ? AND deleted_at IS NULL", id).First(&guarantee).Error
+	if err != nil {
+		return nil, err
+	}
+	return &guarantee, nil
+}
+
 
 func (r *GuaranteeRepository) FindAll(page, limit int, search string, status string, customerID, productID *uint) ([]Guarantee, int64, error) {
 	var guarantees []Guarantee
@@ -6649,22 +6657,58 @@ func (r *GuaranteeRepository) FindAll(page, limit int, search string, status str
 		query = query.Where("guarantees.product_id = ?", productID)
 	}
 
+	// Count total
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * limit
+	
+	// Use Select to avoid preloading issues
 	err := query.
-		Preload("Customer").
-		Preload("Product").
-		Preload("CreatedByAdmin").
-		Preload("ApprovedByAdmin").
+		Select("guarantees.*").
 		Offset(offset).
 		Limit(limit).
 		Order("guarantees.created_at DESC").
 		Find(&guarantees).Error
 
-	return guarantees, total, err
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Load relations separately if needed
+	for i := range guarantees {
+		// Load customer name
+		if guarantees[i].CustomerID > 0 {
+			var customer Customer
+			if err := r.db.Table("customers").Where("id = ?", guarantees[i].CustomerID).Select("id, full_name, phone").Scan(&customer).Error; err == nil {
+				guarantees[i].Customer = customer
+			}
+		}
+		// Load product name
+		if guarantees[i].ProductID > 0 {
+			var product Product
+			if err := r.db.Table("products").Where("id = ?", guarantees[i].ProductID).Select("id, name").Scan(&product).Error; err == nil {
+				guarantees[i].Product = product
+			}
+		}
+		// Load created by admin
+		if guarantees[i].CreatedBy != nil && *guarantees[i].CreatedBy > 0 {
+			var admin Admin
+			if err := r.db.Table("admins").Where("id = ?", *guarantees[i].CreatedBy).Select("id, username").Scan(&admin).Error; err == nil {
+				guarantees[i].CreatedByAdmin = admin
+			}
+		}
+		// Load approved by admin
+		if guarantees[i].ApprovedBy != nil && *guarantees[i].ApprovedBy > 0 {
+			var admin Admin
+			if err := r.db.Table("admins").Where("id = ?", *guarantees[i].ApprovedBy).Select("id, username").Scan(&admin).Error; err == nil {
+				guarantees[i].ApprovedByAdmin = admin
+			}
+		}
+	}
+
+	return guarantees, total, nil
 }
 
 func (r *GuaranteeRepository) FindByCode(code string) (*Guarantee, error) {
@@ -6707,7 +6751,7 @@ FILE: routes.go
 Path: \backend\internal\modules\guarantees\routes.go
 Size: 2 KB
 ----------------------------------------
-Lines: 56
+Lines: 58
 
 // backend/internal/modules/guarantees/routes.go
 package guarantees
@@ -6742,8 +6786,7 @@ func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
 		public.POST("/upload", m.handler.UploadFile)
 	}
 
-	// Read access â€” admins AND technicians (technicians need this to look up
-	// a guarantee before filing a repair against it)
+	// Read access â€” admins AND technicians
 	readOnly := router.Group("/guarantees")
 	readOnly.Use(middleware.AuthMiddleware())
 	{
@@ -6762,6 +6805,9 @@ func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
 		protected.POST("/:id/renew", m.handler.Renew)
 		protected.POST("/:id/cancel", m.handler.Cancel)
 		protected.DELETE("/:id", m.handler.Delete)
+		
+		// IMPORTANT: This must be defined AFTER the routes with dynamic parameters
+		// or use a different path pattern to avoid conflicts
 		protected.POST("/admin-create", m.handler.CreateByAdmin)
 	}
 }
@@ -6771,7 +6817,7 @@ FILE: service.go
 Path: \backend\internal\modules\guarantees\service.go
 Size: 24 KB
 ----------------------------------------
-Lines: 749
+Lines: 755
 
 package guarantees
 
@@ -7151,10 +7197,12 @@ func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
 		dto.CustomerName = guarantee.Customer.FullName
 	} else {
 		// If not preloaded, try to get the name from a separate query
-		// This is a fallback - the repository should preload the relations
 		var customer Customer
-		if err := s.db.Table("customers").Where("id = ?", guarantee.CustomerID).Select("full_name").Scan(&customer).Error; err == nil {
+		if err := s.db.Table("customers").Where("id = ? AND deleted_at IS NULL", guarantee.CustomerID).Select("full_name").Scan(&customer).Error; err == nil {
 			dto.CustomerName = customer.FullName
+		} else {
+			// Fallback: use a placeholder
+			dto.CustomerName = "Customer #" + fmt.Sprintf("%d", guarantee.CustomerID)
 		}
 	}
 
@@ -7162,19 +7210,34 @@ func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
 		dto.ProductName = guarantee.Product.Name
 	} else {
 		var product Product
-		if err := s.db.Table("products").Where("id = ?", guarantee.ProductID).Select("name").Scan(&product).Error; err == nil {
+		if err := s.db.Table("products").Where("id = ? AND deleted_at IS NULL", guarantee.ProductID).Select("name").Scan(&product).Error; err == nil {
 			dto.ProductName = product.Name
+		} else {
+			dto.ProductName = "Product #" + fmt.Sprintf("%d", guarantee.ProductID)
 		}
 	}
 
 	if guarantee.CreatedByAdmin.ID > 0 {
 		dto.CreatedBy = &guarantee.CreatedByAdmin.ID
 		dto.CreatedByUsername = guarantee.CreatedByAdmin.Username
+	} else if guarantee.CreatedBy != nil {
+		// Try to get admin info from DB
+		var admin Admin
+		if err := s.db.Table("admins").Where("id = ?", *guarantee.CreatedBy).Select("id, username").Scan(&admin).Error; err == nil {
+			dto.CreatedBy = &admin.ID
+			dto.CreatedByUsername = admin.Username
+		}
 	}
 
 	if guarantee.ApprovedByAdmin.ID > 0 {
 		dto.ApprovedBy = &guarantee.ApprovedByAdmin.ID
 		dto.ApprovedByUsername = guarantee.ApprovedByAdmin.Username
+	} else if guarantee.ApprovedBy != nil {
+		var admin Admin
+		if err := s.db.Table("admins").Where("id = ?", *guarantee.ApprovedBy).Select("id, username").Scan(&admin).Error; err == nil {
+			dto.ApprovedBy = &admin.ID
+			dto.ApprovedByUsername = admin.Username
+		}
 	}
 
 	if guarantee.ApprovedAt != nil {
@@ -7235,38 +7298,25 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check customer existence", 500)
 	}
 
-	// 2. Create or get product
-	var productID uint
+	// 2. RESOLVE PRODUCT BY GUARANTEE CODE PATTERN - NOT BY NAME
+	// Find product by matching the guarantee code against code_pattern
 	var product Product
+	var productID uint
 	
-	// Check if product exists by name
-	err = tx.Table("products").Where("name = ?", req.ProductName).First(&product).Error
+	// Use the product lookup by code pattern
+	err = tx.Table("products").
+		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", req.GuaranteeCode).
+		Where("is_active = ?", true).
+		First(&product).Error
+	
 	if err == nil {
 		productID = product.ID
 	} else if err == gorm.ErrRecordNotFound {
-		// Create new product (inactive by default, admin can activate later)
-		newProduct := map[string]interface{}{
-			"name":        req.ProductName,
-			"description": "Auto-created from guarantee registration",
-			"category_id": 1, // Default category, admin can change later
-			"is_active":   false,
-		}
-		
-		if err := tx.Table("products").Create(&newProduct).Error; err != nil {
-			tx.Rollback()
-			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create product", 500)
-		}
-		
-		// Get the created product ID
-		var newProductRecord Product
-		if err := tx.Table("products").Where("name = ?", req.ProductName).First(&newProductRecord).Error; err != nil {
-			tx.Rollback()
-			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created product", 500)
-		}
-		productID = newProductRecord.ID
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code does not match any known product. Please check the code on your product.", 400)
 	} else {
 		tx.Rollback()
-		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check product existence", 500)
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check product", 500)
 	}
 
 	// 3. Parse dates
@@ -7284,15 +7334,15 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		return nil, err
 	}
 
-	// 4. Check if guarantee code already exists
-	existingGuarantee, err := s.repo.FindByCode(req.GuaranteeCode)
-	if err != nil {
-		tx.Rollback()
-		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check guarantee code", 500)
-	}
-	if existingGuarantee != nil {
+	// 4. Check if guarantee code already exists - use tx directly
+	var existingGuarantee Guarantee
+	err = tx.Where("code = ?", req.GuaranteeCode).First(&existingGuarantee).Error
+	if err == nil {
 		tx.Rollback()
 		return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Guarantee code already registered", 409)
+	} else if err != gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check guarantee code", 500)
 	}
 
 	// 5. Create guarantee
@@ -7306,7 +7356,6 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		InvoiceImage:       req.InvoiceImage,
 		GuaranteeCardImage: req.GuaranteeCardImage,
 		Notes:              req.Notes,
-		// CreatedBy remains nil for public registration
 	}
 
 	if err := tx.Create(guarantee).Error; err != nil {
@@ -7362,165 +7411,168 @@ func (s *GuaranteeService) GetByCode(code string) (*GuaranteeDTO, error) {
 }
 
 func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, adminID uint) (*GuaranteeDTO, error) {
-    // Start transaction
-    tx := s.db.Begin()
-    defer func() {
-        if r := recover(); r != nil {
-            tx.Rollback()
-        }
-    }()
+	// Start transaction
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
-    var customerID uint
-    var err error
+	var customerID uint
+	var err error
 
-    // Determine customer
-    if req.CustomerID != nil && *req.CustomerID > 0 {
-        // Use existing customer
-        var exists bool
-        if err := tx.Table("customers").Where("id = ? AND deleted_at IS NULL", *req.CustomerID).Select("count(*) > 0").Find(&exists).Error; err != nil {
-            tx.Rollback()
-            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify customer", 500)
-        }
-        if !exists {
-            tx.Rollback()
-            return nil, ErrCustomerNotFound
-        }
-        customerID = *req.CustomerID
-    } else {
-        // Create new customer (like public form)
-        if req.CustomerFullName == "" || req.CustomerPhone == "" || req.CustomerNationalID == "" {
-            tx.Rollback()
-            return nil, errors.NewAppError(errors.ErrValidation, "Customer information is required when not selecting existing customer", 400)
-        }
+	// Determine customer
+	if req.CustomerID != nil && *req.CustomerID > 0 {
+		// Use existing customer
+		var exists bool
+		if err := tx.Table("customers").Where("id = ? AND deleted_at IS NULL", *req.CustomerID).Select("count(*) > 0").Find(&exists).Error; err != nil {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify customer", 500)
+		}
+		if !exists {
+			tx.Rollback()
+			return nil, ErrCustomerNotFound
+		}
+		customerID = *req.CustomerID
+	} else {
+		// Create new customer
+		if req.CustomerFullName == "" || req.CustomerPhone == "" || req.CustomerNationalID == "" {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrValidation, "Customer information is required when not selecting existing customer", 400)
+		}
 
-        // Check if customer exists by National ID or Phone
-        var existingCustomer Customer
-        err := tx.Table("customers").
-            Where("national_id = ? OR phone = ?", req.CustomerNationalID, req.CustomerPhone).
-            First(&existingCustomer).Error
-        
-        if err == nil {
-            // Customer exists, use it
-            customerID = existingCustomer.ID
-        } else if err == gorm.ErrRecordNotFound {
-            // Create new customer
-            customer := map[string]interface{}{
-                "full_name":   req.CustomerFullName,
-                "phone":       req.CustomerPhone,
-                "national_id": req.CustomerNationalID,
-                "province":    req.CustomerProvince,
-                "city":        req.CustomerCity,
-                "address":     req.CustomerAddress,
-            }
-            
-            if err := tx.Table("customers").Create(&customer).Error; err != nil {
-                tx.Rollback()
-                return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
-            }
-            
-            // Get the created customer ID
-            var newCustomer Customer
-            if err := tx.Table("customers").Where("national_id = ?", req.CustomerNationalID).First(&newCustomer).Error; err != nil {
-                tx.Rollback()
-                return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created customer", 500)
-            }
-            customerID = newCustomer.ID
-        } else {
-            tx.Rollback()
-            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check customer existence", 500)
-        }
-    }
+		// Check if customer exists by National ID or Phone
+		var existingCustomer Customer
+		err := tx.Table("customers").
+			Where("national_id = ? OR phone = ?", req.CustomerNationalID, req.CustomerPhone).
+			First(&existingCustomer).Error
+		
+		if err == nil {
+			// Customer exists, use it
+			customerID = existingCustomer.ID
+		} else if err == gorm.ErrRecordNotFound {
+			// Create new customer
+			customer := map[string]interface{}{
+				"full_name":   req.CustomerFullName,
+				"phone":       req.CustomerPhone,
+				"national_id": req.CustomerNationalID,
+				"province":    req.CustomerProvince,
+				"city":        req.CustomerCity,
+				"address":     req.CustomerAddress,
+			}
+			
+			if err := tx.Table("customers").Create(&customer).Error; err != nil {
+				tx.Rollback()
+				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
+			}
+			
+			// Get the created customer ID
+			var newCustomer Customer
+			if err := tx.Table("customers").Where("national_id = ?", req.CustomerNationalID).First(&newCustomer).Error; err != nil {
+				tx.Rollback()
+				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created customer", 500)
+			}
+			customerID = newCustomer.ID
+		} else {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check customer existence", 500)
+		}
+	}
 
-    // Verify product exists
-    var productExists bool
-    if err := tx.Table("products").Where("id = ? AND deleted_at IS NULL", req.ProductID).Select("count(*) > 0").Find(&productExists).Error; err != nil {
-        tx.Rollback()
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify product", 500)
-    }
-    if !productExists {
-        tx.Rollback()
-        return nil, ErrProductNotFound
-    }
+	// RESOLVE PRODUCT BY GUARANTEE CODE PATTERN
+	// First, check if we have a guarantee code to resolve product
+	if req.GuaranteeCode == "" {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code is required to resolve product", 400)
+	}
 
-    // Parse dates
-    purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
-    if err != nil {
-        tx.Rollback()
-        return nil, ErrInvalidDate
-    }
-    expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
-    if err != nil {
-        tx.Rollback()
-        return nil, ErrInvalidDate
-    }
+	var product Product
+	var productID uint
+	
+	// Find product by matching the guarantee code against code_pattern
+	err = tx.Table("products").
+		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", req.GuaranteeCode).
+		Where("is_active = ?", true).
+		First(&product).Error
+	
+	if err == nil {
+		productID = product.ID
+	} else if err == gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code does not match any known product", 400)
+	} else {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to resolve product", 500)
+	}
 
-    if err := s.validateDates(purchaseDate, expiryDate); err != nil {
-        tx.Rollback()
-        return nil, err
-    }
+	// Parse dates
+	purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
+	if err != nil {
+		tx.Rollback()
+		return nil, ErrInvalidDate
+	}
+	expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
+	if err != nil {
+		tx.Rollback()
+		return nil, ErrInvalidDate
+	}
 
-    // Generate unique code
-    var code string
-    for i := 0; i < 3; i++ {
-        code, err = s.generateCode()
-        if err != nil {
-            tx.Rollback()
-            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to generate code", 500)
-        }
-        existing, _ := s.repo.FindByCode(code)
-        if existing == nil {
-            break
-        }
-        if i == 2 {
-            tx.Rollback()
-            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to generate unique code", 500)
-        }
-    }
+	if err := s.validateDates(purchaseDate, expiryDate); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
 
-    // Set status (default to Approved for admin-created)
-    status := StatusApproved
-    if req.Status != "" {
-        status = req.Status
-    }
+	// Use the guarantee code provided, don't generate a new one
+	code := req.GuaranteeCode
 
-    // Create guarantee
-    guarantee := &Guarantee{
-        Code:               code,
-        CustomerID:         customerID,
-        ProductID:          req.ProductID,
-        PurchaseDate:       purchaseDate,
-        ExpiryDate:         expiryDate,
-        Status:             status,
-        InvoiceImage:       req.InvoiceImage,
-        GuaranteeCardImage: req.GuaranteeCardImage,
-        Notes:              req.Notes,
-        CreatedBy:          &adminID,
-    }
+	// Set status (default to Approved for admin-created)
+	status := StatusApproved
+	if req.Status != "" {
+		status = req.Status
+	}
 
-    // If approved, set approval info
-    if status == StatusApproved {
-        now := time.Now()
-        guarantee.ApprovedBy = &adminID
-        guarantee.ApprovedAt = &now
-    }
+	// Create guarantee
+	guarantee := &Guarantee{
+		Code:               code,
+		CustomerID:         customerID,
+		ProductID:          productID,
+		PurchaseDate:       purchaseDate,
+		ExpiryDate:         expiryDate,
+		Status:             status,
+		InvoiceImage:       req.InvoiceImage,
+		GuaranteeCardImage: req.GuaranteeCardImage,
+		Notes:              req.Notes,
+		CreatedBy:          &adminID,
+	}
 
-    if err := tx.Create(guarantee).Error; err != nil {
-        tx.Rollback()
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create guarantee", 500)
-    }
+	// If approved, set approval info
+	if status == StatusApproved {
+		now := time.Now()
+		guarantee.ApprovedBy = &adminID
+		guarantee.ApprovedAt = &now
+	}
 
-    // Commit transaction
-    if err := tx.Commit().Error; err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to commit transaction", 500)
-    }
+	if err := tx.Create(guarantee).Error; err != nil {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create guarantee", 500)
+	}
 
-    // Reload with relations
-    created, err := s.repo.FindByID(guarantee.ID)
-    if err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load created guarantee", 500)
-    }
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to commit transaction", 500)
+	}
 
-    return s.mapToDTO(created), nil
+	// Reload with relations - use a simpler approach
+	created, err := s.repo.FindByIDSimple(guarantee.ID)
+	if err != nil {
+		// Log the error but still return the guarantee we created
+		fmt.Printf("Warning: Failed to load created guarantee: %v\n", err)
+		// Return the guarantee without relations
+		return s.mapToDTO(guarantee), nil
+	}
+
+	return s.mapToDTO(created), nil
 }
 
 ----------------------------------------
@@ -7657,7 +7709,7 @@ FILE: handler.go
 Path: \backend\internal\modules\products\handler.go
 Size: 3 KB
 ----------------------------------------
-Lines: 107
+Lines: 121
 
 package products
 
@@ -7725,6 +7777,20 @@ func (h *ProductHandler) List(c *gin.Context) {
 		Total:       result.Total,
 		LastPage:    result.LastPage,
 	})
+}
+
+func (h *ProductHandler) LookupByCode(c *gin.Context) {
+	code := c.Query("code")
+	if code == "" {
+		responses.Error(c, http.StatusBadRequest, "code query param is required")
+		return
+	}
+	product, err := h.service.LookupByCode(code)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.Success(c, product)
 }
 
 func (h *ProductHandler) Update(c *gin.Context) {
@@ -7802,7 +7868,7 @@ FILE: repository.go
 Path: \backend\internal\modules\products\repository.go
 Size: 2 KB
 ----------------------------------------
-Lines: 66
+Lines: 81
 
 package products
 
@@ -7832,6 +7898,21 @@ func (r *ProductRepository) FindByID(id uint) (*Product, error) {
 func (r *ProductRepository) FindByNameAndCategory(name string, categoryID uint) (*Product, error) {
 	var product Product
 	err := r.db.Where("name = ? AND category_id = ?", name, categoryID).First(&product).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &product, nil
+}
+
+func (r *ProductRepository) FindByGuaranteeCode(code string) (*Product, error) {
+	var product Product
+	err := r.db.
+		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", code).
+		Where("is_active = ?", true).
+		First(&product).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
@@ -7876,7 +7957,7 @@ FILE: routes.go
 Path: \backend\internal\modules\products\routes.go
 Size: 1 KB
 ----------------------------------------
-Lines: 35
+Lines: 42
 
 package products
 
@@ -7903,6 +7984,13 @@ func NewProductModule(db *gorm.DB) *ProductModule {
 }
 
 func (m *ProductModule) RegisterRoutes(router *gin.RouterGroup) {
+	// Public route for product lookup by guarantee code
+	public := router.Group("/products/public")
+	{
+		public.GET("/lookup-by-code", m.handler.LookupByCode)
+	}
+
+	// Protected admin routes
 	products := router.Group("/products")
 	products.Use(middleware.AuthMiddleware())
 	{
@@ -7919,7 +8007,7 @@ FILE: service.go
 Path: \backend\internal\modules\products\service.go
 Size: 5 KB
 ----------------------------------------
-Lines: 171
+Lines: 182
 
 package products
 
@@ -8078,6 +8166,17 @@ func (s *ProductService) lookupCategoryName(categoryID uint) string {
 		return ""
 	}
 	return category.Name
+}
+
+func (s *ProductService) LookupByCode(code string) (*ProductDTO, error) {
+	product, err := s.repo.FindByGuaranteeCode(code)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Lookup failed", 500)
+	}
+	if product == nil {
+		return nil, errors.NewAppError(errors.ErrNotFound, "No product matches this guarantee code", 404)
+	}
+	return s.mapToDTO(product, s.lookupCategoryName(product.CategoryID)), nil
 }
 
 func (s *ProductService) mapToDTO(product *Product, categoryName string) *ProductDTO {
@@ -10385,6 +10484,25 @@ BEGIN
         CREATE INDEX idx_part_requests_deleted_at ON part_requests(deleted_at);
     END IF;
 END $$;
+
+----------------------------------------
+FILE: 011_add_product_code_pattern.sql
+Path: \backend\migrations\011_add_product_code_pattern.sql
+Size: 1 KB
+----------------------------------------
+Lines: 11
+
+-- backend/migrations/XXXX_add_product_code_pattern.sql
+
+-- Add code_pattern and code_prefix columns to products table
+ALTER TABLE products ADD COLUMN code_pattern VARCHAR(255);
+ALTER TABLE products ADD COLUMN code_prefix VARCHAR(20);
+CREATE INDEX idx_products_code_prefix ON products(code_prefix);
+
+-- Update existing products with sample patterns
+UPDATE products SET code_prefix = 'FZ530', code_pattern = '^FZ530-\\d{6}$' WHERE name LIKE '%FZ530%';
+UPDATE products SET code_prefix = 'X100', code_pattern = '^X100-\\d{6}$' WHERE name LIKE '%X100%';
+UPDATE products SET code_prefix = 'P500', code_pattern = '^P500-\\d{8}$' WHERE name LIKE '%P500%';
 
 ----------------------------------------
 FILE: 20260721085726_create_products_table.down.sql
@@ -26445,7 +26563,7 @@ FILE: publicGuarantee.ts
 Path: \frontend\src\features\guarantees\api\publicGuarantee.ts
 Size: 2 KB
 ----------------------------------------
-Lines: 68
+Lines: 66
 
 import { api } from '@/api/axios'
 
@@ -26459,14 +26577,12 @@ export interface PublicRegisterData {
   address: string
   // Guarantee
   guarantee_code: string
-  product_name: string
   purchase_date: string
   guarantee_period: number
   invoice_image?: string
   guarantee_card_image?: string
   notes?: string
 }
-
 export interface PublicRegisterResponse {
   guarantee_id: number
   guarantee_code: string
@@ -26523,11 +26639,14 @@ DIRECTORY: \frontend\src\features\guarantees\components
 ----------------------------------------
 FILE: AdminGuaranteeForm.tsx
 Path: \frontend\src\features\guarantees\components\AdminGuaranteeForm.tsx
-Size: 18 KB
+Size: 21 KB
 ----------------------------------------
-Lines: 463
+Lines: 544
 
-import { useEffect, useState } from 'react'
+// frontend/src/features/guarantees/components/AdminGuaranteeForm.tsx
+// Add guarantee_code field with product lookup
+
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
@@ -26548,10 +26667,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { DatePicker } from '@/components/ui/date-picker'
 import { customerService } from '@/features/customers/api/customers'
-import { productService } from '@/features/products/api/products'
+import { api } from '@/api/axios'
 import { Customer } from '@/features/customers/types'
+import { Loader2 } from 'lucide-react'
+import { useDebounce } from '@/hooks/useDebounce'
 
-// Define the schema with status as required (not optional)
+// Define the schema with status as required
 const adminGuaranteeSchema = z.object({
   // Customer - either existing or new
   customer_id: z.string().optional(),
@@ -26562,7 +26683,7 @@ const adminGuaranteeSchema = z.object({
   customer_city: z.string().optional(),
   customer_address: z.string().optional(),
   // Guarantee - all required
-  product_id: z.string().min(1, 'Please select a product'),
+  guarantee_code: z.string().min(3, 'Guarantee code is required').max(50),
   purchase_date: z.string().min(1, 'Purchase date is required'),
   expiry_date: z.string().min(1, 'Expiry date is required'),
   invoice_image: z.string().optional(),
@@ -26572,29 +26693,31 @@ const adminGuaranteeSchema = z.object({
   status: z.enum(['Pending', 'Approved']),
 })
 
-// Infer the type from the schema
 type AdminGuaranteeFormValues = z.infer<typeof adminGuaranteeSchema>
+
+interface ProductLookupResult {
+  id: number
+  name: string
+  category_name: string
+}
 
 interface AdminGuaranteeFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: AdminGuaranteeFormValues) => Promise<void>
+  onSubmit: (data: any) => Promise<void>
   isLoading?: boolean
 }
 
 export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: AdminGuaranteeFormProps) {
   const [activeTab, setActiveTab] = useState<'existing' | 'new'>('existing')
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [lookupResult, setLookupResult] = useState<ProductLookupResult | null>(null)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [isLookupLoading, setIsLookupLoading] = useState(false)
 
   const { data: customers = [], isLoading: customersLoading } = useQuery({
     queryKey: ['customers-list-for-admin'],
     queryFn: () => customerService.list(1, 100).then(r => r.customers),
-    enabled: open,
-  })
-
-  const { data: products = [], isLoading: productsLoading } = useQuery({
-    queryKey: ['products-list-for-admin'],
-    queryFn: () => productService.list(1, 100).then(r => r.products),
     enabled: open,
   })
 
@@ -26608,7 +26731,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
       customer_province: '',
       customer_city: '',
       customer_address: '',
-      product_id: '',
+      guarantee_code: '',
       purchase_date: '',
       expiry_date: '',
       invoice_image: '',
@@ -26618,11 +26741,57 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     },
   })
 
+  const guaranteeCode = form.watch('guarantee_code')
+  const debouncedCode = useDebounce(guaranteeCode, 500)
+
+  // Product lookup by guarantee code
+  const lookupProduct = async (code: string) => {
+    if (!code || code.length < 3) {
+      setLookupResult(null)
+      setLookupError(null)
+      return
+    }
+
+    setIsLookupLoading(true)
+    setLookupError(null)
+    setLookupResult(null)
+
+    try {
+      const response = await api.get('/products/public/lookup-by-code', {
+        params: { code }
+      })
+      const product = response.data.data
+      setLookupResult(product)
+      setLookupError(null)
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        setLookupError('No product matches this guarantee code')
+      } else {
+        setLookupError('Failed to lookup product')
+      }
+      setLookupResult(null)
+    } finally {
+      setIsLookupLoading(false)
+    }
+  }
+
+  // Trigger lookup when debounced code changes
+  useMemo(() => {
+    if (debouncedCode && debouncedCode.length >= 3) {
+      lookupProduct(debouncedCode)
+    } else {
+      setLookupResult(null)
+      setLookupError(null)
+    }
+  }, [debouncedCode])
+
   useEffect(() => {
     if (!open) {
       form.reset()
       setActiveTab('existing')
       setSelectedCustomer(null)
+      setLookupResult(null)
+      setLookupError(null)
     }
   }, [open, form])
 
@@ -26640,9 +26809,18 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
   }
 
   const handleSubmit = async (data: AdminGuaranteeFormValues) => {
+    // Validate that product was found
+    if (!lookupResult) {
+      form.setError('guarantee_code', { 
+        type: 'manual', 
+        message: 'Please enter a valid guarantee code that matches a product' 
+      })
+      return
+    }
+
     // Build the submit data
     const submitData: any = {
-      product_id: Number(data.product_id),
+      guarantee_code: data.guarantee_code,
       purchase_date: data.purchase_date,
       expiry_date: data.expiry_date,
       invoice_image: data.invoice_image || undefined,
@@ -26671,14 +26849,15 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
       submitData.customer_address = data.customer_address
     }
 
-    await onSubmit(submitData as AdminGuaranteeFormValues)
+    await onSubmit(submitData)
     if (!isLoading) {
       form.reset()
       onOpenChange(false)
+      setLookupResult(null)
     }
   }
 
-  const isLoadingData = customersLoading || productsLoading
+  const isLoadingData = customersLoading
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -26686,7 +26865,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
         <DialogHeader>
           <DialogTitle>Create Guarantee (Admin)</DialogTitle>
           <DialogDescription>
-            Register a guarantee as an admin. You can choose an existing customer or register a new one.
+            Enter the guarantee code to automatically resolve the product.
             <br />
             <span className="text-sm font-medium text-blue-600">
               Guarantees created by admin are approved by default (unless set to Pending).
@@ -26835,32 +27014,49 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
               {/* Guarantee Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Guarantee Information</h3>
+                
+                {/* Guarantee Code with Product Lookup */}
+                <FormField
+                  control={form.control}
+                  name="guarantee_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Guarantee Code (Printed on Product) *</FormLabel>
+                      <FormControl>
+                        <div className="space-y-2">
+                          <Input 
+                            placeholder="Enter the code from the product" 
+                            {...field} 
+                            onChange={(e) => {
+                              field.onChange(e.target.value.toUpperCase())
+                            }}
+                          />
+                          {isLookupLoading && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-2">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Checking code...
+                            </p>
+                          )}
+                          {lookupResult && !lookupError && (
+                            <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800">
+                              <p className="font-medium">âœ“ Product Matched:</p>
+                              <p>{lookupResult.name}</p>
+                              <p className="text-xs text-green-600">{lookupResult.category_name}</p>
+                            </div>
+                          )}
+                          {lookupError && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">
+                              <p className="font-medium">âœ— {lookupError}</p>
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="product_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Product *</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={(value) => field.onChange(value || '')}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a product" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {products.map((p) => (
-                              <SelectItem key={p.id} value={String(p.id)}>
-                                {p.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                   <FormField
                     control={form.control}
                     name="status"
@@ -26883,6 +27079,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       </FormItem>
                     )}
                   />
+                  <div></div> {/* Spacer */}
                   <FormField
                     control={form.control}
                     name="purchase_date"
@@ -26979,7 +27176,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+                <Button type="submit" disabled={isLoading || !lookupResult} className="bg-blue-600 hover:bg-blue-700">
                   {isLoading ? 'Creating...' : 'Create Guarantee'}
                 </Button>
               </DialogFooter>
@@ -28172,9 +28369,11 @@ export function CheckGuaranteePage() {
 ----------------------------------------
 FILE: GuaranteesPage.tsx
 Path: \frontend\src\features\guarantees\pages\GuaranteesPage.tsx
-Size: 15 KB
+Size: 14 KB
 ----------------------------------------
-Lines: 412
+Lines: 382
+
+// frontend/src/features/guarantees/pages/GuaranteesPage.tsx
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -28190,7 +28389,6 @@ import {
 import { Plus, Search, RefreshCw, Filter, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { GuaranteeTable } from '../components/GuaranteeTable'
-import { GuaranteeForm } from '../components/GuaranteeForm'
 import { GuaranteeDeleteDialog } from '../components/GuaranteeDeleteDialog'
 import { ApproveDialog } from '../components/ApproveDialog'
 import { RenewDialog } from '../components/RenewDialog'
@@ -28213,7 +28411,6 @@ export function GuaranteesPage() {
   const [productFilter, setProductFilter] = useState<string>('all')
   const [selectedGuarantee, setSelectedGuarantee] = useState<Guarantee | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [isAdminFormOpen, setIsAdminFormOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isApproveOpen, setIsApproveOpen] = useState(false)
   const [isRenewOpen, setIsRenewOpen] = useState(false)
@@ -28254,26 +28451,14 @@ export function GuaranteesPage() {
       ),
   })
 
-  // Create mutation (regular)
-  const createMutation = useMutation({
-    mutationFn: guaranteeService.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guarantees'] })
-      invalidateDashboard()
-      toast.success('Guarantee created successfully')
-      setIsFormOpen(false)
-    },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create guarantee'),
-  })
-
-  // Admin create mutation
+  // Admin create mutation (this handles both existing and new customers)
   const adminCreateMutation = useMutation({
     mutationFn: guaranteeService.adminCreate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guarantees'] })
       invalidateDashboard()
-      toast.success('Guarantee created successfully by admin')
-      setIsAdminFormOpen(false)
+      toast.success('Guarantee created successfully')
+      setIsFormOpen(false)
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create guarantee'),
   })
@@ -28346,10 +28531,6 @@ export function GuaranteesPage() {
 
   // Handlers
   const handleCreate = async (data: any) => {
-    await createMutation.mutateAsync(data)
-  }
-
-  const handleAdminCreate = async (data: any) => {
     await adminCreateMutation.mutateAsync(data)
   }
 
@@ -28414,16 +28595,10 @@ export function GuaranteesPage() {
             Manage product guarantees and warranties
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setIsAdminFormOpen(true)} variant="outline" className="gap-2">
-            <UserCog className="h-4 w-4" />
-            Admin Create
-          </Button>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Guarantee
-          </Button>
-        </div>
+        <Button onClick={() => setIsFormOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Guarantee
+        </Button>
       </div>
 
       {/* Filters */}
@@ -28539,19 +28714,11 @@ export function GuaranteesPage() {
         </div>
       )}
 
-      {/* Dialogs */}
-      <GuaranteeForm
+      {/* Dialogs - Only AdminGuaranteeForm, no regular GuaranteeForm */}
+      <AdminGuaranteeForm
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
-        guarantee={selectedGuarantee}
-        onSubmit={selectedGuarantee ? handleUpdate : handleCreate}
-        isLoading={createMutation.isPending || updateMutation.isPending}
-      />
-
-      <AdminGuaranteeForm
-        open={isAdminFormOpen}
-        onOpenChange={setIsAdminFormOpen}
-        onSubmit={handleAdminCreate}
+        onSubmit={handleCreate}
         isLoading={adminCreateMutation.isPending}
       />
 
@@ -28592,17 +28759,21 @@ export function GuaranteesPage() {
 ----------------------------------------
 FILE: PublicRegisterPage.tsx
 Path: \frontend\src\features\guarantees\pages\PublicRegisterPage.tsx
-Size: 27 KB
+Size: 31 KB
 ----------------------------------------
-Lines: 670
+Lines: 750
 
-import { useState, useRef } from 'react'
+// frontend/src/features/guarantees/pages/PublicRegisterPage.tsx
+// Replace the product_name field with guarantee_code lookup
+
+import { useState, useRef, useMemo, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { useNavigate } from 'react-router-dom'
 import { publicGuaranteeService } from '../api/publicGuarantee'
+import { api } from '@/api/axios'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -28632,6 +28803,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { CheckCircle2, AlertCircle, Loader2, ShieldCheck, Upload, X, FileText, Image } from 'lucide-react'
 import { DatePicker } from '@/components/ui/date-picker'
+import { useDebounce } from '@/hooks/useDebounce'
 
 const publicRegisterSchema = z.object({
   // Customer
@@ -28644,7 +28816,6 @@ const publicRegisterSchema = z.object({
   
   // Guarantee
   guarantee_code: z.string().min(3, 'Guarantee code is required').max(50),
-  product_name: z.string().min(2, 'Product name is required').max(100),
   purchase_date: z.string().min(1, 'Purchase date is required'),
   guarantee_period: z.number().min(1, 'Please select a guarantee period'),
   invoice_image: z.string().optional(),
@@ -28653,6 +28824,12 @@ const publicRegisterSchema = z.object({
 })
 
 type PublicRegisterFormValues = z.infer<typeof publicRegisterSchema>
+
+interface ProductLookupResult {
+  id: number
+  name: string
+  category_name: string
+}
 
 export function PublicRegisterPage() {
   const navigate = useNavigate()
@@ -28663,6 +28840,9 @@ export function PublicRegisterPage() {
     message: string
     data?: any
   } | null>(null)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [lookupResult, setLookupResult] = useState<ProductLookupResult | null>(null)
+  const [isLookupLoading, setIsLookupLoading] = useState(false)
   
   // File upload states
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
@@ -28690,7 +28870,6 @@ export function PublicRegisterPage() {
       city: '',
       address: '',
       guarantee_code: '',
-      product_name: '',
       purchase_date: '',
       guarantee_period: 0,
       invoice_image: '',
@@ -28698,6 +28877,52 @@ export function PublicRegisterPage() {
       notes: '',
     },
   })
+
+  // Debounced guarantee code lookup
+  const guaranteeCode = form.watch('guarantee_code')
+  const debouncedCode = useDebounce(guaranteeCode, 500)
+
+  // Product lookup by guarantee code
+  const lookupProduct = useCallback(async (code: string) => {
+    if (!code || code.length < 3) {
+      setLookupResult(null)
+      setLookupError(null)
+      return
+    }
+
+    setIsLookupLoading(true)
+    setLookupError(null)
+    setLookupResult(null)
+
+    try {
+      const response = await api.get('/products/public/lookup-by-code', {
+        params: { code }
+      })
+      const product = response.data.data
+      setLookupResult(product)
+      setLookupError(null)
+      toast.success(`Product matched: ${product.name}`)
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        setLookupError('No product matches this guarantee code. Please check the code.')
+      } else {
+        setLookupError('Failed to lookup product. Please try again.')
+      }
+      setLookupResult(null)
+    } finally {
+      setIsLookupLoading(false)
+    }
+  }, [])
+
+  // Trigger lookup when debounced code changes
+  useMemo(() => {
+    if (debouncedCode && debouncedCode.length >= 3) {
+      lookupProduct(debouncedCode)
+    } else {
+      setLookupResult(null)
+      setLookupError(null)
+    }
+  }, [debouncedCode, lookupProduct])
 
   const handleFileUpload = async (file: File, type: 'invoice' | 'card') => {
     setIsUploading(true)
@@ -28723,13 +28948,11 @@ export function PublicRegisterPage() {
   const handleInvoiceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Validate file size (10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error('File size exceeds 10MB limit')
         return
       }
       
-      // Validate file type
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
@@ -28745,13 +28968,11 @@ export function PublicRegisterPage() {
   const handleCardFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Validate file size (10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error('File size exceeds 10MB limit')
         return
       }
       
-      // Validate file type
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
@@ -28785,16 +29006,23 @@ export function PublicRegisterPage() {
   }
 
   const onSubmit = async (data: PublicRegisterFormValues) => {
+    // Validate that product was found
+    if (!lookupResult) {
+      toast.error('Please enter a valid guarantee code that matches a product')
+      return
+    }
+
     setIsSubmitting(true)
     setRegistrationResult(null)
     
     try {
-      // Clean up data
+      // Clean up data - remove product_name (not needed anymore)
       const cleanedData = {
         ...data,
         invoice_image: data.invoice_image || undefined,
         guarantee_card_image: data.guarantee_card_image || undefined,
         notes: data.notes || undefined,
+        // product_name is removed - backend resolves from guarantee_code
       }
       
       const response = await publicGuaranteeService.register(cleanedData)
@@ -28805,7 +29033,6 @@ export function PublicRegisterPage() {
       })
       toast.success('Guarantee registered successfully!')
       
-      // Reset form after successful registration
       form.reset()
       setInvoiceFile(null)
       setInvoicePreview(null)
@@ -28813,6 +29040,7 @@ export function PublicRegisterPage() {
       setCardFile(null)
       setCardPreview(null)
       setCardUploadedUrl('')
+      setLookupResult(null)
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to register guarantee'
       setRegistrationResult({
@@ -28875,6 +29103,7 @@ export function PublicRegisterPage() {
                 onClick={() => {
                   setRegistrationResult(null)
                   form.reset()
+                  setLookupResult(null)
                 }}
               >
                 Register Another
@@ -28904,7 +29133,8 @@ export function PublicRegisterPage() {
             </div>
             <CardTitle className="text-3xl font-bold">Guarantee Registration</CardTitle>
             <CardDescription className="text-base">
-              Register your product guarantee. All fields marked with * are required.
+              Enter your product's guarantee code to automatically identify your product.
+              All fields marked with * are required.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
@@ -29015,7 +29245,8 @@ export function PublicRegisterPage() {
                     <span className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold">2</span>
                     Guarantee Information
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    {/* Guarantee Code with Product Lookup */}
                     <FormField
                       control={form.control}
                       name="guarantee_code"
@@ -29023,71 +29254,87 @@ export function PublicRegisterPage() {
                         <FormItem>
                           <FormLabel>Guarantee Code (Printed on Product) *</FormLabel>
                           <FormControl>
-                            <Input placeholder="GUA-XXXXXX" {...field} />
+                            <div className="space-y-2">
+                              <Input 
+                                placeholder="Enter the code from your product" 
+                                {...field} 
+                                onChange={(e) => {
+                                  field.onChange(e.target.value.toUpperCase())
+                                }}
+                              />
+                              {isLookupLoading && (
+                                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  Checking code...
+                                </p>
+                              )}
+                              {lookupResult && !lookupError && (
+                                <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800">
+                                  <p className="font-medium">âœ“ Product Matched:</p>
+                                  <p>{lookupResult.name}</p>
+                                  <p className="text-xs text-green-600">{lookupResult.category_name}</p>
+                                </div>
+                              )}
+                              {lookupError && (
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">
+                                  <p className="font-medium">âœ— {lookupError}</p>
+                                </div>
+                              )}
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="product_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Product Name *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Product Model/Name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="purchase_date"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Purchase Date *</FormLabel>
-                          <FormControl>
-                            <DatePicker
-                              value={field.value}
-                              onChange={field.onChange}
-                              placeholder="Select purchase date"
-                              className="w-full"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="guarantee_period"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Guarantee Period *</FormLabel>
-                          <Select
-                            value={field.value ? String(field.value) : ''}
-                            onValueChange={(value) => field.onChange(Number(value))}
-                            disabled={periodsLoading}
-                          >
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="purchase_date"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Purchase Date *</FormLabel>
                             <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select guarantee period" />
-                              </SelectTrigger>
+                              <DatePicker
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="Select purchase date"
+                                className="w-full"
+                              />
                             </FormControl>
-                            <SelectContent>
-                              {periods.map((period) => (
-                                <SelectItem key={period.value} value={String(period.value)}>
-                                  {period.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="guarantee_period"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Guarantee Period *</FormLabel>
+                            <Select
+                              value={field.value ? String(field.value) : ''}
+                              onValueChange={(value) => field.onChange(Number(value))}
+                              disabled={periodsLoading}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select guarantee period" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {periods.map((period) => (
+                                  <SelectItem key={period.value} value={String(period.value)}>
+                                    {period.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
                   
                   {/* File Upload Section */}
@@ -29241,7 +29488,7 @@ export function PublicRegisterPage() {
                     <Button 
                       type="submit" 
                       className="flex-1" 
-                      disabled={isSubmitting || isUploading}
+                      disabled={isSubmitting || isUploading || !lookupResult}
                     >
                       {isSubmitting ? (
                         <>
@@ -33455,7 +33702,7 @@ File Types:
   .md : 2 files
   .mod : 1 files
   .ps1 : 8 files
-  .sql : 12 files
+  .sql : 13 files
   .sum : 1 files
   .ts : 32 files
   .tsx : 78 files
@@ -33471,7 +33718,7 @@ Languages:
   Markdown : 2 files
   Other : 3 files
   PowerShell : 8 files
-  SQL : 12 files
+  SQL : 13 files
   TypeScript : 110 files
   YAML : 1 files
 

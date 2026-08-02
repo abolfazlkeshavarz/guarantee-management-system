@@ -477,38 +477,25 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check customer existence", 500)
 	}
 
-	// 2. Create or get product
-	var productID uint
+	// 2. RESOLVE PRODUCT BY GUARANTEE CODE PATTERN - NOT BY NAME
+	// Find product by matching the guarantee code against code_pattern
 	var product Product
+	var productID uint
 	
-	// Check if product exists by name
-	err = tx.Table("products").Where("name = ?", req.ProductName).First(&product).Error
+	// Use the product lookup by code pattern
+	err = tx.Table("products").
+		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", req.GuaranteeCode).
+		Where("is_active = ?", true).
+		First(&product).Error
+	
 	if err == nil {
 		productID = product.ID
 	} else if err == gorm.ErrRecordNotFound {
-		// Create new product (inactive by default, admin can activate later)
-		newProduct := map[string]interface{}{
-			"name":        req.ProductName,
-			"description": "Auto-created from guarantee registration",
-			"category_id": 1, // Default category, admin can change later
-			"is_active":   false,
-		}
-		
-		if err := tx.Table("products").Create(&newProduct).Error; err != nil {
-			tx.Rollback()
-			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create product", 500)
-		}
-		
-		// Get the created product ID
-		var newProductRecord Product
-		if err := tx.Table("products").Where("name = ?", req.ProductName).First(&newProductRecord).Error; err != nil {
-			tx.Rollback()
-			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created product", 500)
-		}
-		productID = newProductRecord.ID
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code does not match any known product. Please check the code on your product.", 400)
 	} else {
 		tx.Rollback()
-		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check product existence", 500)
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check product", 500)
 	}
 
 	// 3. Parse dates
@@ -526,15 +513,15 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		return nil, err
 	}
 
-	// 4. Check if guarantee code already exists
-	existingGuarantee, err := s.repo.FindByCode(req.GuaranteeCode)
-	if err != nil {
-		tx.Rollback()
-		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check guarantee code", 500)
-	}
-	if existingGuarantee != nil {
+	// 4. Check if guarantee code already exists - use tx directly
+	var existingGuarantee Guarantee
+	err = tx.Where("code = ?", req.GuaranteeCode).First(&existingGuarantee).Error
+	if err == nil {
 		tx.Rollback()
 		return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Guarantee code already registered", 409)
+	} else if err != gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check guarantee code", 500)
 	}
 
 	// 5. Create guarantee
@@ -548,7 +535,6 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		InvoiceImage:       req.InvoiceImage,
 		GuaranteeCardImage: req.GuaranteeCardImage,
 		Notes:              req.Notes,
-		// CreatedBy remains nil for public registration
 	}
 
 	if err := tx.Create(guarantee).Error; err != nil {
@@ -604,166 +590,166 @@ func (s *GuaranteeService) GetByCode(code string) (*GuaranteeDTO, error) {
 }
 
 func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, adminID uint) (*GuaranteeDTO, error) {
-    // Start transaction
-    tx := s.db.Begin()
-    defer func() {
-        if r := recover(); r != nil {
-            tx.Rollback()
-        }
-    }()
+	// Start transaction
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
-    var customerID uint
-    var err error
+	var customerID uint
+	var err error
 
-    // Determine customer
-    if req.CustomerID != nil && *req.CustomerID > 0 {
-        // Use existing customer
-        var exists bool
-        if err := tx.Table("customers").Where("id = ? AND deleted_at IS NULL", *req.CustomerID).Select("count(*) > 0").Find(&exists).Error; err != nil {
-            tx.Rollback()
-            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify customer", 500)
-        }
-        if !exists {
-            tx.Rollback()
-            return nil, ErrCustomerNotFound
-        }
-        customerID = *req.CustomerID
-    } else {
-        // Create new customer
-        if req.CustomerFullName == "" || req.CustomerPhone == "" || req.CustomerNationalID == "" {
-            tx.Rollback()
-            return nil, errors.NewAppError(errors.ErrValidation, "Customer information is required when not selecting existing customer", 400)
-        }
+	// Determine customer
+	if req.CustomerID != nil && *req.CustomerID > 0 {
+		// Use existing customer
+		var exists bool
+		if err := tx.Table("customers").Where("id = ? AND deleted_at IS NULL", *req.CustomerID).Select("count(*) > 0").Find(&exists).Error; err != nil {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify customer", 500)
+		}
+		if !exists {
+			tx.Rollback()
+			return nil, ErrCustomerNotFound
+		}
+		customerID = *req.CustomerID
+	} else {
+		// Create new customer
+		if req.CustomerFullName == "" || req.CustomerPhone == "" || req.CustomerNationalID == "" {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrValidation, "Customer information is required when not selecting existing customer", 400)
+		}
 
-        // Check if customer exists by National ID or Phone
-        var existingCustomer Customer
-        err := tx.Table("customers").
-            Where("national_id = ? OR phone = ?", req.CustomerNationalID, req.CustomerPhone).
-            First(&existingCustomer).Error
-        
-        if err == nil {
-            // Customer exists, use it
-            customerID = existingCustomer.ID
-        } else if err == gorm.ErrRecordNotFound {
-            // Create new customer
-            customer := map[string]interface{}{
-                "full_name":   req.CustomerFullName,
-                "phone":       req.CustomerPhone,
-                "national_id": req.CustomerNationalID,
-                "province":    req.CustomerProvince,
-                "city":        req.CustomerCity,
-                "address":     req.CustomerAddress,
-            }
-            
-            if err := tx.Table("customers").Create(&customer).Error; err != nil {
-                tx.Rollback()
-                return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
-            }
-            
-            // Get the created customer ID
-            var newCustomer Customer
-            if err := tx.Table("customers").Where("national_id = ?", req.CustomerNationalID).First(&newCustomer).Error; err != nil {
-                tx.Rollback()
-                return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created customer", 500)
-            }
-            customerID = newCustomer.ID
-        } else {
-            tx.Rollback()
-            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check customer existence", 500)
-        }
-    }
+		// Check if customer exists by National ID or Phone
+		var existingCustomer Customer
+		err := tx.Table("customers").
+			Where("national_id = ? OR phone = ?", req.CustomerNationalID, req.CustomerPhone).
+			First(&existingCustomer).Error
+		
+		if err == nil {
+			// Customer exists, use it
+			customerID = existingCustomer.ID
+		} else if err == gorm.ErrRecordNotFound {
+			// Create new customer
+			customer := map[string]interface{}{
+				"full_name":   req.CustomerFullName,
+				"phone":       req.CustomerPhone,
+				"national_id": req.CustomerNationalID,
+				"province":    req.CustomerProvince,
+				"city":        req.CustomerCity,
+				"address":     req.CustomerAddress,
+			}
+			
+			if err := tx.Table("customers").Create(&customer).Error; err != nil {
+				tx.Rollback()
+				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
+			}
+			
+			// Get the created customer ID
+			var newCustomer Customer
+			if err := tx.Table("customers").Where("national_id = ?", req.CustomerNationalID).First(&newCustomer).Error; err != nil {
+				tx.Rollback()
+				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created customer", 500)
+			}
+			customerID = newCustomer.ID
+		} else {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check customer existence", 500)
+		}
+	}
 
-    // Verify product exists
-    var productExists bool
-    if err := tx.Table("products").Where("id = ? AND deleted_at IS NULL", req.ProductID).Select("count(*) > 0").Find(&productExists).Error; err != nil {
-        tx.Rollback()
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify product", 500)
-    }
-    if !productExists {
-        tx.Rollback()
-        return nil, ErrProductNotFound
-    }
+	// RESOLVE PRODUCT BY GUARANTEE CODE PATTERN
+	// First, check if we have a guarantee code to resolve product
+	if req.GuaranteeCode == "" {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code is required to resolve product", 400)
+	}
 
-    // Parse dates
-    purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
-    if err != nil {
-        tx.Rollback()
-        return nil, ErrInvalidDate
-    }
-    expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
-    if err != nil {
-        tx.Rollback()
-        return nil, ErrInvalidDate
-    }
+	var product Product
+	var productID uint
+	
+	// Find product by matching the guarantee code against code_pattern
+	err = tx.Table("products").
+		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", req.GuaranteeCode).
+		Where("is_active = ?", true).
+		First(&product).Error
+	
+	if err == nil {
+		productID = product.ID
+	} else if err == gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code does not match any known product", 400)
+	} else {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to resolve product", 500)
+	}
 
-    if err := s.validateDates(purchaseDate, expiryDate); err != nil {
-        tx.Rollback()
-        return nil, err
-    }
+	// Parse dates
+	purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
+	if err != nil {
+		tx.Rollback()
+		return nil, ErrInvalidDate
+	}
+	expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
+	if err != nil {
+		tx.Rollback()
+		return nil, ErrInvalidDate
+	}
 
-    // Generate unique code
-    var code string
-    for i := 0; i < 3; i++ {
-        code, err = s.generateCode()
-        if err != nil {
-            tx.Rollback()
-            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to generate code", 500)
-        }
-        existing, _ := s.repo.FindByCode(code)
-        if existing == nil {
-            break
-        }
-        if i == 2 {
-            tx.Rollback()
-            return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to generate unique code", 500)
-        }
-    }
+	if err := s.validateDates(purchaseDate, expiryDate); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
 
-    // Set status (default to Approved for admin-created)
-    status := StatusApproved
-    if req.Status != "" {
-        status = req.Status
-    }
+	// Use the guarantee code provided, don't generate a new one
+	code := req.GuaranteeCode
 
-    // Create guarantee
-    guarantee := &Guarantee{
-        Code:               code,
-        CustomerID:         customerID,
-        ProductID:          req.ProductID,
-        PurchaseDate:       purchaseDate,
-        ExpiryDate:         expiryDate,
-        Status:             status,
-        InvoiceImage:       req.InvoiceImage,
-        GuaranteeCardImage: req.GuaranteeCardImage,
-        Notes:              req.Notes,
-        CreatedBy:          &adminID,
-    }
+	// Set status (default to Approved for admin-created)
+	status := StatusApproved
+	if req.Status != "" {
+		status = req.Status
+	}
 
-    // If approved, set approval info
-    if status == StatusApproved {
-        now := time.Now()
-        guarantee.ApprovedBy = &adminID
-        guarantee.ApprovedAt = &now
-    }
+	// Create guarantee
+	guarantee := &Guarantee{
+		Code:               code,
+		CustomerID:         customerID,
+		ProductID:          productID,
+		PurchaseDate:       purchaseDate,
+		ExpiryDate:         expiryDate,
+		Status:             status,
+		InvoiceImage:       req.InvoiceImage,
+		GuaranteeCardImage: req.GuaranteeCardImage,
+		Notes:              req.Notes,
+		CreatedBy:          &adminID,
+	}
 
-    if err := tx.Create(guarantee).Error; err != nil {
-        tx.Rollback()
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create guarantee", 500)
-    }
+	// If approved, set approval info
+	if status == StatusApproved {
+		now := time.Now()
+		guarantee.ApprovedBy = &adminID
+		guarantee.ApprovedAt = &now
+	}
 
-    // Commit transaction
-    if err := tx.Commit().Error; err != nil {
-        return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to commit transaction", 500)
-    }
+	if err := tx.Create(guarantee).Error; err != nil {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create guarantee", 500)
+	}
 
-    // Reload with relations - use a simpler approach
-    created, err := s.repo.FindByIDSimple(guarantee.ID)
-    if err != nil {
-        // Log the error but still return the guarantee we created
-        fmt.Printf("Warning: Failed to load created guarantee: %v\n", err)
-        // Return the guarantee without relations
-        return s.mapToDTO(guarantee), nil
-    }
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to commit transaction", 500)
+	}
 
-    return s.mapToDTO(created), nil
+	// Reload with relations - use a simpler approach
+	created, err := s.repo.FindByIDSimple(guarantee.ID)
+	if err != nil {
+		// Log the error but still return the guarantee we created
+		fmt.Printf("Warning: Failed to load created guarantee: %v\n", err)
+		// Return the guarantee without relations
+		return s.mapToDTO(guarantee), nil
+	}
+
+	return s.mapToDTO(created), nil
 }

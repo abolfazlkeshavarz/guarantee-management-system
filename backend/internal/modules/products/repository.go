@@ -35,6 +35,21 @@ func (r *ProductRepository) FindByNameAndCategory(name string, categoryID uint) 
 	return &product, nil
 }
 
+func (r *ProductRepository) FindByGuaranteeCode(code string) (*Product, error) {
+	var product Product
+	err := r.db.
+		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", code).
+		Where("is_active = ?", true).
+		First(&product).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &product, nil
+}
+
 func (r *ProductRepository) FindAll(page, limit int, search string, categoryID uint) ([]Product, int64, error) {
 	var products []Product
 	var total int64

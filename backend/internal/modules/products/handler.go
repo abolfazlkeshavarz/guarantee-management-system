@@ -66,6 +66,20 @@ func (h *ProductHandler) List(c *gin.Context) {
 	})
 }
 
+func (h *ProductHandler) LookupByCode(c *gin.Context) {
+	code := c.Query("code")
+	if code == "" {
+		responses.Error(c, http.StatusBadRequest, "code query param is required")
+		return
+	}
+	product, err := h.service.LookupByCode(code)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.Success(c, product)
+}
+
 func (h *ProductHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {

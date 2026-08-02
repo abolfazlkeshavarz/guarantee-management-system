@@ -122,6 +122,7 @@ export function JalaliCalendar({
 
         <div className="flex items-center gap-1">
           <Select
+            items={months.map((m) => ({ value: String(m.number), label: m.name }))}
             value={String(viewMonth)}
             onValueChange={(value) => setViewMonth(Number(value))}
             disabled={disabled}

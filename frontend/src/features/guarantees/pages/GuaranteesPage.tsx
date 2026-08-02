@@ -250,7 +250,11 @@ export function GuaranteesPage() {
           </SelectContent>
         </Select>
 
-        <Select value={customerFilter} onValueChange={(value) => { setCustomerFilter(value ?? 'all'); setPage(1) }}>
+        <Select
+          items={[{ value: 'all', label: 'All Customers' }, ...customers.map((c) => ({ value: String(c.id), label: c.full_name }))]}
+          value={customerFilter}
+          onValueChange={(value) => { setCustomerFilter(value ?? 'all'); setPage(1) }}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Customer" />
           </SelectTrigger>
@@ -262,7 +266,11 @@ export function GuaranteesPage() {
           </SelectContent>
         </Select>
 
-        <Select value={productFilter} onValueChange={(value) => { setProductFilter(value ?? 'all'); setPage(1) }}>
+        <Select
+          items={[{ value: 'all', label: 'All Products' }, ...products.map((p) => ({ value: String(p.id), label: p.name }))]}
+          value={productFilter}
+          onValueChange={(value) => { setProductFilter(value ?? 'all'); setPage(1) }}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Product" />
           </SelectTrigger>

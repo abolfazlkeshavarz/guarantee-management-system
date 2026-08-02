@@ -10,14 +10,12 @@ export interface PublicRegisterData {
   address: string
   // Guarantee
   guarantee_code: string
-  product_name: string
   purchase_date: string
   guarantee_period: number
   invoice_image?: string
   guarantee_card_image?: string
   notes?: string
 }
-
 export interface PublicRegisterResponse {
   guarantee_id: number
   guarantee_code: string

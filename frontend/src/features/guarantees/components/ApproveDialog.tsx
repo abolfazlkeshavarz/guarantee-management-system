@@ -91,7 +91,12 @@ export function ApproveDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Action *</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange} disabled>
+                  <Select
+                    items={[{ value: 'Approved', label: '✅ Approve' }, { value: 'Rejected', label: '❌ Reject' }]}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled
+                  >
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue />
