@@ -1,4 +1,4 @@
-DELETE FROM products WHERE code_prefix = 'EVC';
+DELETE FROM products WHERE code_prefix = 'FZD';
 
 DELETE FROM product_categories
 WHERE name = 'Vacuum Cleaner'

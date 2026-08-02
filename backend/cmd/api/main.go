@@ -47,6 +47,9 @@ func main() {
 	router.Use(middleware.CORS(cfg))
 	router.Use(middleware.Logger())
 
+	// Serve uploaded files (invoice/guarantee-card images, etc.)
+	router.Static("/uploads", cfg.UploadPath)
+
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -80,7 +83,7 @@ func main() {
 		productsModule.RegisterRoutes(v1)
 
 		// Initialize guarantees module
-		guaranteesModule := guarantees.NewGuaranteeModule(database.GetDB())
+		guaranteesModule := guarantees.NewGuaranteeModule(database.GetDB(), cfg)
 		guaranteesModule.RegisterRoutes(v1)
 
 		// Initialize technicians module with config

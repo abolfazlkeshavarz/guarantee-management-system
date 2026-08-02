@@ -6,11 +6,10 @@ import (
 	"path/filepath"
 	"guarantee-management-system/internal/shared/errors"
 	"guarantee-management-system/internal/shared/responses"
+	"guarantee-management-system/internal/shared/storage"
 	"fmt"
-	"time"
-	"os"
+	"strings"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"io"
 	"bytes"
 )
@@ -18,12 +17,14 @@ import (
 type GuaranteeHandler struct {
 	service   *GuaranteeService
 	validator *GuaranteeValidator
+	appURL    string
 }
 
-func NewGuaranteeHandler(service *GuaranteeService, validator *GuaranteeValidator) *GuaranteeHandler {
+func NewGuaranteeHandler(service *GuaranteeService, validator *GuaranteeValidator, appURL string) *GuaranteeHandler {
 	return &GuaranteeHandler{
 		service:   service,
 		validator: validator,
+		appURL:    appURL,
 	}
 }
 
@@ -294,30 +295,20 @@ func (h *GuaranteeHandler) UploadFile(c *gin.Context) {
 		return
 	}
 
-	// Generate unique filename
-	ext := filepath.Ext(file.Filename)
-	filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), uuid.New().String()[:8], ext)
-	
-	// Create uploads directory if not exists
-	uploadDir := "./uploads/guarantees"
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+	// Save the file under the shared uploads directory (served at /uploads).
+	info, err := storage.SaveFile(file, "guarantees")
+	if err != nil {
 		responses.InternalError(c, err)
 		return
 	}
 
-	// Save file
-	filePath := filepath.Join(uploadDir, filename)
-	if err := c.SaveUploadedFile(file, filePath); err != nil {
-		responses.InternalError(c, err)
-		return
-	}
-
-	// Return the file URL
-	fileURL := fmt.Sprintf("/uploads/guarantees/%s", filename)
+	// Return an absolute URL so it resolves correctly from any client origin
+	// (the frontend dev server, a mobile app, etc.), not just the API's own origin.
+	fileURL := fmt.Sprintf("%s/uploads/%s", strings.TrimRight(h.appURL, "/"), filepath.ToSlash(info.Path))
 	responses.Success(c, gin.H{
 		"url":      fileURL,
-		"filename": filename,
-		"size":     file.Size,
+		"filename": info.Name,
+		"size":     info.Size,
 		"type":     contentType,
 	})
 }

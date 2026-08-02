@@ -1,7 +1,7 @@
 // Package warrantycode validates "encoded" guarantee codes that carry the
 // product's Jalali manufacture year/month and a serial number, in the form
-// {year:4}{prefix}{month:2}{serial:5} -- e.g. "1405EVC0912345" for prefix
-// "EVC" (year 1405, month 09, serial 12345).
+// {year:4}{prefix}{month:2}{serial:5} -- e.g. "1405FZD0912345" for prefix
+// "FZD" (year 1405, month 09, serial 12345).
 //
 // This is a Go port of the validation rules from a reference Python
 // `WarrantyCode` model (Flask/SQLAlchemy) supplied by the project owner. That

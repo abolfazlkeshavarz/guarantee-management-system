@@ -2,6 +2,7 @@
 package guarantees
 
 import (
+	"guarantee-management-system/internal/config"
 	"guarantee-management-system/internal/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -12,11 +13,11 @@ type GuaranteeModule struct {
 	handler *GuaranteeHandler
 }
 
-func NewGuaranteeModule(db *gorm.DB) *GuaranteeModule {
+func NewGuaranteeModule(db *gorm.DB, cfg *config.Config) *GuaranteeModule {
 	repo := NewGuaranteeRepository(db)
 	service := NewGuaranteeService(repo, db)
 	validator := NewGuaranteeValidator()
-	handler := NewGuaranteeHandler(service, validator)
+	handler := NewGuaranteeHandler(service, validator, cfg.AppURL)
 
 	return &GuaranteeModule{handler: handler}
 }

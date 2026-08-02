@@ -1,7 +1,7 @@
 // frontend/src/features/guarantees/components/AdminGuaranteeForm.tsx
 // Add guarantee_code field with product lookup
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
@@ -22,9 +22,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { DatePicker } from '@/components/ui/date-picker'
 import { customerService } from '@/features/customers/api/customers'
+import { publicGuaranteeService } from '../api/publicGuarantee'
 import { api } from '@/api/axios'
 import { Customer } from '@/features/customers/types'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Upload, X, FileText, Image as ImageIcon } from 'lucide-react'
+import { toast } from 'sonner'
 import { useDebounce } from '@/hooks/useDebounce'
 
 // Define the schema with status as required
@@ -76,6 +78,15 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
   const [lookupResult, setLookupResult] = useState<ProductLookupResult | null>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [isLookupLoading, setIsLookupLoading] = useState(false)
+
+  // File upload state
+  const [isUploading, setIsUploading] = useState(false)
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
+  const [invoicePreview, setInvoicePreview] = useState<string | null>(null)
+  const [cardFile, setCardFile] = useState<File | null>(null)
+  const [cardPreview, setCardPreview] = useState<string | null>(null)
+  const invoiceInputRef = useRef<HTMLInputElement>(null)
+  const cardInputRef = useRef<HTMLInputElement>(null)
 
   const { data: customers = [], isLoading: customersLoading } = useQuery({
     queryKey: ['customers-list-for-admin'],
@@ -154,8 +165,89 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
       setSelectedCustomer(null)
       setLookupResult(null)
       setLookupError(null)
+      setInvoiceFile(null)
+      setInvoicePreview(null)
+      setCardFile(null)
+      setCardPreview(null)
     }
   }, [open, form])
+
+  const handleFileUpload = async (file: File, type: 'invoice' | 'card') => {
+    setIsUploading(true)
+    try {
+      const result = await publicGuaranteeService.uploadFile(file)
+
+      if (type === 'invoice') {
+        form.setValue('invoice_image', result.url)
+        toast.success('Invoice uploaded successfully')
+      } else {
+        form.setValue('guarantee_card_image', result.url)
+        toast.success('Guarantee card uploaded successfully')
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to upload file')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleInvoiceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size exceeds 10MB limit')
+        return
+      }
+
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
+        return
+      }
+
+      setInvoiceFile(file)
+      setInvoicePreview(URL.createObjectURL(file))
+      handleFileUpload(file, 'invoice')
+    }
+  }
+
+  const handleCardFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size exceeds 10MB limit')
+        return
+      }
+
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
+        return
+      }
+
+      setCardFile(file)
+      setCardPreview(URL.createObjectURL(file))
+      handleFileUpload(file, 'card')
+    }
+  }
+
+  const removeInvoiceFile = () => {
+    setInvoiceFile(null)
+    setInvoicePreview(null)
+    form.setValue('invoice_image', '')
+    if (invoiceInputRef.current) {
+      invoiceInputRef.current.value = ''
+    }
+  }
+
+  const removeCardFile = () => {
+    setCardFile(null)
+    setCardPreview(null)
+    form.setValue('guarantee_card_image', '')
+    if (cardInputRef.current) {
+      cardInputRef.current.value = ''
+    }
+  }
 
   const handleCustomerSelect = (customerId: string) => {
     const customer = customers.find(c => String(c.id) === customerId)
@@ -216,6 +308,10 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
       form.reset()
       onOpenChange(false)
       setLookupResult(null)
+      setInvoiceFile(null)
+      setInvoicePreview(null)
+      setCardFile(null)
+      setCardPreview(null)
     }
   }
 
@@ -485,38 +581,113 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="invoice_image"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Invoice Image URL</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="https://example.com/invoice.jpg" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="guarantee_card_image"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Guarantee Card URL</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="https://example.com/card.jpg" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Invoice Upload */}
+                  <div>
+                    <FormLabel>Invoice Image</FormLabel>
+                    <div className="mt-1">
+                      {invoicePreview ? (
+                        <div className="relative">
+                          <div className="border rounded-lg p-2 bg-muted/30">
+                            {invoiceFile?.type.startsWith('image/') ? (
+                              <img
+                                src={invoicePreview}
+                                alt="Invoice preview"
+                                className="w-full h-32 object-contain rounded"
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center h-32">
+                                <FileText className="h-12 w-12 text-muted-foreground" />
+                              </div>
+                            )}
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 right-1 h-6 w-6 p-0"
+                              onClick={removeInvoiceFile}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          {isUploading && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                              <Loader2 className="h-8 w-8 text-white animate-spin" />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                          onClick={() => invoiceInputRef.current?.click()}
+                        >
+                          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">Click to upload invoice</p>
+                          <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
+                        </div>
+                      )}
+                      <input
+                        ref={invoiceInputRef}
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
+                        className="hidden"
+                        onChange={handleInvoiceFileChange}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Guarantee Card Upload */}
+                  <div>
+                    <FormLabel>Guarantee Card Image</FormLabel>
+                    <div className="mt-1">
+                      {cardPreview ? (
+                        <div className="relative">
+                          <div className="border rounded-lg p-2 bg-muted/30">
+                            {cardFile?.type.startsWith('image/') ? (
+                              <img
+                                src={cardPreview}
+                                alt="Card preview"
+                                className="w-full h-32 object-contain rounded"
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center h-32">
+                                <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                              </div>
+                            )}
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 right-1 h-6 w-6 p-0"
+                              onClick={removeCardFile}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          {isUploading && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                              <Loader2 className="h-8 w-8 text-white animate-spin" />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                          onClick={() => cardInputRef.current?.click()}
+                        >
+                          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">Click to upload card</p>
+                          <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
+                        </div>
+                      )}
+                      <input
+                        ref={cardInputRef}
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
+                        className="hidden"
+                        onChange={handleCardFileChange}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <FormField
@@ -542,7 +713,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading || !lookupResult} className="bg-blue-600 hover:bg-blue-700">
+                <Button type="submit" disabled={isLoading || isUploading || !lookupResult} className="bg-blue-600 hover:bg-blue-700">
                   {isLoading ? 'Creating...' : 'Create Guarantee'}
                 </Button>
               </DialogFooter>

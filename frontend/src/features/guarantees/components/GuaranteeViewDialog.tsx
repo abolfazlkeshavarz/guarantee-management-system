@@ -9,7 +9,28 @@ import { Separator } from '@/components/ui/separator'
 import { Guarantee } from '../types'
 import { GuaranteeStatusBadge } from './GuaranteeStatusBadge'
 import { FormattedDate } from '@/components/common/FormattedDate'
-import { Calendar, User, Package, FileText, Image, Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { Calendar, User, Package, FileText, Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { resolveFileUrl } from '@/lib/utils'
+
+function ImagePreviewLink({ url, label }: { url: string; label: string }) {
+  const isImage = /\.(jpe?g|png|gif|webp)$/i.test(url)
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+      {isImage ? (
+        <img
+          src={url}
+          alt={label}
+          className="h-20 w-full rounded-md border object-cover hover:opacity-90"
+        />
+      ) : (
+        <span className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+          <FileText className="h-4 w-4" />
+          {label}
+        </span>
+      )}
+    </a>
+  )
+}
 
 interface GuaranteeViewDialogProps {
   open: boolean
@@ -89,33 +110,17 @@ export function GuaranteeViewDialog({
             <p className="text-sm font-medium text-muted-foreground">Images</p>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Invoice</p>
+                <p className="text-xs text-muted-foreground mb-1">Invoice</p>
                 {guarantee.invoice_image ? (
-                  <a 
-                    href={guarantee.invoice_image} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline flex items-center gap-1"
-                  >
-                    <Image className="h-4 w-4" />
-                    View Invoice
-                  </a>
+                  <ImagePreviewLink url={resolveFileUrl(guarantee.invoice_image)} label="View Invoice" />
                 ) : (
                   <p className="text-sm text-muted-foreground">No invoice uploaded</p>
                 )}
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Guarantee Card</p>
+                <p className="text-xs text-muted-foreground mb-1">Guarantee Card</p>
                 {guarantee.guarantee_card_image ? (
-                  <a 
-                    href={guarantee.guarantee_card_image} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline flex items-center gap-1"
-                  >
-                    <Image className="h-4 w-4" />
-                    View Card
-                  </a>
+                  <ImagePreviewLink url={resolveFileUrl(guarantee.guarantee_card_image)} label="View Card" />
                 ) : (
                   <p className="text-sm text-muted-foreground">No card uploaded</p>
                 )}

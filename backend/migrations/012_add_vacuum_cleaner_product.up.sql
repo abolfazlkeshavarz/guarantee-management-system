@@ -19,16 +19,21 @@ WHERE NOT EXISTS (
 );
 
 -- Product: Evinki Home Vacuum cleaner, using the "jalali_encoded" guarantee-code
--- format {year:4}EVC{month:2}{serial:5}, e.g. 1405EVC0912345.
+-- format {year:4}FZD{month:2}{serial:5}, e.g. 1405FZD0912345.
+-- (Migrate an earlier 'EVC' prefix used during development, if present.)
+UPDATE products
+SET code_prefix = 'FZD', code_pattern = '^[0-9]{4}FZD(0[1-9]|1[0-2])[0-9]{5}$'
+WHERE code_prefix = 'EVC' AND deleted_at IS NULL;
+
 INSERT INTO products (name, description, category_id, code_prefix, code_pattern, code_format, is_active)
 SELECT
     'Evinki Home Vacuum cleaner',
     'Evinki home vacuum cleaner',
     (SELECT id FROM product_categories WHERE name = 'Vacuum Cleaner' AND deleted_at IS NULL ORDER BY id LIMIT 1),
-    'EVC',
-    '^[0-9]{4}EVC(0[1-9]|1[0-2])[0-9]{5}$',
+    'FZD',
+    '^[0-9]{4}FZD(0[1-9]|1[0-2])[0-9]{5}$',
     'jalali_encoded',
     true
 WHERE NOT EXISTS (
-    SELECT 1 FROM products WHERE code_prefix = 'EVC' AND deleted_at IS NULL
+    SELECT 1 FROM products WHERE code_prefix = 'FZD' AND deleted_at IS NULL
 );
