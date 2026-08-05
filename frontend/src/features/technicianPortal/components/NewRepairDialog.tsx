@@ -1,8 +1,8 @@
-// frontend/src/features/technicianPortal/components/NewRepairDialog.tsx
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,8 @@ import { toast } from 'sonner'
 import { Plus, Search, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 
 export function NewRepairDialog() {
+  const { t, i18n } = useTranslation()
+  const isRTL = i18n.language === 'fa'
   const [open, setOpen] = useState(false)
   const [code, setCode] = useState('')
   const [checking, setChecking] = useState(false)
@@ -53,10 +55,10 @@ export function NewRepairDialog() {
     mutationFn: (data: RepairFormValues) => technicianAuthService.createRepair(data as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-repairs'] })
-      toast.success('Repair report submitted')
+      toast.success(t('technicianPortal.submitSuccess'))
       handleOpenChange(false)
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to submit repair report'),
+    onError: (err: any) => toast.error(err.response?.data?.message || t('technicianPortal.submitError')),
   })
 
   const handleCheck = async () => {
@@ -67,13 +69,14 @@ export function NewRepairDialog() {
     try {
       const result = await technicianGuaranteeService.checkByCode(code.trim().toUpperCase())
       if (!isGuaranteeValid(result)) {
-        setCheckError(`This guarantee is ${result.status.toLowerCase()} or expired and cannot accept a new repair.`)
+        const statusLabel = t(`repairs.status.${result.status.toLowerCase()}`, { defaultValue: result.status })
+        setCheckError(t('technicianPortal.guaranteeInvalidStatus', { status: statusLabel }))
         return
       }
       setGuarantee(result)
       form.setValue('guarantee_id', result.id)
     } catch (err: any) {
-      setCheckError(err.response?.data?.message || 'No guarantee matches this code.')
+      setCheckError(err.response?.data?.message || t('technicianPortal.guaranteeNotFound'))
     } finally {
       setChecking(false)
     }
@@ -97,50 +100,51 @@ export function NewRepairDialog() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
-          <Button className="gap-2">
+          <Button className={`gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Plus className="h-4 w-4" />
-            New Repair
+            {t('technicianPortal.newRepair')}
           </Button>
         }
       />
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Repair Report</DialogTitle>
+          <DialogTitle className={isRTL ? 'text-right' : ''}>{t('technicianPortal.newRepairTitle')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-2">
-          <Label>Guarantee Code</Label>
-          <div className="flex gap-2">
+          <Label className={isRTL ? 'text-right block' : ''}>{t('technicianPortal.guaranteeCodeLabel')}</Label>
+          <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="Enter the guarantee code"
+              placeholder={t('technicianPortal.guaranteeCodePlaceholder')}
               disabled={!!guarantee}
+              className={isRTL ? 'text-right' : ''}
             />
             {guarantee ? (
               <Button type="button" variant="outline" onClick={() => { setGuarantee(null); setCheckError(null); form.setValue('guarantee_id', 0) }}>
-                Change
+                {t('technicianPortal.change')}
               </Button>
             ) : (
-              <Button type="button" onClick={handleCheck} disabled={checking || !code.trim()}>
+              <Button type="button" onClick={handleCheck} disabled={checking || !code.trim()} className={isRTL ? 'flex-row-reverse' : ''}>
                 {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                Check
+                {t('technicianPortal.check')}
               </Button>
             )}
           </div>
           {guarantee && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800 flex items-start gap-2">
-              <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium">Guarantee valid</p>
+            <div className={`p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800 flex items-start gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <CheckCircle2 className={`h-4 w-4 mt-0.5 shrink-0 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+              <div className={isRTL ? 'text-right' : ''}>
+                <p className="font-medium">{t('technicianPortal.guaranteeValid')}</p>
                 <p>{guarantee.product_name} — {guarantee.customer_name}</p>
               </div>
             </div>
           )}
           {checkError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800 flex items-start gap-2">
-              <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-              <p>{checkError}</p>
+            <div className={`p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800 flex items-start gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <XCircle className={`h-4 w-4 mt-0.5 shrink-0 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+              <p className={isRTL ? 'text-right' : ''}>{checkError}</p>
             </div>
           )}
         </div>
@@ -155,12 +159,13 @@ export function NewRepairDialog() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Additional Notes</Label>
+                    <Label className={isRTL ? 'text-right block' : ''}>{t('technicianPortal.additionalNotes')}</Label>
                     <FormControl>
                       <Textarea
                         {...field}
-                        placeholder="Anything else worth noting about this repair..."
+                        placeholder={t('technicianPortal.additionalNotesPlaceholder')}
                         rows={3}
+                        className={isRTL ? 'text-right' : ''}
                       />
                     </FormControl>
                     <FormMessage />
@@ -171,9 +176,9 @@ export function NewRepairDialog() {
                 <p className="text-sm text-destructive">{form.formState.errors.components.message}</p>
               )}
 
-              <DialogFooter>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? 'Submitting...' : 'Submit Repair Report'}
+              <DialogFooter className={isRTL ? 'flex-row-reverse' : ''}>
+                <Button type="submit" disabled={createMutation.isPending} className={isRTL ? 'flex-row-reverse' : ''}>
+                  {createMutation.isPending ? t('technicianPortal.submitting') : t('technicianPortal.submitReport')}
                 </Button>
               </DialogFooter>
             </form>

@@ -1,12 +1,16 @@
 import { Outlet, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
-import { LogOut, Wrench, ClipboardList, Home, User } from 'lucide-react'
+import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
+import { LogOut, Wrench, Home, User } from 'lucide-react'
 
 export function TechnicianLayout() {
   const { technician, logout } = useTechnicianAuth()
+  const { t, i18n } = useTranslation()
+  const isRTL = i18n.language === 'fa'
 
   const getInitials = (name: string) => {
     return name
@@ -21,28 +25,29 @@ export function TechnicianLayout() {
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="bg-white border-b px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Wrench className="h-6 w-6 text-primary" />
             <h1 className="text-lg font-semibold text-gray-800">
-              Technician Portal
+              {t('technicianPortal.portalTitle')}
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <LanguageSwitcher />
             <CalendarSwitcher />
-            <div className="flex items-center gap-3">
+            <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-white">
                   {technician?.full_name ? getInitials(technician.full_name) : 'T'}
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium text-gray-700">
-                {technician?.full_name || 'Technician'}
+                {technician?.full_name || t('technicianPortal.portalTitle')}
               </span>
             </div>
-            <Button variant="ghost" size="sm" onClick={logout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
+            <Button variant="ghost" size="sm" onClick={logout} className={isRTL ? 'flex-row-reverse' : ''}>
+              <LogOut className={`h-4 w-4 ${isRTL ? 'ml-2' : 'me-2'}`} />
+              {t('nav.logout')}
             </Button>
           </div>
         </div>
@@ -50,17 +55,17 @@ export function TechnicianLayout() {
 
       {/* Navigation */}
       <nav className="bg-gray-50 border-b px-6 py-2">
-        <div className="flex items-center gap-1">
+        <div className={`flex items-center gap-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <Link to="/technician/dashboard">
-            <Button variant="ghost" size="sm" className="gap-2">
+            <Button variant="ghost" size="sm" className={`gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <Home className="h-4 w-4" />
-              Dashboard
+              {t('technicianPortal.dashboardNav')}
             </Button>
           </Link>
           <Link to="/technician/profile">
-            <Button variant="ghost" size="sm" className="gap-2">
+            <Button variant="ghost" size="sm" className={`gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <User className="h-4 w-4" />
-              Profile
+              {t('technicianPortal.profileNav')}
             </Button>
           </Link>
         </div>

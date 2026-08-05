@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -8,7 +9,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Repair } from '../types'
 import { RepairStatusBadge } from './RepairStatusBadge'
-import { format } from 'date-fns'
+import { FormattedDate } from '@/components/common/FormattedDate'
 import { Calendar, Package, FileText, Wrench, User, Wrench as ComponentIcon } from 'lucide-react'
 
 interface RepairViewDialogProps {
@@ -22,14 +23,16 @@ export function RepairViewDialog({
   onOpenChange,
   repair,
 }: RepairViewDialogProps) {
+  const { t, i18n } = useTranslation()
+  const isRTL = i18n.language === 'fa'
   if (!repair) return null
 
   const DetailRow = ({ label, value, icon: Icon }: { label: string; value: string | React.ReactNode; icon?: React.ElementType }) => (
-    <div className="flex items-start gap-3 py-2">
-      {Icon && <Icon className="h-5 w-5 mt-0.5 text-muted-foreground" />}
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        <p className="text-sm">{value}</p>
+    <div className={`flex items-start gap-3 py-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+      {Icon && <Icon className={`h-5 w-5 mt-0.5 text-muted-foreground ${isRTL ? 'ml-2' : 'mr-2'}`} />}
+      <div className={isRTL ? 'text-right' : ''}>
+        <p className={`text-sm font-medium text-muted-foreground ${isRTL ? 'text-right' : ''}`}>{label}</p>
+        <p className={`text-sm ${isRTL ? 'text-right' : ''}`}>{value}</p>
       </div>
     </div>
   )
@@ -38,26 +41,26 @@ export function RepairViewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Repair Details</span>
+          <DialogTitle className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <span>{t('repairView.title')}</span>
             <RepairStatusBadge status={repair.status} />
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className={isRTL ? 'text-right' : ''}>
             <span className="font-mono font-medium">{repair.guarantee_code}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <DetailRow label="Customer" value={repair.customer_name} icon={User} />
-            <DetailRow label="Product" value={repair.product_name} icon={Package} />
+          <div className={`grid grid-cols-2 gap-4 ${isRTL ? 'text-right' : ''}`}>
+            <DetailRow label={t('guarantees.table.customer')} value={repair.customer_name} icon={User} />
+            <DetailRow label={t('guarantees.table.product')} value={repair.product_name} icon={Package} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <DetailRow label="Technician" value={repair.technician_name || 'Unassigned'} icon={Wrench} />
+          <div className={`grid grid-cols-2 gap-4 ${isRTL ? 'text-right' : ''}`}>
+            <DetailRow label={t('repairs.table.technician')} value={repair.technician_name || t('repairView.unassigned')} icon={Wrench} />
             <DetailRow
-              label="Submitted"
-              value={format(new Date(repair.created_at), 'MMMM d, yyyy h:mm a')}
+              label={t('repairView.submitted')}
+              value={<FormattedDate date={repair.created_at} format="full" />}
               icon={Calendar}
             />
           </div>
@@ -65,16 +68,16 @@ export function RepairViewDialog({
           {repair.description && (
             <>
               <Separator />
-              <DetailRow label="Notes" value={repair.description} icon={FileText} />
+              <DetailRow label={t('repairView.notes')} value={repair.description} icon={FileText} />
             </>
           )}
 
           {repair.components.length > 0 && (
             <>
               <Separator />
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                  <ComponentIcon className="h-4 w-4" /> Components Replaced
+              <div className={isRTL ? 'text-right' : ''}>
+                <p className={`text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <ComponentIcon className="h-4 w-4" /> {t('repairItems.componentsReplaced')}
                 </p>
                 <div className="space-y-2">
                   {repair.components.map((item) => (
@@ -91,8 +94,8 @@ export function RepairViewDialog({
           {repair.services.length > 0 && (
             <>
               <Separator />
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-2">Services Performed</p>
+              <div className={isRTL ? 'text-right' : ''}>
+                <p className="text-sm font-medium text-muted-foreground mb-2">{t('repairItems.servicesPerformed')}</p>
                 <div className="space-y-2">
                   {repair.services.map((item) => (
                     <div key={item.id} className="bg-muted p-2 rounded-md text-sm">
@@ -108,10 +111,17 @@ export function RepairViewDialog({
           {repair.reviewed_by_name && (
             <>
               <Separator />
-              <div className="bg-muted p-3 rounded-md text-sm">
+              <div className={`bg-muted p-3 rounded-md text-sm ${isRTL ? 'text-right' : ''}`}>
                 <p className="font-medium">
-                  {repair.status} by {repair.reviewed_by_name}
-                  {repair.reviewed_at && ` on ${format(new Date(repair.reviewed_at), 'PPP p')}`}
+                  {t(`repairs.status.${repair.status.toLowerCase()}`, { defaultValue: repair.status })}
+                  {' '}
+                  {t('repairView.reviewedBy', { name: repair.reviewed_by_name })}
+                  {repair.reviewed_at && (
+                    <>
+                      {' '}{t('repairView.reviewedOn')}
+                      <FormattedDate date={repair.reviewed_at} format="full" />
+                    </>
+                  )}
                 </p>
                 {repair.review_notes && <p className="text-muted-foreground mt-1">{repair.review_notes}</p>}
               </div>
