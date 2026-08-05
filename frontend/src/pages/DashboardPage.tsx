@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { useCalendar } from '@/contexts/CalendarContext'
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { formatDate } = useCalendar()
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['dashboard'],
@@ -21,56 +23,56 @@ export function DashboardPage() {
 
   const stats = [
     {
-      title: 'Total Guarantees',
+      title: t('dashboard.totalGuarantees'),
       value: data?.total_guarantees?.toLocaleString() || '0',
       icon: ShieldCheck,
       color: 'text-blue-600',
       path: '/guarantees',
     },
     {
-      title: 'Pending Guarantees',
+      title: t('dashboard.pendingGuarantees'),
       value: data?.pending_guarantees?.toLocaleString() || '0',
       icon: AlertTriangle,
       color: 'text-yellow-600',
       path: '/guarantees?status=Pending',
     },
     {
-      title: 'Active Guarantees',
+      title: t('dashboard.activeGuarantees'),
       value: data?.active_guarantees?.toLocaleString() || '0',
       icon: CheckCircle,
       color: 'text-green-600',
       path: '/guarantees?status=Approved',
     },
     {
-      title: 'Expired Guarantees',
+      title: t('dashboard.expiredGuarantees'),
       value: data?.expired_guarantees?.toLocaleString() || '0',
       icon: Clock,
       color: 'text-red-600',
       path: '/guarantees?status=Expired',
     },
     {
-      title: 'Total Customers',
+      title: t('dashboard.totalCustomers'),
       value: data?.total_customers?.toLocaleString() || '0',
       icon: Users,
       color: 'text-green-600',
       path: '/customers',
     },
     {
-      title: 'Active Technicians',
+      title: t('dashboard.activeTechnicians'),
       value: data?.total_technicians?.toLocaleString() || '0',
       icon: Wrench,
       color: 'text-purple-600',
       path: '/technicians',
     },
     {
-      title: 'Total Products',
+      title: t('dashboard.totalProducts'),
       value: data?.total_products?.toLocaleString() || '0',
       icon: Package,
       color: 'text-indigo-600',
       path: '/catalog/products',
     },
     {
-      title: 'Pending Repairs',
+      title: t('dashboard.pendingRepairs'),
       value: data?.pending_repairs?.toLocaleString() || '0',
       icon: ClipboardList,
       color: 'text-red-600',
@@ -101,19 +103,19 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{t('dashboard.title')}</h1>
         <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => refetch()}
             className="flex items-center gap-2"
           >
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            {t('dashboard.refresh')}
           </Button>
           <p className="text-sm text-gray-500">
-            Last updated: {formatDate(new Date(), 'full')}
+            {t('dashboard.lastUpdated', { date: formatDate(new Date(), 'full') })}
           </p>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -10,43 +11,46 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
+  ListChecks,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 
 const topNav = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Guarantees', href: '/guarantees', icon: ShieldCheck },
-  { name: 'Customers', href: '/customers', icon: Users },
+  { key: 'dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { key: 'guarantees', href: '/guarantees', icon: ShieldCheck },
+  { key: 'customers', href: '/customers', icon: Users },
 ]
 
 const catalogNav = [
-  { name: 'Categories', href: '/catalog/categories', icon: Layers },
-  { name: 'Products', href: '/catalog/products', icon: Package },
+  { key: 'categories', href: '/catalog/categories', icon: Layers },
+  { key: 'products', href: '/catalog/products', icon: Package },
+  { key: 'repairCatalog', href: '/catalog/repair-items', icon: ListChecks },
 ]
 
 const bottomNav = [
-  { name: 'Technicians', href: '/technicians', icon: Wrench },
-  { name: 'Repairs', href: '/repairs', icon: ClipboardList },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { key: 'technicians', href: '/technicians', icon: Wrench },
+  { key: 'repairs', href: '/repairs', icon: ClipboardList },
+  { key: 'settings', href: '/settings', icon: Settings },
 ]
 
 export function Sidebar() {
   const location = useLocation()
   const { logout } = useAuth()
+  const { t } = useTranslation()
 
-  const renderLink = (item: { name: string; href: string; icon: typeof LayoutDashboard }) => {
+  const renderLink = (item: { key: string; href: string; icon: typeof LayoutDashboard }) => {
     const isActive = location.pathname === item.href
     return (
       <Link
-        key={item.name}
+        key={item.key}
         to={item.href}
         className={cn(
           'flex items-center px-4 py-2 text-sm rounded-lg transition-colors',
           isActive ? 'bg-gray-800 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
         )}
       >
-        <item.icon className="h-5 w-5 mr-3" />
-        {item.name}
+        <item.icon className="h-5 w-5 me-3" />
+        {t(`nav.${item.key}`)}
       </Link>
     )
   }
@@ -60,23 +64,19 @@ export function Sidebar() {
         {topNav.map(renderLink)}
 
         <div className="pt-4 pb-1 px-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          Catalog
+          {t('nav.catalog')}
         </div>
-        <div className="space-y-1">
-          {catalogNav.map(renderLink)}
-        </div>
+        {catalogNav.map(renderLink)}
 
-        <div className="pt-2 space-y-2">
-          {bottomNav.map(renderLink)}
-        </div>
+        {bottomNav.map(renderLink)}
       </nav>
       <div className="p-4 border-t border-gray-800">
         <button
           onClick={logout}
           className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
         >
-          <LogOut className="h-5 w-5 mr-3" />
-          Logout
+          <LogOut className="h-5 w-5 me-3" />
+          {t('nav.logout')}
         </button>
       </div>
     </div>

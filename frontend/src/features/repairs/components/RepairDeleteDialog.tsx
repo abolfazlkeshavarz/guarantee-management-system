@@ -31,9 +31,8 @@ export function RepairDeleteDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete this repair request.
-            <br />
-            <span className="font-medium">Repair ID: #{repair?.id}</span>
+            This will permanently delete the repair request for{' '}
+            <span className="font-medium">{repair?.guarantee_code}</span> ({repair?.customer_name}).
             <br />
             <span className="text-destructive font-medium">
               This action cannot be undone.

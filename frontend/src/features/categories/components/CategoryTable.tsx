@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -18,6 +19,8 @@ interface CategoryTableProps {
 }
 
 export function CategoryTable({ categories, onEdit, onDelete, isLoading }: CategoryTableProps) {
+  const { t } = useTranslation()
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -27,7 +30,7 @@ export function CategoryTable({ categories, onEdit, onDelete, isLoading }: Categ
   }
 
   if (categories.length === 0) {
-    return <div className="flex items-center justify-center h-64 text-gray-500">No categories found</div>
+    return <div className="flex items-center justify-center h-64 text-gray-500">{t('common.noResultsTitle')}</div>
   }
 
   return (
@@ -35,12 +38,12 @@ export function CategoryTable({ categories, onEdit, onDelete, isLoading }: Categ
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t('common.id')}</TableHead>
+            <TableHead>{t('common.name')}</TableHead>
+            <TableHead>{t('common.description')}</TableHead>
+            <TableHead>{t('common.status')}</TableHead>
+            <TableHead>{t('common.created')}</TableHead>
+            <TableHead className="text-end">{t('common.actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -55,7 +58,7 @@ export function CategoryTable({ categories, onEdit, onDelete, isLoading }: Categ
                 </Badge>
               </TableCell>
               <TableCell>{format(new Date(category.created_at), 'MMM d, yyyy')}</TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
                     <span className="sr-only">Open menu</span>
@@ -63,11 +66,11 @@ export function CategoryTable({ categories, onEdit, onDelete, isLoading }: Categ
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onEdit(category)}>
-                      <Edit className="mr-2 h-4 w-4" />
+                      <Edit className="me-2 h-4 w-4" />
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onDelete(category)} className="text-destructive">
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 className="me-2 h-4 w-4" />
                       Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>

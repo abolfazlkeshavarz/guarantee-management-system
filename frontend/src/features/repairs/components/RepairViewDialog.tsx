@@ -6,11 +6,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
-import { Badge } from '@/components/ui/badge'
 import { Repair } from '../types'
 import { RepairStatusBadge } from './RepairStatusBadge'
 import { format } from 'date-fns'
-import { Calendar, Package, FileText, Clock, Wrench } from 'lucide-react'
+import { Calendar, Package, FileText, Wrench, User, Wrench as ComponentIcon } from 'lucide-react'
 
 interface RepairViewDialogProps {
   open: boolean
@@ -35,108 +34,89 @@ export function RepairViewDialog({
     </div>
   )
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Pending': return 'bg-yellow-100 text-yellow-800'
-      case 'InProgress': return 'bg-blue-100 text-blue-800'
-      case 'Completed': return 'bg-green-100 text-green-800'
-      case 'Cancelled': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Repair Details</span>
             <RepairStatusBadge status={repair.status} />
           </DialogTitle>
           <DialogDescription>
-            <span className="font-mono font-medium">Repair #{repair.id}</span>
+            <span className="font-mono font-medium">{repair.guarantee_code}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <DetailRow
-              label="Guarantee ID"
-              value={`#${repair.guarantee_id}`}
-              icon={Package}
-            />
-            <DetailRow
-              label="Status"
-              value={
-                <Badge className={getStatusColor(repair.status)}>
-                  {repair.status}
-                </Badge>
-              }
-            />
+            <DetailRow label="Customer" value={repair.customer_name} icon={User} />
+            <DetailRow label="Product" value={repair.product_name} icon={Package} />
           </div>
 
-          <Separator />
-
-          <DetailRow
-            label="Description"
-            value={repair.description}
-            icon={FileText}
-          />
-
-          <Separator />
-
           <div className="grid grid-cols-2 gap-4">
+            <DetailRow label="Technician" value={repair.technician_name || 'Unassigned'} icon={Wrench} />
             <DetailRow
-              label="Technician"
-              value={repair.technician_id ? `#${repair.technician_id}` : 'Unassigned'}
-              icon={Wrench}
-            />
-            <DetailRow
-              label="Created"
+              label="Submitted"
               value={format(new Date(repair.created_at), 'MMMM d, yyyy h:mm a')}
               icon={Calendar}
             />
           </div>
 
-          {(repair.started_at || repair.completed_at) && (
+          {repair.description && (
             <>
               <Separator />
-              <div className="grid grid-cols-2 gap-4">
-                {repair.started_at && (
-                  <DetailRow
-                    label="Started"
-                    value={format(new Date(repair.started_at), 'MMMM d, yyyy h:mm a')}
-                    icon={Clock}
-                  />
-                )}
-                {repair.completed_at && (
-                  <DetailRow
-                    label="Completed"
-                    value={format(new Date(repair.completed_at), 'MMMM d, yyyy h:mm a')}
-                    icon={Clock}
-                  />
-                )}
+              <DetailRow label="Notes" value={repair.description} icon={FileText} />
+            </>
+          )}
+
+          {repair.components.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <ComponentIcon className="h-4 w-4" /> Components Replaced
+                </p>
+                <div className="space-y-2">
+                  {repair.components.map((item) => (
+                    <div key={item.id} className="bg-muted p-2 rounded-md text-sm">
+                      <p className="font-medium">{item.component_name}</p>
+                      {item.report && <p className="text-muted-foreground">{item.report}</p>}
+                    </div>
+                  ))}
+                </div>
               </div>
             </>
           )}
 
-          <Separator />
+          {repair.services.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Services Performed</p>
+                <div className="space-y-2">
+                  {repair.services.map((item) => (
+                    <div key={item.id} className="bg-muted p-2 rounded-md text-sm">
+                      <p className="font-medium">{item.service_name}</p>
+                      {item.report && <p className="text-muted-foreground">{item.report}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
-          <div className="bg-muted p-3 rounded-md text-sm">
-            <p className="font-medium">Timeline</p>
-            <div className="mt-2 space-y-1 text-muted-foreground">
-              <p>• Created: {format(new Date(repair.created_at), 'PPP p')}</p>
-              {repair.started_at && (
-                <p>• Started: {format(new Date(repair.started_at), 'PPP p')}</p>
-              )}
-              {repair.completed_at && (
-                <p>• Completed: {format(new Date(repair.completed_at), 'PPP p')}</p>
-              )}
-              {repair.updated_at && (
-                <p>• Last Updated: {format(new Date(repair.updated_at), 'PPP p')}</p>
-              )}
-            </div>
-          </div>
+          {repair.reviewed_by_name && (
+            <>
+              <Separator />
+              <div className="bg-muted p-3 rounded-md text-sm">
+                <p className="font-medium">
+                  {repair.status} by {repair.reviewed_by_name}
+                  {repair.reviewed_at && ` on ${format(new Date(repair.reviewed_at), 'PPP p')}`}
+                </p>
+                {repair.review_notes && <p className="text-muted-foreground mt-1">{repair.review_notes}</p>}
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

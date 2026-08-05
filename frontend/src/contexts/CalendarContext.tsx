@@ -53,6 +53,29 @@ const GREGORIAN_MONTHS = [
   'December',
 ]
 
+// Date strings coming from the backend (purchase_date, expiry_date, created_at,
+// etc.) are always plain Gregorian "YYYY-MM-DD" -- regardless of the active
+// display calendar. They must NEVER be run through the calendar-aware
+// `parseDate` below (that one is for user-typed input, which really is in
+// whatever calendar is currently selected). Mixing the two produces dates
+// like "شهریور 5، 2026" -- a Jalali month name paired with the untouched
+// Gregorian year, because a Gregorian string got misread as if it were
+// already Jalali.
+function parseGregorianDate(value: string): Date | null {
+  if (!value) return null
+  const parts = value.split('-')
+  if (parts.length === 3) {
+    const y = Number(parts[0])
+    const m = Number(parts[1])
+    const d = Number(parts[2])
+    if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d)) {
+      return new Date(Date.UTC(y, m - 1, d))
+    }
+  }
+  const date = new Date(value)
+  return isNaN(date.getTime()) ? null : date
+}
+
 const JALALI_MONTHS_DATA = [
   { number: 1, name: 'فروردین', days: 31 },
   { number: 2, name: 'اردیبهشت', days: 31 },
@@ -190,7 +213,9 @@ export function CalendarProvider({
     let date: Date
 
     if (typeof value === 'string') {
-      const parsed = parseDate(value)
+      // `value` here is always a Gregorian string from the backend/JS Date
+      // being displayed -- never calendar-mode-dependent user input.
+      const parsed = parseGregorianDate(value)
       if (!parsed) return ''
       date = parsed
     } else {
@@ -271,7 +296,9 @@ export function CalendarProvider({
 
     let date: Date
     if (typeof value === 'string') {
-      const parsed = parseDate(value)
+      // Same reasoning as formatDate: a string here is a Gregorian value
+      // being passed through, not calendar-mode-dependent user input.
+      const parsed = parseGregorianDate(value)
       if (!parsed) return ''
       date = parsed
     } else {

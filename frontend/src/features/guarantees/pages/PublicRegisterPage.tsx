@@ -7,7 +7,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { publicGuaranteeService } from '../api/publicGuarantee'
+import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { api } from '@/api/axios'
 import { Button } from '@/components/ui/button'
 import {
@@ -75,6 +77,7 @@ interface ProductLookupResult {
 
 export function PublicRegisterPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [registrationResult, setRegistrationResult] = useState<{
@@ -366,6 +369,9 @@ export function PublicRegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4">
       <div className="max-w-3xl mx-auto">
+        <div className="flex justify-end mb-4">
+          <LanguageSwitcher />
+        </div>
         <Card className="shadow-lg">
           <CardHeader className="text-center border-b">
             <div className="flex justify-center mb-4">
@@ -373,10 +379,9 @@ export function PublicRegisterPage() {
                 <ShieldCheck className="h-10 w-10 text-primary" />
               </div>
             </div>
-            <CardTitle className="text-3xl font-bold">Guarantee Registration</CardTitle>
+            <CardTitle className="text-3xl font-bold">{t('public.register.title')}</CardTitle>
             <CardDescription className="text-base">
-              Enter your product's guarantee code to automatically identify your product.
-              All fields marked with * are required.
+              {t('public.register.subtitle')}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
@@ -393,7 +398,7 @@ export function PublicRegisterPage() {
                 <div>
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                     <span className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold">1</span>
-                    Customer Information
+                    {t('public.register.customerInfo')}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -401,7 +406,7 @@ export function PublicRegisterPage() {
                       name="full_name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Full Name *</FormLabel>
+                          <FormLabel>{t('public.register.fullName')} *</FormLabel>
                           <FormControl>
                             <Input placeholder="John Doe" {...field} />
                           </FormControl>
@@ -414,7 +419,7 @@ export function PublicRegisterPage() {
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Phone Number *</FormLabel>
+                          <FormLabel>{t('public.register.phoneNumber')} *</FormLabel>
                           <FormControl>
                             <Input placeholder="+1234567890" {...field} />
                           </FormControl>
@@ -427,7 +432,7 @@ export function PublicRegisterPage() {
                       name="national_id"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>National ID *</FormLabel>
+                          <FormLabel>{t('public.register.nationalId')} *</FormLabel>
                           <FormControl>
                             <Input placeholder="123456789" {...field} />
                           </FormControl>
@@ -440,9 +445,9 @@ export function PublicRegisterPage() {
                       name="province"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Province *</FormLabel>
+                          <FormLabel>{t('public.register.province')} *</FormLabel>
                           <FormControl>
-                            <Input placeholder="Province" {...field} />
+                            <Input placeholder={t('public.register.province')} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -453,9 +458,9 @@ export function PublicRegisterPage() {
                       name="city"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>City *</FormLabel>
+                          <FormLabel>{t('public.register.city')} *</FormLabel>
                           <FormControl>
-                            <Input placeholder="City" {...field} />
+                            <Input placeholder={t('public.register.city')} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -467,7 +472,7 @@ export function PublicRegisterPage() {
                     name="address"
                     render={({ field }) => (
                       <FormItem className="mt-4">
-                        <FormLabel>Full Address *</FormLabel>
+                        <FormLabel>{t('public.register.address')} *</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Street, Building, Apartment..."
@@ -485,7 +490,7 @@ export function PublicRegisterPage() {
                 <div className="pt-4 border-t">
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                     <span className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold">2</span>
-                    Guarantee Information
+                    {t('public.register.guaranteeInfo')}
                   </h3>
                   <div className="space-y-4">
                     {/* Guarantee Code with Product Lookup */}
@@ -494,7 +499,7 @@ export function PublicRegisterPage() {
                       name="guarantee_code"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Guarantee Code (Printed on Product) *</FormLabel>
+                          <FormLabel>{t('public.register.guaranteeCode')} *</FormLabel>
                           <FormControl>
                             <div className="space-y-2">
                               <Input 
@@ -538,12 +543,12 @@ export function PublicRegisterPage() {
                         name="purchase_date"
                         render={({ field }) => (
                           <FormItem className="flex flex-col">
-                            <FormLabel>Purchase Date *</FormLabel>
+                            <FormLabel>{t('public.register.purchaseDate')} *</FormLabel>
                             <FormControl>
                               <DatePicker
                                 value={field.value}
                                 onChange={field.onChange}
-                                placeholder="Select purchase date"
+                                placeholder={t('public.register.purchaseDate')}
                                 className="w-full"
                               />
                             </FormControl>
@@ -556,7 +561,7 @@ export function PublicRegisterPage() {
                         name="guarantee_period"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Guarantee Period *</FormLabel>
+                            <FormLabel>{t('public.register.guaranteePeriod')} *</FormLabel>
                             <Select
                               items={periods.map((period) => ({ value: String(period.value), label: period.label }))}
                               value={field.value ? String(field.value) : ''}
@@ -565,7 +570,7 @@ export function PublicRegisterPage() {
                             >
                               <FormControl>
                                 <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Select guarantee period" />
+                                  <SelectValue placeholder={t('public.register.guaranteePeriod')} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -587,7 +592,7 @@ export function PublicRegisterPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     {/* Invoice Upload */}
                     <div>
-                      <FormLabel>Invoice Image</FormLabel>
+                      <FormLabel>{t('public.register.invoiceImage')}</FormLabel>
                       <div className="mt-1">
                         {invoicePreview ? (
                           <div className="relative">
@@ -607,7 +612,7 @@ export function PublicRegisterPage() {
                                 type="button"
                                 variant="destructive"
                                 size="sm"
-                                className="absolute top-1 right-1 h-6 w-6 p-0"
+                                className="absolute top-1 end-1 h-6 w-6 p-0"
                                 onClick={removeInvoiceFile}
                               >
                                 <X className="h-3 w-3" />
@@ -641,7 +646,7 @@ export function PublicRegisterPage() {
 
                     {/* Guarantee Card Upload */}
                     <div>
-                      <FormLabel>Guarantee Card Image</FormLabel>
+                      <FormLabel>{t('public.register.guaranteeCardImage')}</FormLabel>
                       <div className="mt-1">
                         {cardPreview ? (
                           <div className="relative">
@@ -661,7 +666,7 @@ export function PublicRegisterPage() {
                                 type="button"
                                 variant="destructive"
                                 size="sm"
-                                className="absolute top-1 right-1 h-6 w-6 p-0"
+                                className="absolute top-1 end-1 h-6 w-6 p-0"
                                 onClick={removeCardFile}
                               >
                                 <X className="h-3 w-3" />
@@ -699,7 +704,7 @@ export function PublicRegisterPage() {
                     name="notes"
                     render={({ field }) => (
                       <FormItem className="mt-4">
-                        <FormLabel>Additional Notes</FormLabel>
+                        <FormLabel>{t('public.register.notes')}</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Any additional information about your product or guarantee..."
@@ -729,20 +734,20 @@ export function PublicRegisterPage() {
                       className="flex-1"
                       onClick={() => navigate('/')}
                     >
-                      Cancel
+                      {t('public.register.cancel')}
                     </Button>
-                    <Button 
-                      type="submit" 
-                      className="flex-1" 
+                    <Button
+                      type="submit"
+                      className="flex-1"
                       disabled={isSubmitting || isUploading || !lookupResult}
                     >
                       {isSubmitting ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Registering...
+                          <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                          {t('public.register.submitting')}
                         </>
                       ) : (
-                        'Register Guarantee'
+                        t('public.register.submit')
                       )}
                     </Button>
                   </div>
@@ -753,7 +758,7 @@ export function PublicRegisterPage() {
         </Card>
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Already have a registered guarantee? <a href="/check-guarantee" className="text-primary hover:underline">Check status</a></p>
+          <p>{t('public.register.alreadyRegistered')} <a href="/check-guarantee" className="text-primary hover:underline">{t('public.register.checkStatusLink')}</a></p>
         </div>
       </div>
     </div>

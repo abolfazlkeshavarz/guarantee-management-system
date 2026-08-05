@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -26,6 +27,7 @@ import { productService } from '@/features/products/api/products'
 import { queryClient, invalidateDashboard } from '@/lib/query-client'
 
 export function GuaranteesPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
@@ -215,35 +217,39 @@ export function GuaranteesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Guarantees</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t('guarantees.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage product guarantees and warranties
+            {t('guarantees.subtitle')}
           </p>
         </div>
         <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Guarantee
+          <Plus className="me-2 h-4 w-4" />
+          {t('guarantees.create')}
         </Button>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <Input
-            placeholder="Search by code, customer, or product..."
+            placeholder={t('guarantees.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            className="ps-10"
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value ?? 'all'); setPage(1) }}>
+        <Select
+          items={[{ value: 'all', label: t('guarantees.allStatus') }, ...GUARANTEE_STATUSES.map((status) => ({ value: status, label: status }))]}
+          value={statusFilter}
+          onValueChange={(value) => { setStatusFilter(value ?? 'all'); setPage(1) }}
+        >
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t('common.status')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">{t('guarantees.allStatus')}</SelectItem>
             {GUARANTEE_STATUSES.map((status) => (
               <SelectItem key={status} value={status}>{status}</SelectItem>
             ))}
@@ -251,15 +257,15 @@ export function GuaranteesPage() {
         </Select>
 
         <Select
-          items={[{ value: 'all', label: 'All Customers' }, ...customers.map((c) => ({ value: String(c.id), label: c.full_name }))]}
+          items={[{ value: 'all', label: t('guarantees.allCustomers') }, ...customers.map((c) => ({ value: String(c.id), label: c.full_name }))]}
           value={customerFilter}
           onValueChange={(value) => { setCustomerFilter(value ?? 'all'); setPage(1) }}
         >
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Customer" />
+            <SelectValue placeholder={t('guarantees.table.customer')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Customers</SelectItem>
+            <SelectItem value="all">{t('guarantees.allCustomers')}</SelectItem>
             {customers.map((c) => (
               <SelectItem key={c.id} value={String(c.id)}>{c.full_name}</SelectItem>
             ))}
@@ -267,15 +273,15 @@ export function GuaranteesPage() {
         </Select>
 
         <Select
-          items={[{ value: 'all', label: 'All Products' }, ...products.map((p) => ({ value: String(p.id), label: p.name }))]}
+          items={[{ value: 'all', label: t('guarantees.allProducts') }, ...products.map((p) => ({ value: String(p.id), label: p.name }))]}
           value={productFilter}
           onValueChange={(value) => { setProductFilter(value ?? 'all'); setPage(1) }}
         >
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Product" />
+            <SelectValue placeholder={t('guarantees.table.product')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Products</SelectItem>
+            <SelectItem value="all">{t('guarantees.allProducts')}</SelectItem>
             {products.map((p) => (
               <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
             ))}

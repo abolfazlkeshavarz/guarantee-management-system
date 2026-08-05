@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { useTechnicianAuth } from '@/features/technicianPortal/contexts/TechnicianAuthContext'
 import { Button } from '@/components/ui/button'
@@ -12,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
+import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { Loader2, ShieldCheck, Shield, UserCog, FileCheck, Search } from 'lucide-react'
 
 const loginSchema = z.object({
@@ -23,6 +25,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { login } = useAuth()
   const { login: technicianLogin } = useTechnicianAuth()
   const [error, setError] = useState<string | null>(null)
@@ -68,13 +71,17 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-6">
+        <div className="flex justify-end">
+          <LanguageSwitcher />
+        </div>
+
         {/* Brand */}
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
             <ShieldCheck className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Guarantee Management System</h1>
-          <p className="text-sm text-muted-foreground mt-1">Protecting your products, building trust</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('login.title')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t('login.subtitle')}</p>
         </div>
 
         {/* Customer Actions Card */}
@@ -82,23 +89,23 @@ export function LoginPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
-              Customer Services
+              {t('login.customerServices')}
             </CardTitle>
             <CardDescription>
-              Register your product guarantee or check its status
+              {t('login.customerServicesDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
             <Link to="/register-guarantee" className="w-full">
               <Button variant="default" className="w-full">
-                <FileCheck className="mr-2 h-4 w-4" />
-                Register
+                <FileCheck className="me-2 h-4 w-4" />
+                {t('login.register')}
               </Button>
             </Link>
             <Link to="/check-guarantee" className="w-full">
               <Button variant="outline" className="w-full">
-                <Search className="mr-2 h-4 w-4" />
-                Check Status
+                <Search className="me-2 h-4 w-4" />
+                {t('login.checkStatus')}
               </Button>
             </Link>
           </CardContent>
@@ -109,10 +116,10 @@ export function LoginPage() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2">
               <UserCog className="h-5 w-5 text-muted-foreground" />
-              Staff Login
+              {t('login.staffLogin')}
             </CardTitle>
             <CardDescription className="text-center">
-              Sign in as Administrator or Technician
+              {t('login.staffLoginDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -122,13 +129,13 @@ export function LoginPage() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              
+
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">{t('login.username')}</Label>
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Enter your username"
+                  placeholder={t('login.usernamePlaceholder')}
                   {...register('username')}
                 />
                 {errors.username && (
@@ -137,11 +144,11 @@ export function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t('login.password')}</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder={t('login.passwordPlaceholder')}
                   {...register('password')}
                 />
                 {errors.password && (
@@ -152,11 +159,11 @@ export function LoginPage() {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Logging in...
+                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                    {t('login.loggingIn')}
                   </>
                 ) : (
-                  'Sign In'
+                  t('login.signIn')
                 )}
               </Button>
             </form>
@@ -165,12 +172,12 @@ export function LoginPage() {
               <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-green-500" />
-                  Admin
+                  {t('login.admin')}
                 </span>
                 <Separator orientation="vertical" className="h-3" />
                 <span className="inline-flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  Technician
+                  {t('login.technician')}
                 </span>
               </div>
             </div>
@@ -179,7 +186,7 @@ export function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Guarantee Management System. All rights reserved.
+          {t('login.footer', { year: new Date().getFullYear() })}
         </p>
       </div>
     </div>

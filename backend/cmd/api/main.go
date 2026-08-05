@@ -18,6 +18,7 @@ import (
 	"guarantee-management-system/internal/modules/guarantees"
 	"guarantee-management-system/internal/modules/technicians"
 	"guarantee-management-system/internal/modules/repairs"
+	"guarantee-management-system/internal/modules/repaircatalog"
 	"github.com/gin-gonic/gin"
 )
 
@@ -89,6 +90,10 @@ func main() {
 		// Initialize technicians module with config
 		techniciansModule := technicians.NewTechnicianModule(database.GetDB(), cfg)
 		techniciansModule.RegisterRoutes(v1)
+
+		// Initialize repair catalog module (components/services admin-managed lists)
+		repairCatalogModule := repaircatalog.NewRepairCatalogModule(database.GetDB())
+		repairCatalogModule.RegisterRoutes(v1)
 
 		// Initialize repairs module
 		repairsModule := repairs.NewRepairModule(database.GetDB())

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -8,7 +9,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Edit, Trash2 } from 'lucide-react'
 import { Product } from '../types'
-import { format } from 'date-fns'
 import { FormattedDate } from '@/components/common/FormattedDate'
 
 interface ProductTableProps {
@@ -19,6 +19,8 @@ interface ProductTableProps {
 }
 
 export function ProductTable({ products, onEdit, onDelete, isLoading }: ProductTableProps) {
+  const { t } = useTranslation()
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -28,7 +30,7 @@ export function ProductTable({ products, onEdit, onDelete, isLoading }: ProductT
   }
 
   if (products.length === 0) {
-    return <div className="flex items-center justify-center h-64 text-gray-500">No products found</div>
+    return <div className="flex items-center justify-center h-64 text-gray-500">{t('common.noResultsTitle')}</div>
   }
 
   return (
@@ -36,13 +38,13 @@ export function ProductTable({ products, onEdit, onDelete, isLoading }: ProductT
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t('common.id')}</TableHead>
+            <TableHead>{t('common.name')}</TableHead>
+            <TableHead>{t('products.table.category')}</TableHead>
+            <TableHead>{t('common.description')}</TableHead>
+            <TableHead>{t('common.status')}</TableHead>
+            <TableHead>{t('common.created')}</TableHead>
+            <TableHead className="text-end">{t('common.actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -58,7 +60,7 @@ export function ProductTable({ products, onEdit, onDelete, isLoading }: ProductT
                 </Badge>
               </TableCell>
               <TableCell><FormattedDate date={product.created_at} format="MMM DD, YYYY" /></TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
                     <span className="sr-only">Open menu</span>
@@ -66,11 +68,11 @@ export function ProductTable({ products, onEdit, onDelete, isLoading }: ProductT
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onEdit(product)}>
-                      <Edit className="mr-2 h-4 w-4" />
+                      <Edit className="me-2 h-4 w-4" />
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onDelete(product)} className="text-destructive">
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 className="me-2 h-4 w-4" />
                       Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>

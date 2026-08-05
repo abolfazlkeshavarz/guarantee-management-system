@@ -10,6 +10,7 @@ import { PublicRegisterPage } from '@/features/guarantees/pages/PublicRegisterPa
 import { CheckGuaranteePage } from '@/features/guarantees/pages/CheckGuaranteePage'
 import { TechniciansPage } from '@/features/technicians/pages/TechniciansPage'
 import { RepairsPage } from '@/features/repairs/pages/RepairsPage'
+import { RepairCatalogPage } from '@/features/repairCatalog/pages/RepairCatalogPage'
 // Pages
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -64,6 +65,7 @@ export function AppRoutes() {
         <Route path="customers" element={<CustomersPage />} />
         <Route path="catalog/categories" element={<CategoriesPage />} />
         <Route path="catalog/products" element={<ProductsPage />} />
+        <Route path="catalog/repair-items" element={<RepairCatalogPage />} />
         <Route path="guarantees" element={<GuaranteesPage />} />
         <Route path="technicians" element={<TechniciansPage />} />
         <Route path="repairs" element={<RepairsPage />} />

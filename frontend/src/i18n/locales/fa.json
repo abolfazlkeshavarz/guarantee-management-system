@@ -1,0 +1,205 @@
+{
+  "common": {
+    "save": "ذخیره",
+    "cancel": "انصراف",
+    "delete": "حذف",
+    "edit": "ویرایش",
+    "create": "ایجاد",
+    "search": "جستجو",
+    "actions": "عملیات",
+    "status": "وضعیت",
+    "loading": "در حال بارگذاری...",
+    "id": "شناسه",
+    "name": "نام",
+    "description": "توضیحات",
+    "phone": "تلفن",
+    "created": "تاریخ ایجاد",
+    "back": "بازگشت",
+    "refresh": "بروزرسانی",
+    "reset": "بازنشانی",
+    "all": "همه",
+    "active": "فعال",
+    "inactive": "غیرفعال",
+    "previous": "قبلی",
+    "next": "بعدی",
+    "view": "مشاهده",
+    "approve": "تایید",
+    "reject": "رد",
+    "renew": "تمدید",
+    "noResultsTitle": "نتیجه‌ای یافت نشد",
+    "tryAdjustFilters": "فیلترها را تغییر دهید یا مورد جدیدی ایجاد کنید."
+  },
+  "nav": {
+    "dashboard": "داشبورد",
+    "guarantees": "گارانتی‌ها",
+    "customers": "مشتریان",
+    "catalog": "کاتالوگ",
+    "categories": "دسته‌بندی‌ها",
+    "products": "محصولات",
+    "repairCatalog": "قطعات و خدمات تعمیر",
+    "technicians": "تکنسین‌ها",
+    "repairs": "تعمیرات",
+    "settings": "تنظیمات",
+    "logout": "خروج"
+  },
+  "header": {
+    "title": "سامانه مدیریت گارانتی",
+    "myAccount": "حساب کاربری",
+    "profile": "پروفایل",
+    "settings": "تنظیمات",
+    "logout": "خروج"
+  },
+  "language": {
+    "english": "English",
+    "persian": "فارسی"
+  },
+  "login": {
+    "title": "سامانه مدیریت گارانتی",
+    "subtitle": "محافظت از محصولات شما، ایجاد اعتماد",
+    "customerServices": "خدمات مشتریان",
+    "customerServicesDesc": "گارانتی محصول خود را ثبت کنید یا وضعیت آن را بررسی کنید",
+    "register": "ثبت گارانتی",
+    "checkStatus": "بررسی وضعیت",
+    "staffLogin": "ورود کارکنان",
+    "staffLoginDesc": "به عنوان مدیر یا تکنسین وارد شوید",
+    "username": "نام کاربری",
+    "usernamePlaceholder": "نام کاربری خود را وارد کنید",
+    "password": "رمز عبور",
+    "passwordPlaceholder": "رمز عبور خود را وارد کنید",
+    "signIn": "ورود",
+    "loggingIn": "در حال ورود...",
+    "admin": "مدیر",
+    "technician": "تکنسین",
+    "footer": "© {{year}} سامانه مدیریت گارانتی. تمامی حقوق محفوظ است."
+  },
+  "dashboard": {
+    "title": "داشبورد",
+    "refresh": "بروزرسانی",
+    "lastUpdated": "آخرین بروزرسانی: {{date}}",
+    "totalGuarantees": "کل گارانتی‌ها",
+    "pendingGuarantees": "گارانتی‌های در انتظار",
+    "activeGuarantees": "گارانتی‌های فعال",
+    "expiredGuarantees": "گارانتی‌های منقضی",
+    "totalCustomers": "کل مشتریان",
+    "activeTechnicians": "تکنسین‌های فعال",
+    "totalProducts": "کل محصولات",
+    "pendingRepairs": "تعمیرات در انتظار"
+  },
+  "notFound": {
+    "title": "۴۰۴",
+    "subtitle": "صفحه پیدا نشد",
+    "description": "صفحه‌ای که به دنبال آن هستید وجود ندارد یا جابجا شده است.",
+    "backHome": "بازگشت به خانه"
+  },
+  "guarantees": {
+    "title": "گارانتی‌ها",
+    "subtitle": "مدیریت گارانتی و ضمانت محصولات",
+    "create": "ایجاد گارانتی",
+    "searchPlaceholder": "جستجو بر اساس کد، مشتری یا محصول...",
+    "allStatus": "همه وضعیت‌ها",
+    "allCustomers": "همه مشتریان",
+    "allProducts": "همه محصولات",
+    "table": {
+      "code": "کد",
+      "customer": "مشتری",
+      "product": "محصول",
+      "purchaseDate": "تاریخ خرید",
+      "expiryDate": "تاریخ انقضا"
+    }
+  },
+  "customers": {
+    "title": "مشتریان",
+    "add": "افزودن مشتری",
+    "searchPlaceholder": "جستجو بر اساس نام، تلفن یا کد ملی...",
+    "table": {
+      "fullName": "نام کامل",
+      "nationalId": "کد ملی",
+      "province": "استان",
+      "city": "شهر"
+    }
+  },
+  "products": {
+    "title": "محصولات",
+    "add": "افزودن محصول",
+    "searchPlaceholder": "جستجو بر اساس نام یا توضیحات...",
+    "allCategories": "همه دسته‌بندی‌ها",
+    "table": {
+      "category": "دسته‌بندی"
+    }
+  },
+  "categories": {
+    "title": "دسته‌بندی محصولات",
+    "add": "افزودن دسته‌بندی",
+    "searchPlaceholder": "جستجو بر اساس نام..."
+  },
+  "repairCatalog": {
+    "title": "قطعات و خدمات تعمیر",
+    "subtitle": "مدیریت فهرست‌هایی که تکنسین‌ها هنگام ثبت گزارش تعمیر از آن‌ها انتخاب می‌کنند",
+    "components": "قطعات",
+    "services": "خدمات",
+    "addComponent": "افزودن قطعه",
+    "editComponent": "ویرایش قطعه",
+    "addService": "افزودن خدمت",
+    "editService": "ویرایش خدمت"
+  },
+  "technicians": {
+    "title": "تکنسین‌ها",
+    "add": "افزودن تکنسین",
+    "searchPlaceholder": "جستجو بر اساس نام یا نام کاربری...",
+    "table": {
+      "username": "نام کاربری"
+    }
+  },
+  "repairs": {
+    "title": "تعمیرات",
+    "subtitle": "مدیریت درخواست‌های تعمیر و پیگیری وضعیت آن‌ها",
+    "new": "تعمیر جدید",
+    "searchPlaceholder": "جستجو بر اساس توضیحات...",
+    "table": {
+      "guarantee": "گارانتی",
+      "technician": "تکنسین"
+    }
+  },
+  "public": {
+    "register": {
+      "title": "ثبت گارانتی",
+      "subtitle": "کد گارانتی محصول خود را وارد کنید تا محصول شما به‌طور خودکار شناسایی شود. تمامی فیلدهای ستاره‌دار (*) الزامی هستند.",
+      "customerInfo": "اطلاعات مشتری",
+      "guaranteeInfo": "اطلاعات گارانتی",
+      "fullName": "نام کامل",
+      "phoneNumber": "شماره تلفن",
+      "nationalId": "کد ملی",
+      "province": "استان",
+      "city": "شهر",
+      "address": "آدرس کامل",
+      "guaranteeCode": "کد گارانتی (روی محصول درج شده)",
+      "purchaseDate": "تاریخ خرید",
+      "guaranteePeriod": "مدت گارانتی",
+      "invoiceImage": "تصویر فاکتور",
+      "guaranteeCardImage": "تصویر کارت گارانتی",
+      "notes": "یادداشت‌های تکمیلی",
+      "submit": "ثبت گارانتی",
+      "submitting": "در حال ثبت...",
+      "cancel": "انصراف",
+      "alreadyRegistered": "گارانتی خود را قبلاً ثبت کرده‌اید؟",
+      "checkStatusLink": "بررسی وضعیت"
+    },
+    "checkStatus": {
+      "title": "بررسی وضعیت گارانتی",
+      "subtitle": "کد گارانتی خود را وارد کنید تا وضعیت فعلی آن را مشاهده کنید",
+      "placeholder": "کد گارانتی را وارد کنید (مثال: GUA-XXXXXX)",
+      "checking": "در حال بررسی...",
+      "check": "بررسی",
+      "notFound": "گارانتی یافت نشد. لطفاً کد را بررسی کرده و دوباره تلاش کنید.",
+      "guaranteeCode": "کد گارانتی",
+      "customer": "مشتری",
+      "product": "محصول",
+      "purchaseDate": "تاریخ خرید",
+      "expiryDate": "تاریخ انقضا",
+      "expired": " (منقضی شده)",
+      "notes": "یادداشت‌ها",
+      "approvedOn": "تاریخ تایید: {{date}}",
+      "registerNew": "ثبت گارانتی جدید"
+    }
+  }
+}

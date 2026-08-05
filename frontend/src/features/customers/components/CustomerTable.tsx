@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Table,
   TableBody,
@@ -33,6 +34,8 @@ export function CustomerTable({
   onDelete,
   isLoading,
 }: CustomerTableProps) {
+  const { t } = useTranslation()
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -44,7 +47,7 @@ export function CustomerTable({
   if (customers.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
-        No customers found
+        {t('common.noResultsTitle')}
       </div>
     )
   }
@@ -54,14 +57,14 @@ export function CustomerTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Full Name</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>National ID</TableHead>
-            <TableHead>Province</TableHead>
-            <TableHead>City</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t('common.id')}</TableHead>
+            <TableHead>{t('customers.table.fullName')}</TableHead>
+            <TableHead>{t('common.phone')}</TableHead>
+            <TableHead>{t('customers.table.nationalId')}</TableHead>
+            <TableHead>{t('customers.table.province')}</TableHead>
+            <TableHead>{t('customers.table.city')}</TableHead>
+            <TableHead>{t('common.created')}</TableHead>
+            <TableHead className="text-end">{t('common.actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -78,7 +81,7 @@ export function CustomerTable({
               <TableCell>
                 <FormattedDate date={customer.created_at} format="MMM DD, YYYY" />
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
                     <span className="sr-only">Open menu</span>
@@ -86,18 +89,18 @@ export function CustomerTable({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onView(customer)}>
-                      <Eye className="mr-2 h-4 w-4" />
+                      <Eye className="me-2 h-4 w-4" />
                       View
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onEdit(customer)}>
-                      <Edit className="mr-2 h-4 w-4" />
+                      <Edit className="me-2 h-4 w-4" />
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => onDelete(customer)}
                       className="text-destructive"
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 className="me-2 h-4 w-4" />
                       Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>

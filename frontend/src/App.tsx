@@ -8,19 +8,22 @@ import { TechnicianAuthProvider } from '@/features/technicianPortal/contexts/Tec
 import { AppRoutes } from '@/routes'
 import { queryClient } from '@/lib/query-client'
 import { CalendarProvider } from '@/contexts/CalendarContext'
+import { LanguageProvider } from '@/contexts/LanguageContext'
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <CalendarProvider>
-          <AuthProvider>
-            <TechnicianAuthProvider>
-              <AppRoutes />
-              <Toaster position="top-right" />
-            </TechnicianAuthProvider>
-          </AuthProvider>
-        </CalendarProvider>
+        <LanguageProvider>
+          <CalendarProvider>
+            <AuthProvider>
+              <TechnicianAuthProvider>
+                <AppRoutes />
+                <Toaster position="top-right" />
+              </TechnicianAuthProvider>
+            </AuthProvider>
+          </CalendarProvider>
+        </LanguageProvider>
       </BrowserRouter>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

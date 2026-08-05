@@ -130,6 +130,13 @@ func (s *TechnicianService) Update(id uint, req *UpdateTechnicianRequest) (*Tech
 	if req.FullName != "" {
 		tech.FullName = req.FullName
 	}
+	if req.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to hash password", 500)
+		}
+		tech.Password = string(hashedPassword)
+	}
 	if req.Phone != "" {
 		tech.Phone = req.Phone
 	}

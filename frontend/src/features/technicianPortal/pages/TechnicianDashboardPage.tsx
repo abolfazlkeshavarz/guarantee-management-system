@@ -1,61 +1,43 @@
 // frontend/src/features/technicianPortal/pages/TechnicianDashboardPage.tsx
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { technicianAuthService } from '../api/technicianAuth'
 import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
-import { NewRepairDialog } from '../components/NewRepairDialog'  // <-- Make sure this import exists
-import { REPAIR_STATUSES, REPAIR_STATUS_COLORS } from '../types'
-import { toast } from 'sonner'
-import { RefreshCw, ClipboardList, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { NewRepairDialog } from '../components/NewRepairDialog'
+import { REPAIR_STATUSES } from '../types'
+import { RepairStatusBadge } from '@/features/repairs/components/RepairStatusBadge'
+import { RepairViewDialog } from '@/features/repairs/components/RepairViewDialog'
+import { Repair } from '@/features/repairs/types'
+import { RefreshCw, ClipboardList, CheckCircle, Clock, Eye } from 'lucide-react'
 import { FormattedDate } from '@/components/common/FormattedDate'
 
 export function TechnicianDashboardPage() {
   const { technician } = useTechnicianAuth()
-  const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [limit] = useState(10)
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [viewRepair, setViewRepair] = useState<Repair | null>(null)
 
-  // Fetch repairs assigned to this technician
+  // Fetch repairs filed by this technician
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['my-repairs', page, limit, statusFilter],
     queryFn: () => technicianAuthService.getMyRepairs(page, limit, statusFilter),
   })
 
-  // Update repair mutation
-  const updateMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: string }) =>
-      technicianAuthService.updateRepair(id, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-repairs'] })
-      toast.success('Repair status updated successfully')
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update repair status')
-    },
-  })
-
-  const handleStatusChange = (repairId: number, status: string) => {
-    updateMutation.mutate({ id: repairId, status })
-  }
-
   // Calculate stats
   const repairs = data?.repairs || []
   const total = data?.total || 0
   const pending = repairs.filter(r => r.status === 'Pending').length
-  const inProgress = repairs.filter(r => r.status === 'InProgress').length
-  const completed = repairs.filter(r => r.status === 'Completed').length
+  const approved = repairs.filter(r => r.status === 'Approved').length
 
   const stats = [
     { title: 'Total Repairs', value: total, icon: ClipboardList, color: 'text-blue-600' },
-    { title: 'Pending', value: pending, icon: Clock, color: 'text-yellow-600' },
-    { title: 'In Progress', value: inProgress, icon: RefreshCw, color: 'text-indigo-600' },
-    { title: 'Completed', value: completed, icon: CheckCircle, color: 'text-green-600' },
+    { title: 'Pending Review', value: pending, icon: Clock, color: 'text-yellow-600' },
+    { title: 'Approved', value: approved, icon: CheckCircle, color: 'text-green-600' },
   ]
 
   return (
@@ -67,14 +49,14 @@ export function TechnicianDashboardPage() {
             Welcome, {technician?.full_name}!
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Here are your assigned repairs and their current status.
+            Here are the repair reports you've filed and their review status.
           </p>
         </div>
-        <NewRepairDialog />  {/* <-- This is where the button appears */}
+        <NewRepairDialog />
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => {
           const Icon = stat.icon
           return (
@@ -96,7 +78,7 @@ export function TechnicianDashboardPage() {
       {/* Repairs Table */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>My Assigned Repairs</CardTitle>
+          <CardTitle>My Repair Reports</CardTitle>
           <div className="flex items-center gap-4">
             <Select
               value={statusFilter || 'all'}
@@ -119,7 +101,7 @@ export function TechnicianDashboardPage() {
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 me-2" />
               Refresh
             </Button>
           </div>
@@ -132,8 +114,8 @@ export function TechnicianDashboardPage() {
           ) : repairs.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-500">
               <ClipboardList className="h-12 w-12 mb-4 text-gray-400" />
-              <p className="text-lg font-medium">No repairs assigned</p>
-              <p className="text-sm">You don't have any repairs assigned to you yet.</p>
+              <p className="text-lg font-medium">No repair reports yet</p>
+              <p className="text-sm">Use "New Repair" to file a report against a guarantee.</p>
             </div>
           ) : (
             <>
@@ -141,65 +123,30 @@ export function TechnicianDashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
                       <TableHead>Guarantee</TableHead>
-                      <TableHead>Description</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Product</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Started</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead>Filed</TableHead>
+                      <TableHead className="text-end">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {repairs.map((repair) => (
                       <TableRow key={repair.id}>
-                        <TableCell className="font-medium">#{repair.id}</TableCell>
-                        <TableCell>#{repair.guarantee_id}</TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {repair.description}
+                        <TableCell className="font-medium">{repair.guarantee_code}</TableCell>
+                        <TableCell>{repair.customer_name}</TableCell>
+                        <TableCell>{repair.product_name}</TableCell>
+                        <TableCell>
+                          <RepairStatusBadge status={repair.status} />
                         </TableCell>
                         <TableCell>
-                          <Badge className={REPAIR_STATUS_COLORS[repair.status]}>
-                            {repair.status}
-                          </Badge>
+                          <FormattedDate date={repair.created_at} format="MMM DD, YYYY" />
                         </TableCell>
-                        <TableCell>
-                          {repair.started_at ? (
-                            <FormattedDate date={repair.started_at} format="MMM DD, YYYY" />
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {repair.status !== 'Completed' && repair.status !== 'Cancelled' && (
-                            <Select
-                              value={repair.status}
-                              onValueChange={(value) => {
-                                if (value) {
-                                  handleStatusChange(repair.id, value)
-                                }
-                              }}
-                            >
-                              <SelectTrigger className="w-[140px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Pending">Pending</SelectItem>
-                                <SelectItem value="InProgress">In Progress</SelectItem>
-                                <SelectItem value="Completed">Completed</SelectItem>
-                                <SelectItem value="Cancelled">Cancelled</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )}
-                          {repair.status === 'Completed' && (
-                            <Badge variant="outline" className="text-green-600">
-                              Completed
-                            </Badge>
-                          )}
-                          {repair.status === 'Cancelled' && (
-                            <Badge variant="outline" className="text-red-600">
-                              Cancelled
-                            </Badge>
-                          )}
+                        <TableCell className="text-end">
+                          <Button variant="ghost" size="icon-sm" onClick={() => setViewRepair(repair)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -236,6 +183,8 @@ export function TechnicianDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <RepairViewDialog open={!!viewRepair} onOpenChange={(open) => !open && setViewRepair(null)} repair={viewRepair} />
     </div>
   )
 }

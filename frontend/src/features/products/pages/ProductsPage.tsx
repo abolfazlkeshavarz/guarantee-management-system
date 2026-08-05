@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -16,6 +17,7 @@ import { categoryService } from '@/features/categories/api/categories'
 import { queryClient, invalidateDashboard } from '@/lib/query-client'
 
 export function ProductsPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
@@ -98,28 +100,28 @@ export function ProductsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Products</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{t('products.title')}</h1>
         <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Product
+          <Plus className="me-2 h-4 w-4" />
+          {t('products.add')}
         </Button>
       </div>
 
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-          <Input placeholder="Search by name or description..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+          <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Input placeholder={t('products.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-10" />
         </div>
         <Select
-          items={[{ value: 'all', label: 'All categories' }, ...categories.map((cat) => ({ value: String(cat.id), label: cat.name }))]}
+          items={[{ value: 'all', label: t('products.allCategories') }, ...categories.map((cat) => ({ value: String(cat.id), label: cat.name }))]}
           value={categoryFilter}
           onValueChange={(value) => { setCategoryFilter(value ?? 'all'); setPage(1) }}
         >
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="All categories" />
+            <SelectValue placeholder={t('products.allCategories')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="all">{t('products.allCategories')}</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
             ))}

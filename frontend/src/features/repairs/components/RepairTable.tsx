@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Table,
   TableBody,
@@ -11,18 +12,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Eye, CheckCircle, XCircle, Ban, Trash2 } from 'lucide-react'
 import { Repair } from '../types'
 import { RepairStatusBadge } from './RepairStatusBadge'
 import { format } from 'date-fns'
-import { FormattedDate } from '@/components/common/FormattedDate'
 
 interface RepairTableProps {
   repairs: Repair[]
   onView: (repair: Repair) => void
-  onEdit: (repair: Repair) => void
+  onApprove: (repair: Repair) => void
+  onReject: (repair: Repair) => void
+  onCancel: (repair: Repair) => void
   onDelete: (repair: Repair) => void
   isLoading?: boolean
 }
@@ -30,10 +33,14 @@ interface RepairTableProps {
 export function RepairTable({
   repairs,
   onView,
-  onEdit,
+  onApprove,
+  onReject,
+  onCancel,
   onDelete,
   isLoading,
 }: RepairTableProps) {
+  const { t } = useTranslation()
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -45,48 +52,41 @@ export function RepairTable({
   if (repairs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <p className="text-lg font-medium">No repairs found</p>
-        <p className="text-sm">Create a new repair to get started.</p>
+        <p className="text-lg font-medium">{t('common.noResultsTitle')}</p>
+        <p className="text-sm">{t('common.tryAdjustFilters')}</p>
       </div>
     )
   }
 
-  const canEdit = (repair: Repair) => {
-    return repair.status !== 'Completed' && repair.status !== 'Cancelled'
-  }
+  const isPending = (repair: Repair) => repair.status === 'Pending'
+  const canCancel = (repair: Repair) => repair.status === 'Pending' || repair.status === 'Approved'
 
   return (
     <div className="rounded-md border overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Guarantee</TableHead>
-            <TableHead>Technician</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t('repairs.table.guarantee')}</TableHead>
+            <TableHead>{t('guarantees.table.customer')}</TableHead>
+            <TableHead>{t('repairs.table.technician')}</TableHead>
+            <TableHead>{t('common.status')}</TableHead>
+            <TableHead>{t('common.created')}</TableHead>
+            <TableHead className="text-end">{t('common.actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {repairs.map((repair) => (
             <TableRow key={repair.id}>
-              <TableCell className="font-medium">#{repair.id}</TableCell>
-              <TableCell>#{repair.guarantee_id}</TableCell>
-              <TableCell>
-                {repair.technician_id ? `#${repair.technician_id}` : 'Unassigned'}
-              </TableCell>
+              <TableCell className="font-medium">{repair.guarantee_code}</TableCell>
+              <TableCell>{repair.customer_name}</TableCell>
+              <TableCell>{repair.technician_name || 'Unassigned'}</TableCell>
               <TableCell>
                 <RepairStatusBadge status={repair.status} />
-              </TableCell>
-              <TableCell className="max-w-xs truncate">
-                {repair.description}
               </TableCell>
               <TableCell>
                 {format(new Date(repair.created_at), 'MMM d, yyyy')}
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={<Button variant="ghost" className="h-8 w-8 p-0" />}
@@ -96,21 +96,34 @@ export function RepairTable({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onView(repair)}>
-                      <Eye className="mr-2 h-4 w-4" />
-                      View Details
+                      <Eye className="me-2 h-4 w-4" />
+                      {t('common.view')}
                     </DropdownMenuItem>
-                    {canEdit(repair) && (
-                      <DropdownMenuItem onClick={() => onEdit(repair)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
+                    {isPending(repair) && (
+                      <>
+                        <DropdownMenuItem onClick={() => onApprove(repair)} className="text-green-600">
+                          <CheckCircle className="me-2 h-4 w-4" />
+                          {t('common.approve')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onReject(repair)} className="text-red-600">
+                          <XCircle className="me-2 h-4 w-4" />
+                          {t('common.reject')}
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {canCancel(repair) && (
+                      <DropdownMenuItem onClick={() => onCancel(repair)} className="text-orange-600">
+                        <Ban className="me-2 h-4 w-4" />
+                        Cancel
                       </DropdownMenuItem>
                     )}
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => onDelete(repair)}
                       className="text-destructive"
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
+                      <Trash2 className="me-2 h-4 w-4" />
+                      {t('common.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

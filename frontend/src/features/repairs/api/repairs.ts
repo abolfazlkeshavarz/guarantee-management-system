@@ -1,5 +1,5 @@
 import { api } from '@/api/axios'
-import { Repair, RepairFormData, RepairListResponse } from '../types'
+import { Repair, RepairFormData, RepairListResponse, ReviewRepairData } from '../types'
 
 export const repairService = {
   async list(page: number = 1, limit: number = 10, status: string = ''): Promise<RepairListResponse> {
@@ -29,8 +29,13 @@ export const repairService = {
     return response.data.data
   },
 
-  async update(id: number, data: any): Promise<Repair> {
-    const response = await api.put(`/repairs/${id}`, data)
+  async review(id: number, data: ReviewRepairData): Promise<Repair> {
+    const response = await api.post(`/repairs/${id}/review`, data)
+    return response.data.data
+  },
+
+  async cancel(id: number): Promise<Repair> {
+    const response = await api.post(`/repairs/${id}/cancel`)
     return response.data.data
   },
 

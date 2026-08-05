@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Table,
   TableBody,
@@ -51,6 +52,8 @@ export function GuaranteeTable({
   onDelete,
   isLoading,
 }: GuaranteeTableProps) {
+  const { t } = useTranslation()
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -63,8 +66,8 @@ export function GuaranteeTable({
     return (
       <div className="flex flex-col items-center justify-center h-64 text-gray-500">
         <AlertTriangle className="h-12 w-12 mb-4 text-gray-400" />
-        <p className="text-lg font-medium">No guarantees found</p>
-        <p className="text-sm">Try adjusting your filters or create a new guarantee.</p>
+        <p className="text-lg font-medium">{t('common.noResultsTitle')}</p>
+        <p className="text-sm">{t('common.tryAdjustFilters')}</p>
       </div>
     )
   }
@@ -86,13 +89,13 @@ export function GuaranteeTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Code</TableHead>
-            <TableHead>Customer</TableHead>
-            <TableHead>Product</TableHead>
-            <TableHead>Purchase Date</TableHead>
-            <TableHead>Expiry Date</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t('guarantees.table.code')}</TableHead>
+            <TableHead>{t('guarantees.table.customer')}</TableHead>
+            <TableHead>{t('guarantees.table.product')}</TableHead>
+            <TableHead>{t('guarantees.table.purchaseDate')}</TableHead>
+            <TableHead>{t('guarantees.table.expiryDate')}</TableHead>
+            <TableHead>{t('common.status')}</TableHead>
+            <TableHead className="text-end">{t('common.actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -113,7 +116,7 @@ export function GuaranteeTable({
               <TableCell>
                 <GuaranteeStatusBadge status={guarantee.status} />
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
                     <span className="sr-only">Open menu</span>
@@ -121,13 +124,13 @@ export function GuaranteeTable({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onView(guarantee)}>
-                      <Eye className="mr-2 h-4 w-4" />
+                      <Eye className="me-2 h-4 w-4" />
                       View Details
                     </DropdownMenuItem>
                     
                     {canEdit(guarantee) && (
                       <DropdownMenuItem onClick={() => onEdit(guarantee)}>
-                        <Edit className="mr-2 h-4 w-4" />
+                        <Edit className="me-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
                     )}
@@ -135,11 +138,11 @@ export function GuaranteeTable({
                     {canApprove(guarantee) && (
                       <>
                         <DropdownMenuItem onClick={() => onApprove(guarantee)} className="text-green-600">
-                          <CheckCircle className="mr-2 h-4 w-4" />
+                          <CheckCircle className="me-2 h-4 w-4" />
                           Approve
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onReject(guarantee)} className="text-red-600">
-                          <XCircle className="mr-2 h-4 w-4" />
+                          <XCircle className="me-2 h-4 w-4" />
                           Reject
                         </DropdownMenuItem>
                       </>
@@ -147,14 +150,14 @@ export function GuaranteeTable({
                     
                     {canRenew(guarantee) && (
                       <DropdownMenuItem onClick={() => onRenew(guarantee)} className="text-blue-600">
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                        <RefreshCw className="me-2 h-4 w-4" />
                         Renew
                       </DropdownMenuItem>
                     )}
                     
                     {canCancel(guarantee) && (
                       <DropdownMenuItem onClick={() => onCancel(guarantee)} className="text-orange-600">
-                        <Ban className="mr-2 h-4 w-4" />
+                        <Ban className="me-2 h-4 w-4" />
                         Cancel
                       </DropdownMenuItem>
                     )}
@@ -163,7 +166,7 @@ export function GuaranteeTable({
                       onClick={() => onDelete(guarantee)}
                       className="text-destructive"
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 className="me-2 h-4 w-4" />
                       Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>

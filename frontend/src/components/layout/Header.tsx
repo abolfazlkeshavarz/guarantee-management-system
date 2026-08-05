@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -9,10 +10,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
+import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { User, Settings, LogOut } from 'lucide-react'
 
 export function Header() {
   const { admin, logout } = useAuth()
+  const { t } = useTranslation()
 
   const getInitials = (name: string) => {
     return name
@@ -27,15 +30,16 @@ export function Header() {
     <header className="bg-white border-b px-6 py-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800">
-          Guarantee Management System
+          {t('header.title')}
         </h2>
         <div className="flex items-center gap-4">
+          <LanguageSwitcher />
           <CalendarSwitcher />
           <DropdownMenu>
             <DropdownMenuTrigger
               nativeButton={false}
               render={
-                <div className="flex items-center space-x-3 hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors cursor-pointer" />
+                <div className="flex items-center gap-3 hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors cursor-pointer" />
               }
             >
               <Avatar className="h-8 w-8">
@@ -44,24 +48,24 @@ export function Header() {
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium text-gray-700">
-                {admin?.fullName || 'Admin'}
+                {admin?.fullName || t('header.myAccount')}
               </span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('header.myAccount')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                Profile
+                <User className="me-2 h-4 w-4" />
+                {t('header.profile')}
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
+                <Settings className="me-2 h-4 w-4" />
+                {t('header.settings')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
+                <LogOut className="me-2 h-4 w-4" />
+                {t('header.logout')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

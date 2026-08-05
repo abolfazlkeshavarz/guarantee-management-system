@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Table,
   TableBody,
@@ -34,6 +35,8 @@ export function TechnicianTable({
   onDelete,
   isLoading,
 }: TechnicianTableProps) {
+  const { t } = useTranslation()
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -45,7 +48,7 @@ export function TechnicianTable({
   if (technicians.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
-        No technicians found
+        {t('common.noResultsTitle')}
       </div>
     )
   }
@@ -55,13 +58,13 @@ export function TechnicianTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Full Name</TableHead>
-            <TableHead>Username</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t('common.id')}</TableHead>
+            <TableHead>{t('customers.table.fullName')}</TableHead>
+            <TableHead>{t('technicians.table.username')}</TableHead>
+            <TableHead>{t('common.phone')}</TableHead>
+            <TableHead>{t('common.status')}</TableHead>
+            <TableHead>{t('common.created')}</TableHead>
+            <TableHead className="text-end">{t('common.actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -79,7 +82,7 @@ export function TechnicianTable({
               <TableCell>
                 {format(new Date(tech.created_at), 'MMM d, yyyy')}
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={<Button variant="ghost" className="h-8 w-8 p-0" />}
@@ -89,18 +92,18 @@ export function TechnicianTable({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onEdit(tech)}>
-                      <Edit className="mr-2 h-4 w-4" />
+                      <Edit className="me-2 h-4 w-4" />
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onToggleStatus(tech)}>
-                      <Power className="mr-2 h-4 w-4" />
+                      <Power className="me-2 h-4 w-4" />
                       {tech.is_active ? 'Deactivate' : 'Activate'}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => onDelete(tech)}
                       className="text-destructive"
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 className="me-2 h-4 w-4" />
                       Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -15,22 +16,27 @@ import { RepairTable } from '../components/RepairTable'
 import { RepairForm } from '../components/RepairForm'
 import { RepairDeleteDialog } from '../components/RepairDeleteDialog'
 import { RepairViewDialog } from '../components/RepairViewDialog'
+import { RepairReviewDialog } from '../components/RepairReviewDialog'
+import { RepairCancelDialog } from '../components/RepairCancelDialog'
 import { repairService } from '../api/repairs'
 import { Repair, REPAIR_STATUSES } from '../types'
 import { queryClient, invalidateDashboard } from '@/lib/query-client'
 
 
 export function RepairsPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
-  const [statusFilter, setStatusFilter] = useState<string>('')  // Changed to string with default ''
+  const [statusFilter, setStatusFilter] = useState<string>('')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedRepair, setSelectedRepair] = useState<Repair | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isViewOpen, setIsViewOpen] = useState(false)
+  const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null)
+  const [isCancelOpen, setIsCancelOpen] = useState(false)
 
   // Debounce search
   useEffect(() => {
@@ -47,58 +53,68 @@ export function RepairsPage() {
     queryFn: () => repairService.list(page, limit, statusFilter),
   })
 
-  // Create mutation
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['repairs'] })
+    invalidateDashboard()
+  }
+
   const createMutation = useMutation({
     mutationFn: repairService.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['repairs'] })
-      invalidateDashboard()
+      invalidateAll()
       toast.success('Repair created successfully')
       setIsFormOpen(false)
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create repair')
-    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create repair'),
   })
 
-  // Update mutation
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) =>
-      repairService.update(id, data),
+  const reviewMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { status: 'Approved' | 'Rejected'; notes?: string } }) =>
+      repairService.review(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['repairs'] })
-      invalidateDashboard()
-      toast.success('Repair updated successfully')
-      setIsFormOpen(false)
+      invalidateAll()
+      toast.success('Repair reviewed successfully')
+      setReviewAction(null)
       setSelectedRepair(null)
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update repair')
-    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to review repair'),
   })
 
-  // Delete mutation
+  const cancelMutation = useMutation({
+    mutationFn: repairService.cancel,
+    onSuccess: () => {
+      invalidateAll()
+      toast.success('Repair cancelled successfully')
+      setIsCancelOpen(false)
+      setSelectedRepair(null)
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to cancel repair'),
+  })
+
   const deleteMutation = useMutation({
     mutationFn: repairService.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['repairs'] })
-      invalidateDashboard()
+      invalidateAll()
       toast.success('Repair deleted successfully')
       setIsDeleteOpen(false)
       setSelectedRepair(null)
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete repair')
-    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to delete repair'),
   })
 
   const handleCreate = async (data: any) => {
     await createMutation.mutateAsync(data)
   }
 
-  const handleUpdate = async (data: any) => {
+  const handleReviewConfirm = async (data: { status: 'Approved' | 'Rejected'; notes?: string }) => {
     if (selectedRepair) {
-      await updateMutation.mutateAsync({ id: selectedRepair.id, data })
+      await reviewMutation.mutateAsync({ id: selectedRepair.id, data })
+    }
+  }
+
+  const handleCancelConfirm = async () => {
+    if (selectedRepair) {
+      await cancelMutation.mutateAsync(selectedRepair.id)
     }
   }
 
@@ -108,19 +124,29 @@ export function RepairsPage() {
     }
   }
 
-  const handleEdit = (repair: Repair) => {
+  const handleView = (repair: Repair) => {
     setSelectedRepair(repair)
-    setIsFormOpen(true)
+    setIsViewOpen(true)
+  }
+
+  const handleApprove = (repair: Repair) => {
+    setSelectedRepair(repair)
+    setReviewAction('approve')
+  }
+
+  const handleReject = (repair: Repair) => {
+    setSelectedRepair(repair)
+    setReviewAction('reject')
+  }
+
+  const handleCancelClick = (repair: Repair) => {
+    setSelectedRepair(repair)
+    setIsCancelOpen(true)
   }
 
   const handleDeleteClick = (repair: Repair) => {
     setSelectedRepair(repair)
     setIsDeleteOpen(true)
-  }
-
-  const handleView = (repair: Repair) => {
-    setSelectedRepair(repair)
-    setIsViewOpen(true)
   }
 
   const resetFilters = () => {
@@ -133,30 +159,31 @@ export function RepairsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Repairs</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t('repairs.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage repair requests and track their status
+            {t('repairs.subtitle')}
           </p>
         </div>
         <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Repair
+          <Plus className="me-2 h-4 w-4" />
+          {t('repairs.new')}
         </Button>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <Input
-            placeholder="Search by description..."
+            placeholder={t('repairs.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            className="ps-10"
           />
         </div>
 
         <Select
+          items={[{ value: 'all', label: t('guarantees.allStatus') }, ...REPAIR_STATUSES.map((status) => ({ value: status, label: status }))]}
           value={statusFilter || 'all'}
           onValueChange={(value) => {
             setStatusFilter(value === 'all' ? '' : value ?? '')
@@ -164,10 +191,10 @@ export function RepairsPage() {
           }}
         >
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t('common.status')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">{t('guarantees.allStatus')}</SelectItem>
             {REPAIR_STATUSES.map((status) => (
               <SelectItem key={status} value={status}>
                 {status}
@@ -198,7 +225,7 @@ export function RepairsPage() {
         </Button>
 
         <Button variant="ghost" onClick={resetFilters} size="sm">
-          Reset Filters
+          {t('common.reset')}
         </Button>
       </div>
 
@@ -206,7 +233,9 @@ export function RepairsPage() {
       <RepairTable
         repairs={data?.repairs || []}
         onView={handleView}
-        onEdit={handleEdit}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        onCancel={handleCancelClick}
         onDelete={handleDeleteClick}
         isLoading={isLoading}
       />
@@ -224,14 +253,14 @@ export function RepairsPage() {
               disabled={data.page <= 1}
               onClick={() => setPage(data.page - 1)}
             >
-              Previous
+              {t('common.previous')}
             </Button>
             <Button
               variant="outline"
               disabled={data.page >= data.last_page}
               onClick={() => setPage(data.page + 1)}
             >
-              Next
+              {t('common.next')}
             </Button>
           </div>
         </div>
@@ -241,9 +270,8 @@ export function RepairsPage() {
       <RepairForm
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
-        repair={selectedRepair}
-        onSubmit={selectedRepair ? handleUpdate : handleCreate}
-        isLoading={createMutation.isPending || updateMutation.isPending}
+        onSubmit={handleCreate}
+        isLoading={createMutation.isPending}
       />
 
       <RepairDeleteDialog
@@ -258,6 +286,23 @@ export function RepairsPage() {
         open={isViewOpen}
         onOpenChange={setIsViewOpen}
         repair={selectedRepair}
+      />
+
+      <RepairReviewDialog
+        open={reviewAction !== null}
+        onOpenChange={(open) => !open && setReviewAction(null)}
+        repair={selectedRepair}
+        action={reviewAction || 'approve'}
+        onConfirm={handleReviewConfirm}
+        isLoading={reviewMutation.isPending}
+      />
+
+      <RepairCancelDialog
+        open={isCancelOpen}
+        onOpenChange={setIsCancelOpen}
+        repair={selectedRepair}
+        onConfirm={handleCancelConfirm}
+        isLoading={cancelMutation.isPending}
       />
     </div>
   )

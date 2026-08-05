@@ -8,6 +8,59 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Vazirmatn/Vazir (Farsi). Registered with a Persian/Arabic-block unicode-range
+ * so that Farsi glyphs render with this font wherever they appear -- inside
+ * English-language UI too (customer names, notes, the Jalali calendar month
+ * names) -- without needing a lang="fa" wrapper. Latin text is unaffected
+ * since the browser only pulls glyphs from this face for characters in range.
+ */
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/Vazirmatn-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+200C-200F, U+FB8A, U+FDFD;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/Vazirmatn-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+200C-200F, U+FB8A, U+FDFD;
+}
+
+/* Full Vazir family, for content that should always render in Farsi
+   regardless of script (e.g. force-set via the .font-vazir utility). */
+@font-face {
+  font-family: 'Vazir';
+  src: url('/fonts/Vazir-Thin.ttf') format('truetype');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Vazir';
+  src: url('/fonts/Vazir-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Vazir';
+  src: url('/fonts/Vazir-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-vazir {
+  font-family: 'Vazirmatn', 'Vazir', sans-serif;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -62,11 +115,14 @@
   html {
     @apply font-sans;
   }
+  html[dir='rtl'] {
+    font-family: 'Vazirmatn', 'Geist Variable', sans-serif;
+  }
 }
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: 'Geist Variable', 'Vazirmatn', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

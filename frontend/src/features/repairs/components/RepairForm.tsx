@@ -28,14 +28,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { repairSchema, RepairFormValues } from '../schemas/repairSchema'
-import { Repair } from '../types'
+import { RepairItemsFields } from './RepairItemsFields'
 import { guaranteeService } from '@/features/guarantees/api/guarantees'
 import { technicianService } from '@/features/technicians/api/technicians'
+import { repairComponentService, repairServiceCatalogService } from '@/features/repairCatalog/api/repairCatalog'
 
 interface RepairFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  repair?: Repair | null
   onSubmit: (data: RepairFormValues) => Promise<void>
   isLoading?: boolean
 }
@@ -43,12 +43,9 @@ interface RepairFormProps {
 export function RepairForm({
   open,
   onOpenChange,
-  repair,
   onSubmit,
   isLoading,
 }: RepairFormProps) {
-  const isEditMode = !!repair
-
   const { data: guarantees = [], isLoading: guaranteesLoading } = useQuery({
     queryKey: ['guarantees-list-for-repair-form'],
     queryFn: () => guaranteeService.list(1, 100).then(r => r.guarantees),
@@ -61,30 +58,39 @@ export function RepairForm({
     enabled: open,
   })
 
+  const { data: components = [] } = useQuery({
+    queryKey: ['repair-components-active'],
+    queryFn: repairComponentService.listActive,
+    enabled: open,
+  })
+  const { data: services = [] } = useQuery({
+    queryKey: ['repair-services-active'],
+    queryFn: repairServiceCatalogService.listActive,
+    enabled: open,
+  })
+
   const form = useForm<RepairFormValues>({
     resolver: zodResolver(repairSchema),
     defaultValues: {
       guarantee_id: 0,
       technician_id: undefined,
       description: '',
+      components: [],
+      services: [],
     },
   })
 
   useEffect(() => {
-    if (repair) {
-      form.reset({
-        guarantee_id: repair.guarantee_id,
-        technician_id: repair.technician_id || undefined,
-        description: repair.description,
-      })
-    } else {
+    if (!open) {
       form.reset({
         guarantee_id: 0,
         technician_id: undefined,
         description: '',
+        components: [],
+        services: [],
       })
     }
-  }, [repair, form])
+  }, [open, form])
 
   const handleSubmit = async (data: RepairFormValues) => {
     await onSubmit(data)
@@ -94,124 +100,115 @@ export function RepairForm({
     }
   }
 
-  const isDisabled = isEditMode && repair?.status === 'Completed'
-
-  if (open && (guaranteesLoading || techniciansLoading)) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    )
-  }
+  const isLoadingData = guaranteesLoading || techniciansLoading
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? 'Edit Repair' : 'Create New Repair'}
-          </DialogTitle>
+          <DialogTitle>Create New Repair</DialogTitle>
           <DialogDescription>
-            {isEditMode
-              ? 'Update the repair information below.'
-              : 'Fill in the details to create a new repair.'}
+            Fill in the details to file a repair report.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="guarantee_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Guarantee *</FormLabel>
-                  <Select
-                    value={field.value ? String(field.value) : ''}
-                    onValueChange={(value) => field.onChange(Number(value))}
-                    disabled={isDisabled}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a guarantee">
-                        {field.value ? guarantees.find(g => g.id === field.value)?.code : ''}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {guarantees.map((g) => (
-                        <SelectItem key={g.id} value={String(g.id)}>
-                          {g.code} - {g.customer_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
+
+        {isLoadingData ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          </div>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="guarantee_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Guarantee *</FormLabel>
+                    <Select
+                      items={guarantees.map((g) => ({ value: String(g.id), label: `${g.code} - ${g.customer_name}` }))}
+                      value={field.value ? String(field.value) : ''}
+                      onValueChange={(value) => field.onChange(Number(value))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a guarantee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {guarantees.map((g) => (
+                          <SelectItem key={g.id} value={String(g.id)}>
+                            {g.code} - {g.customer_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="technician_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Technician (Optional)</FormLabel>
+                    <Select
+                      items={technicians.map((t) => ({ value: String(t.id), label: `${t.full_name} (${t.username})` }))}
+                      value={field.value ? String(field.value) : ''}
+                      onValueChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Assign a technician" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {technicians.map((t) => (
+                          <SelectItem key={t.id} value={String(t.id)}>
+                            {t.full_name} ({t.username})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <RepairItemsFields control={form.control as any} components={components} services={services} />
+              {form.formState.errors.components && (
+                <p className="text-sm text-destructive">{form.formState.errors.components.message}</p>
               )}
-            />
-            <FormField
-              control={form.control}
-              name="technician_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Technician (Optional)</FormLabel>
-                  <Select
-                    value={field.value ? String(field.value) : ''}
-                    onValueChange={(value) => field.onChange(value ? Number(value) : undefined)}
-                    disabled={isDisabled}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Assign a technician">
-                        {field.value ? technicians.find(t => t.id === field.value)?.full_name : ''}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
-                      {technicians.map((t) => (
-                        <SelectItem key={t.id} value={String(t.id)}>
-                          {t.full_name} ({t.username})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description *</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Describe the issue or repair needed..."
-                      className="resize-none min-h-[100px]"
-                      {...field}
-                      disabled={isDisabled}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading || isDisabled}>
-                {isLoading ? 'Saving...' : isEditMode ? 'Update' : 'Create'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Additional notes about this repair..."
+                        className="resize-none min-h-[80px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Creating...' : 'Create'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   )

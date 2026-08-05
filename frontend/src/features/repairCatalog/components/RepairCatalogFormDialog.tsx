@@ -1,0 +1,133 @@
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Button } from '@/components/ui/button'
+import {
+  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import { repairCatalogSchema, RepairCatalogFormValues } from '../schemas/repairCatalogSchema'
+import { RepairCatalogEntry } from '../types'
+
+interface RepairCatalogFormDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  entry?: RepairCatalogEntry | null
+  title: string
+  editTitle: string
+  namePlaceholder: string
+  onSubmit: (data: RepairCatalogFormValues) => Promise<void>
+  isLoading?: boolean
+}
+
+export function RepairCatalogFormDialog({
+  open, onOpenChange, entry, title, editTitle, namePlaceholder, onSubmit, isLoading,
+}: RepairCatalogFormDialogProps) {
+  const form = useForm<RepairCatalogFormValues>({
+    resolver: zodResolver(repairCatalogSchema),
+    defaultValues: { name: '', description: '', is_active: true },
+  })
+
+  useEffect(() => {
+    if (entry) {
+      form.reset({
+        name: entry.name,
+        description: entry.description || '',
+        is_active: entry.is_active,
+      })
+    } else {
+      form.reset({ name: '', description: '', is_active: true })
+    }
+  }, [entry, form])
+
+  const handleSubmit = async (data: RepairCatalogFormValues) => {
+    await onSubmit(data)
+    if (!isLoading) {
+      form.reset()
+      onOpenChange(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[450px]">
+        <DialogHeader>
+          <DialogTitle>{entry ? editTitle : title}</DialogTitle>
+          <DialogDescription>
+            Fill in the details below.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder={namePlaceholder} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Optional description" className="resize-none" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="is_active"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select
+                    items={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
+                    value={field.value ? 'true' : 'false'}
+                    onValueChange={(value) => field.onChange(value === 'true')}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="true">Active</SelectItem>
+                      <SelectItem value="false">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Saving...' : entry ? 'Update' : 'Create'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}

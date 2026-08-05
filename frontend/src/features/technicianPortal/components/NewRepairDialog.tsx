@@ -1,5 +1,7 @@
 // frontend/src/features/technicianPortal/components/NewRepairDialog.tsx
 import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Dialog,
@@ -13,50 +15,80 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Form, FormField, FormItem, FormControl, FormMessage } from '@/components/ui/form'
 import { technicianAuthService } from '../api/technicianAuth'
-import { technicianGuaranteeService } from '../api/technicianGuarantees'
+import { technicianGuaranteeService, isGuaranteeValid, Guarantee } from '../api/technicianGuarantees'
+import { repairComponentService, repairServiceCatalogService } from '@/features/repairCatalog/api/repairCatalog'
+import { RepairItemsFields } from '@/features/repairs/components/RepairItemsFields'
+import { repairSchema, RepairFormValues } from '@/features/repairs/schemas/repairSchema'
 import { toast } from 'sonner'
-import { Plus } from 'lucide-react'
-import { useDebounce } from '@/hooks/useDebounce'
+import { Plus, Search, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 
 export function NewRepairDialog() {
   const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const [guaranteeId, setGuaranteeId] = useState<number | null>(null)
-  const [description, setDescription] = useState('')
-  
-  const debouncedSearch = useDebounce(search, 300)
+  const [code, setCode] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [guarantee, setGuarantee] = useState<Guarantee | null>(null)
+  const [checkError, setCheckError] = useState<string | null>(null)
+
   const queryClient = useQueryClient()
 
-  const { data: results = [], isLoading: searchLoading } = useQuery({
-    queryKey: ['guarantee-search', debouncedSearch],
-    queryFn: () => technicianGuaranteeService.search(debouncedSearch),
-    enabled: debouncedSearch.length > 1,
+  const { data: components = [] } = useQuery({
+    queryKey: ['repair-components-active'],
+    queryFn: repairComponentService.listActive,
+    enabled: open,
+  })
+  const { data: services = [] } = useQuery({
+    queryKey: ['repair-services-active'],
+    queryFn: repairServiceCatalogService.listActive,
+    enabled: open,
+  })
+
+  const form = useForm<RepairFormValues>({
+    resolver: zodResolver(repairSchema),
+    defaultValues: { guarantee_id: 0, description: '', components: [], services: [] },
   })
 
   const createMutation = useMutation({
-    mutationFn: () => technicianAuthService.createRepair({ guarantee_id: guaranteeId!, description }),
+    mutationFn: (data: RepairFormValues) => technicianAuthService.createRepair(data as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-repairs'] })
-      toast.success('Repair created')
-      setOpen(false)
-      setGuaranteeId(null)
-      setSearch('')
-      setDescription('')
+      toast.success('Repair report submitted')
+      handleOpenChange(false)
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create repair'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to submit repair report'),
   })
 
-  const handleCreate = () => {
-    if (!guaranteeId || !description.trim()) return
-    createMutation.mutate()
+  const handleCheck = async () => {
+    if (!code.trim()) return
+    setChecking(true)
+    setCheckError(null)
+    setGuarantee(null)
+    try {
+      const result = await technicianGuaranteeService.checkByCode(code.trim().toUpperCase())
+      if (!isGuaranteeValid(result)) {
+        setCheckError(`This guarantee is ${result.status.toLowerCase()} or expired and cannot accept a new repair.`)
+        return
+      }
+      setGuarantee(result)
+      form.setValue('guarantee_id', result.id)
+    } catch (err: any) {
+      setCheckError(err.response?.data?.message || 'No guarantee matches this code.')
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  const handleSubmit = async (data: RepairFormValues) => {
+    await createMutation.mutateAsync(data)
   }
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setSearch('')
-      setGuaranteeId(null)
-      setDescription('')
+      setCode('')
+      setGuarantee(null)
+      setCheckError(null)
+      form.reset({ guarantee_id: 0, description: '', components: [], services: [] })
     }
     setOpen(newOpen)
   }
@@ -71,68 +103,82 @@ export function NewRepairDialog() {
           </Button>
         }
       />
-      <DialogContent>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Repair Report</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <Label>Guarantee (search by code, customer, or product)</Label>
+        <div className="space-y-2">
+          <Label>Guarantee Code</Label>
+          <div className="flex gap-2">
             <Input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value)
-                setGuaranteeId(null)
-              }}
-              placeholder="Search for a guarantee..."
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="Enter the guarantee code"
+              disabled={!!guarantee}
             />
-            {searchLoading && (
-              <p className="text-sm text-muted-foreground">Searching...</p>
+            {guarantee ? (
+              <Button type="button" variant="outline" onClick={() => { setGuarantee(null); setCheckError(null); form.setValue('guarantee_id', 0) }}>
+                Change
+              </Button>
+            ) : (
+              <Button type="button" onClick={handleCheck} disabled={checking || !code.trim()}>
+                {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                Check
+              </Button>
             )}
-            {results.length > 0 && !guaranteeId && (
-              <div className="border rounded-md divide-y max-h-40 overflow-y-auto">
-                {results.map((g: any) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
-                    onClick={() => {
-                      setGuaranteeId(g.id)
-                      setSearch(`#${g.id} — ${g.customer_name} — ${g.product_name}`)
-                    }}
-                  >
-                    #{g.id} — {g.customer_name} — {g.product_name}
-                  </button>
-                ))}
+          </div>
+          {guarantee && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800 flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium">Guarantee valid</p>
+                <p>{guarantee.product_name} — {guarantee.customer_name}</p>
               </div>
-            )}
-            {guaranteeId && (
-              <p className="text-sm text-green-600">
-                ✓ Guarantee selected
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label>Issue Description</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the issue..."
-              rows={4}
-            />
-          </div>
+            </div>
+          )}
+          {checkError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800 flex items-start gap-2">
+              <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <p>{checkError}</p>
+            </div>
+          )}
         </div>
 
-        <DialogFooter>
-          <Button
-            disabled={!guaranteeId || !description.trim() || createMutation.isPending}
-            onClick={handleCreate}
-          >
-            {createMutation.isPending ? 'Creating...' : 'Create Repair'}
-          </Button>
-        </DialogFooter>
+        {guarantee && (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <RepairItemsFields control={form.control as any} components={components} services={services} />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <Label>Additional Notes</Label>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="Anything else worth noting about this repair..."
+                        rows={3}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {form.formState.errors.components && (
+                <p className="text-sm text-destructive">{form.formState.errors.components.message}</p>
+              )}
+
+              <DialogFooter>
+                <Button type="submit" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? 'Submitting...' : 'Submit Repair Report'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -43,17 +43,13 @@ func (h *RepairHandler) CreateMyRepair(c *gin.Context) {
 		return
 	}
 
-	var req CreateMyRepairRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		responses.Error(c, http.StatusBadRequest, "Invalid request")
-		return
-	}
-	if req.GuaranteeID == 0 || req.Description == "" {
-		responses.Error(c, http.StatusBadRequest, "guarantee_id and description are required")
+	req, err := h.validator.ValidateCreateMyRequest(c)
+	if err != nil {
+		handleError(c, err)
 		return
 	}
 
-	repair, err := h.service.CreateByTechnician(techID.(uint), &req)
+	repair, err := h.service.CreateByTechnician(techID.(uint), req)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -97,26 +93,46 @@ func (h *RepairHandler) List(c *gin.Context) {
 	})
 }
 
-func (h *RepairHandler) Update(c *gin.Context) {
+func (h *RepairHandler) Review(c *gin.Context) {
+	adminID := c.GetUint("admin_id")
+
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
 		return
 	}
 
-	req, err := h.validator.ValidateUpdateRequest(c)
+	req, err := h.validator.ValidateReviewRequest(c)
 	if err != nil {
 		handleError(c, err)
 		return
 	}
 
-	repair, err := h.service.Update(uint(id), req)
+	repair, err := h.service.Review(uint(id), req, adminID)
 	if err != nil {
 		handleError(c, err)
 		return
 	}
 
-	responses.SuccessWithMessage(c, "Repair updated successfully", repair)
+	responses.SuccessWithMessage(c, "Repair "+req.Status, repair)
+}
+
+func (h *RepairHandler) Cancel(c *gin.Context) {
+	adminID := c.GetUint("admin_id")
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid repair ID")
+		return
+	}
+
+	repair, err := h.service.Cancel(uint(id), adminID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Repair cancelled successfully", repair)
 }
 
 func (h *RepairHandler) Delete(c *gin.Context) {
@@ -160,7 +176,7 @@ func (h *RepairHandler) MyRepairs(c *gin.Context) {
 	})
 }
 
-func (h *RepairHandler) UpdateMyRepair(c *gin.Context) {
+func (h *RepairHandler) GetMyRepair(c *gin.Context) {
 	techID, exists := c.Get("technician_id")
 	if !exists {
 		responses.Unauthorized(c, "Unauthorized")
@@ -173,19 +189,13 @@ func (h *RepairHandler) UpdateMyRepair(c *gin.Context) {
 		return
 	}
 
-	req, err := h.validator.ValidateUpdateRequest(c)
+	repair, err := h.service.GetByIDForTechnician(uint(id), techID.(uint))
 	if err != nil {
 		handleError(c, err)
 		return
 	}
 
-	repair, err := h.service.UpdateByTechnician(uint(id), techID.(uint), req)
-	if err != nil {
-		handleError(c, err)
-		return
-	}
-
-	responses.SuccessWithMessage(c, "Repair updated successfully", repair)
+	responses.Success(c, repair)
 }
 
 func handleError(c *gin.Context, err error) {

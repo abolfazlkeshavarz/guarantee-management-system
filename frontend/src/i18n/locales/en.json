@@ -1,0 +1,205 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "actions": "Actions",
+    "status": "Status",
+    "loading": "Loading...",
+    "id": "ID",
+    "name": "Name",
+    "description": "Description",
+    "phone": "Phone",
+    "created": "Created",
+    "back": "Back",
+    "refresh": "Refresh",
+    "reset": "Reset",
+    "all": "All",
+    "active": "Active",
+    "inactive": "Inactive",
+    "previous": "Previous",
+    "next": "Next",
+    "view": "View",
+    "approve": "Approve",
+    "reject": "Reject",
+    "renew": "Renew",
+    "noResultsTitle": "No results found",
+    "tryAdjustFilters": "Try adjusting your filters or create a new one."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "guarantees": "Guarantees",
+    "customers": "Customers",
+    "catalog": "Catalog",
+    "categories": "Categories",
+    "products": "Products",
+    "repairCatalog": "Repair Components/Services",
+    "technicians": "Technicians",
+    "repairs": "Repairs",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "header": {
+    "title": "Guarantee Management System",
+    "myAccount": "My Account",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "language": {
+    "english": "English",
+    "persian": "فارسی"
+  },
+  "login": {
+    "title": "Guarantee Management System",
+    "subtitle": "Protecting your products, building trust",
+    "customerServices": "Customer Services",
+    "customerServicesDesc": "Register your product guarantee or check its status",
+    "register": "Register",
+    "checkStatus": "Check Status",
+    "staffLogin": "Staff Login",
+    "staffLoginDesc": "Sign in as Administrator or Technician",
+    "username": "Username",
+    "usernamePlaceholder": "Enter your username",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "signIn": "Sign In",
+    "loggingIn": "Logging in...",
+    "admin": "Admin",
+    "technician": "Technician",
+    "footer": "© {{year}} Guarantee Management System. All rights reserved."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "refresh": "Refresh",
+    "lastUpdated": "Last updated: {{date}}",
+    "totalGuarantees": "Total Guarantees",
+    "pendingGuarantees": "Pending Guarantees",
+    "activeGuarantees": "Active Guarantees",
+    "expiredGuarantees": "Expired Guarantees",
+    "totalCustomers": "Total Customers",
+    "activeTechnicians": "Active Technicians",
+    "totalProducts": "Total Products",
+    "pendingRepairs": "Pending Repairs"
+  },
+  "notFound": {
+    "title": "404",
+    "subtitle": "Page Not Found",
+    "description": "The page you are looking for does not exist or has been moved.",
+    "backHome": "Back to Home"
+  },
+  "guarantees": {
+    "title": "Guarantees",
+    "subtitle": "Manage product guarantees and warranties",
+    "create": "Create Guarantee",
+    "searchPlaceholder": "Search by code, customer, or product...",
+    "allStatus": "All Status",
+    "allCustomers": "All Customers",
+    "allProducts": "All Products",
+    "table": {
+      "code": "Code",
+      "customer": "Customer",
+      "product": "Product",
+      "purchaseDate": "Purchase Date",
+      "expiryDate": "Expiry Date"
+    }
+  },
+  "customers": {
+    "title": "Customers",
+    "add": "Add Customer",
+    "searchPlaceholder": "Search by name, phone, or national ID...",
+    "table": {
+      "fullName": "Full Name",
+      "nationalId": "National ID",
+      "province": "Province",
+      "city": "City"
+    }
+  },
+  "products": {
+    "title": "Products",
+    "add": "Add Product",
+    "searchPlaceholder": "Search by name or description...",
+    "allCategories": "All categories",
+    "table": {
+      "category": "Category"
+    }
+  },
+  "categories": {
+    "title": "Product Categories",
+    "add": "Add Category",
+    "searchPlaceholder": "Search by name..."
+  },
+  "repairCatalog": {
+    "title": "Repair Components & Services",
+    "subtitle": "Manage the catalogs technicians choose from when filing a repair report",
+    "components": "Components",
+    "services": "Services",
+    "addComponent": "Add Component",
+    "editComponent": "Edit Component",
+    "addService": "Add Service",
+    "editService": "Edit Service"
+  },
+  "technicians": {
+    "title": "Technicians",
+    "add": "Add Technician",
+    "searchPlaceholder": "Search by name or username...",
+    "table": {
+      "username": "Username"
+    }
+  },
+  "repairs": {
+    "title": "Repairs",
+    "subtitle": "Manage repair requests and track their status",
+    "new": "New Repair",
+    "searchPlaceholder": "Search by description...",
+    "table": {
+      "guarantee": "Guarantee",
+      "technician": "Technician"
+    }
+  },
+  "public": {
+    "register": {
+      "title": "Guarantee Registration",
+      "subtitle": "Enter your product's guarantee code to automatically identify your product. All fields marked with * are required.",
+      "customerInfo": "Customer Information",
+      "guaranteeInfo": "Guarantee Information",
+      "fullName": "Full Name",
+      "phoneNumber": "Phone Number",
+      "nationalId": "National ID",
+      "province": "Province",
+      "city": "City",
+      "address": "Full Address",
+      "guaranteeCode": "Guarantee Code (Printed on Product)",
+      "purchaseDate": "Purchase Date",
+      "guaranteePeriod": "Guarantee Period",
+      "invoiceImage": "Invoice Image",
+      "guaranteeCardImage": "Guarantee Card Image",
+      "notes": "Additional Notes",
+      "submit": "Register Guarantee",
+      "submitting": "Registering...",
+      "cancel": "Cancel",
+      "alreadyRegistered": "Already have a registered guarantee?",
+      "checkStatusLink": "Check status"
+    },
+    "checkStatus": {
+      "title": "Check Guarantee Status",
+      "subtitle": "Enter your guarantee code to check its current status",
+      "placeholder": "Enter guarantee code (e.g., GUA-XXXXXX)",
+      "checking": "Checking...",
+      "check": "Check",
+      "notFound": "Guarantee not found. Please check the code and try again.",
+      "guaranteeCode": "Guarantee Code",
+      "customer": "Customer",
+      "product": "Product",
+      "purchaseDate": "Purchase Date",
+      "expiryDate": "Expiry Date",
+      "expired": " (Expired)",
+      "notes": "Notes",
+      "approvedOn": "Approved on: {{date}}",
+      "registerNew": "Register a new guarantee"
+    }
+  }
+}

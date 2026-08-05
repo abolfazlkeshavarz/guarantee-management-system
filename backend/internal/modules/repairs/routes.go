@@ -3,6 +3,7 @@ package repairs
 
 import (
 	"guarantee-management-system/internal/middleware"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -28,7 +29,8 @@ func (m *RepairModule) RegisterRoutes(router *gin.RouterGroup) {
 		repairs.POST("", m.handler.Create)
 		repairs.GET("", m.handler.List)
 		repairs.GET("/:id", m.handler.Get)
-		repairs.PUT("/:id", m.handler.Update)
+		repairs.POST("/:id/review", m.handler.Review)
+		repairs.POST("/:id/cancel", m.handler.Cancel)
 		repairs.DELETE("/:id", m.handler.Delete)
 	}
 
@@ -37,7 +39,7 @@ func (m *RepairModule) RegisterRoutes(router *gin.RouterGroup) {
 	technician.Use(middleware.AuthMiddleware(), middleware.TechnicianOnly())
 	{
 		technician.GET("/repairs", m.handler.MyRepairs)
-		technician.POST("/repairs", m.handler.CreateMyRepair) // new
-		technician.PUT("/repairs/:id", m.handler.UpdateMyRepair)
+		technician.GET("/repairs/:id", m.handler.GetMyRepair)
+		technician.POST("/repairs", m.handler.CreateMyRepair)
 	}
 }

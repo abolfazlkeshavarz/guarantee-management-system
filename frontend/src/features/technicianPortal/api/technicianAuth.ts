@@ -1,5 +1,5 @@
 import { api } from '@/api/axios'
-import { TechnicianLoginCredentials, TechnicianLoginResponse, Repair, RepairListResponse } from '../types'
+import { TechnicianLoginCredentials, TechnicianLoginResponse, Repair, RepairFormData, RepairListResponse } from '../types'
 
 const TECH_TOKEN_KEY = 'tech_token'
 
@@ -27,12 +27,12 @@ export const technicianAuthService = {
     }
   },
 
-  async updateRepair(id: number, data: { status?: string; description?: string }): Promise<Repair> {
-    const response = await api.put(`/technician/repairs/${id}`, data)
+  async getMyRepair(id: number): Promise<Repair> {
+    const response = await api.get(`/technician/repairs/${id}`)
     return response.data.data
   },
 
-  async createRepair(data: { guarantee_id: number; description: string }): Promise<Repair> {
+  async createRepair(data: RepairFormData): Promise<Repair> {
     const response = await api.post('/technician/repairs', data)
     return response.data.data
   },

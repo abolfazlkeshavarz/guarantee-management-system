@@ -24,6 +24,7 @@ type CreateTechnicianRequest struct {
 
 type UpdateTechnicianRequest struct {
 	FullName   string `json:"full_name" binding:"omitempty,min=2,max=100"`
+	Password   string `json:"password" binding:"omitempty,min=6"`
 	Phone      string `json:"phone" binding:"omitempty,min=10,max=20"`
 	NationalID string `json:"national_id" binding:"omitempty,min=6,max=20"`
 	Address    string `json:"address"`
