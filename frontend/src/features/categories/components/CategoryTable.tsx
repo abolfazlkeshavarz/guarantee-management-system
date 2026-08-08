@@ -54,7 +54,7 @@ export function CategoryTable({ categories, onEdit, onDelete, isLoading }: Categ
               <TableCell className="max-w-xs truncate">{category.description || '-'}</TableCell>
               <TableCell>
                 <Badge variant={category.is_active ? 'default' : 'secondary'}>
-                  {category.is_active ? 'Active' : 'Inactive'}
+                  {category.is_active ? t('forms.active') : t('forms.inactive')}
                 </Badge>
               </TableCell>
               <TableCell>{format(new Date(category.created_at), 'MMM d, yyyy')}</TableCell>
@@ -67,11 +67,11 @@ export function CategoryTable({ categories, onEdit, onDelete, isLoading }: Categ
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onEdit(category)}>
                       <Edit className="me-2 h-4 w-4" />
-                      Edit
+                      {t('common.edit')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onDelete(category)} className="text-destructive">
                       <Trash2 className="me-2 h-4 w-4" />
-                      Delete
+                      {t('common.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

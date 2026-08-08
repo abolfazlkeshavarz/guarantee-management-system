@@ -114,7 +114,7 @@ export function RepairTable({
                     {canCancel(repair) && (
                       <DropdownMenuItem onClick={() => onCancel(repair)} className="text-orange-600">
                         <Ban className="me-2 h-4 w-4" />
-                        Cancel
+                        {t('common.cancel')}
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />

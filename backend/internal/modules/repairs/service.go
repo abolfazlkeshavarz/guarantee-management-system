@@ -232,10 +232,28 @@ func (s *RepairService) Cancel(id uint, adminID uint) (*RepairDTO, error) {
 }
 
 func (s *RepairService) Delete(id uint) error {
-	if err := s.repo.Delete(id); err != nil {
+	if _, err := s.repo.FindByID(id); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrRepairNotFound
 		}
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to find repair", 500)
+	}
+
+	// The repair itself is soft-deleted, but its component/service line items
+	// have no soft-delete of their own and pin repair_components /
+	// repair_services through RESTRICT foreign keys. GORM's soft delete does
+	// NOT fire the ON DELETE CASCADE on repair_id, so we must remove the items
+	// explicitly -- otherwise they stay orphaned and lock the referenced
+	// component/service rows forever.
+	if err := s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("repair_id = ?", id).Delete(&RepairComponentItem{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("repair_id = ?", id).Delete(&RepairServiceItem{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&Repair{}, id).Error // soft delete of the repair row
+	}); err != nil {
 		return errors.NewAppError(errors.ErrInternalServer, "Failed to delete repair", 500)
 	}
 	return nil

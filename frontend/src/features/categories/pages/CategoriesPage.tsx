@@ -126,11 +126,28 @@ export function CategoriesPage() {
       {data && data.total > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
-            Showing {((data.page - 1) * data.limit) + 1} to {Math.min(data.page * data.limit, data.total)} of {data.total} categories
+            {t('common.showingRange', {
+              from: ((data.page - 1) * data.limit) + 1,
+              to: Math.min(data.page * data.limit, data.total),
+              total: data.total,
+              entity: t('categories.entity')
+            })}
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" disabled={data.page <= 1} onClick={() => setPage(data.page - 1)}>Previous</Button>
-            <Button variant="outline" disabled={data.page >= data.last_page} onClick={() => setPage(data.page + 1)}>Next</Button>
+            <Button
+              variant="outline"
+              disabled={data.page <= 1}
+              onClick={() => setPage(data.page - 1)}
+            >
+              {t('common.previous')}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={data.page >= data.last_page}
+              onClick={() => setPage(data.page + 1)}
+            >
+              {t('common.next')}
+            </Button>
           </div>
         </div>
       )}

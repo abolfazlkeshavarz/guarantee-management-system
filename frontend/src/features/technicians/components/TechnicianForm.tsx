@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -34,7 +35,7 @@ interface TechnicianFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   technician?: Technician | null
-  onSubmit: (data: any) => Promise<void>  // Use any to handle both create and update data
+  onSubmit: (data: any) => Promise<void>
   isLoading?: boolean
 }
 
@@ -45,6 +46,7 @@ export function TechnicianForm({
   onSubmit,
   isLoading,
 }: TechnicianFormProps) {
+  const { t } = useTranslation()
   const isEditMode = !!technician
 
   const form = useForm<TechnicianFormValues>({
@@ -88,17 +90,15 @@ export function TechnicianForm({
     let submitData: any = { ...data }
     
     if (isEditMode) {
-      // For update: remove password if empty, remove username (can't change)
       if (!submitData.password) {
         delete submitData.password
       }
       delete submitData.username
     } else {
-      // For create: password is required
       if (!submitData.password) {
         form.setError('password', { 
           type: 'manual', 
-          message: 'Password is required' 
+          message: t('technicians.form.passwordRequired')
         })
         return
       }
@@ -116,12 +116,12 @@ export function TechnicianForm({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditMode ? 'Edit Technician' : 'Add New Technician'}
+            {isEditMode ? t('technicians.form.editTitle') : t('technicians.form.createTitle')}
           </DialogTitle>
           <DialogDescription>
             {isEditMode
-              ? 'Update the technician information below.'
-              : 'Fill in the details to add a new technician.'}
+              ? t('technicians.form.editDescription')
+              : t('technicians.form.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -131,9 +131,9 @@ export function TechnicianForm({
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name *</FormLabel>
+                  <FormLabel>{t('technicians.form.fullName')} *</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Technician" {...field} />
+                    <Input placeholder={t('technicians.form.fullNamePlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -145,10 +145,10 @@ export function TechnicianForm({
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username *</FormLabel>
+                    <FormLabel>{t('technicians.form.username')} *</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="johntech"
+                        placeholder={t('technicians.form.usernamePlaceholder')}
                         {...field}
                         disabled={isEditMode}
                       />
@@ -163,12 +163,12 @@ export function TechnicianForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {isEditMode ? 'New Password (optional)' : 'Password *'}
+                      {isEditMode ? t('technicians.form.newPassword') : t('technicians.form.password')}
                     </FormLabel>
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder={isEditMode ? 'Leave blank to keep current' : '••••••'}
+                        placeholder={isEditMode ? t('technicians.form.passwordPlaceholder') : '••••••'}
                         {...field}
                       />
                     </FormControl>
@@ -183,9 +183,9 @@ export function TechnicianForm({
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone</FormLabel>
+                    <FormLabel>{t('technicians.form.phone')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="+1234567890" {...field} />
+                      <Input placeholder={t('technicians.form.phonePlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -196,9 +196,9 @@ export function TechnicianForm({
                 name="national_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>National ID</FormLabel>
+                    <FormLabel>{t('technicians.form.nationalId')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="ID123456" {...field} />
+                      <Input placeholder={t('technicians.form.nationalIdPlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -210,10 +210,10 @@ export function TechnicianForm({
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Address</FormLabel>
+                  <FormLabel>{t('technicians.form.address')}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="123 Tech Street, City"
+                      placeholder={t('technicians.form.addressPlaceholder')}
                       className="resize-none"
                       {...field}
                     />
@@ -227,9 +227,9 @@ export function TechnicianForm({
               name="is_active"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>{t('technicians.form.status')}</FormLabel>
                   <Select
-                    items={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
+                    items={[{ value: 'true', label: t('forms.active') }, { value: 'false', label: t('forms.inactive') }]}
                     value={field.value ? 'true' : 'false'}
                     onValueChange={(value) => field.onChange(value === 'true')}
                   >
@@ -239,8 +239,8 @@ export function TechnicianForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="true">Active</SelectItem>
-                      <SelectItem value="false">Inactive</SelectItem>
+                      <SelectItem value="true">{t('forms.active')}</SelectItem>
+                      <SelectItem value="false">{t('forms.inactive')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -253,10 +253,10 @@ export function TechnicianForm({
                 variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Saving...' : isEditMode ? 'Update' : 'Create'}
+                {isLoading ? t('common.saving') : isEditMode ? t('common.update') : t('common.create')}
               </Button>
             </DialogFooter>
           </form>

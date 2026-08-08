@@ -1,3 +1,4 @@
+// backend/internal/modules/repaircatalog/service.go
 package repaircatalog
 
 import (
@@ -135,6 +136,13 @@ func (s *RepairComponentService) Delete(id uint) error {
 			return ErrComponentNotFound
 		}
 		return errors.NewAppError(errors.ErrInternalServer, "Failed to find component", 500)
+	}
+
+	// Drop items that belonged to repairs which have since been deleted, so
+	// they no longer pin this row. Only items owned by still-active repairs
+	// should block deletion.
+	if err := s.repo.DeleteOrphanedItems(id); err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to clean up orphaned items", 500)
 	}
 
 	count, err := s.repo.CountItemsUsing(id)
@@ -289,6 +297,13 @@ func (s *RepairServiceService) Delete(id uint) error {
 			return ErrServiceNotFound
 		}
 		return errors.NewAppError(errors.ErrInternalServer, "Failed to find service", 500)
+	}
+
+	// Drop items that belonged to repairs which have since been deleted, so
+	// they no longer pin this row. Only items owned by still-active repairs
+	// should block deletion.
+	if err := s.repo.DeleteOrphanedItems(id); err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to clean up orphaned items", 500)
 	}
 
 	count, err := s.repo.CountItemsUsing(id)

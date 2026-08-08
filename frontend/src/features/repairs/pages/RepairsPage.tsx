@@ -240,12 +240,15 @@ export function RepairsPage() {
         isLoading={isLoading}
       />
 
-      {/* Pagination */}
       {data && data.total > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
-            Showing {Math.min((data.page - 1) * data.limit + 1, data.total)} to{' '}
-            {Math.min(data.page * data.limit, data.total)} of {data.total} repairs
+            {t('common.showingRange', {
+              from: Math.min((data.page - 1) * data.limit + 1, data.total),
+              to: Math.min(data.page * data.limit, data.total),
+              total: data.total,
+              entity: t('repairs.entity')
+            })}
           </p>
           <div className="flex gap-2">
             <Button

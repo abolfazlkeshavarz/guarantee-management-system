@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,28 +26,28 @@ export function RepairDeleteDialog({
   onConfirm,
   isLoading,
 }: RepairDeleteDialogProps) {
+  const { t } = useTranslation()
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>{t('common.confirmDelete')}</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete the repair request for{' '}
-            <span className="font-medium">{repair?.guarantee_code}</span> ({repair?.customer_name}).
-            <br />
-            <span className="text-destructive font-medium">
-              This action cannot be undone.
-            </span>
+            {t('repairs.deleteDesc', { 
+              code: repair?.guarantee_code, 
+              customer: repair?.customer_name 
+            })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isLoading}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isLoading ? 'Deleting...' : 'Delete Repair'}
+            {isLoading ? t('common.deleting') : t('common.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

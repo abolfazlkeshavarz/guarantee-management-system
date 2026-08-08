@@ -110,7 +110,7 @@ export function GuaranteeTable({
               <TableCell>
                 <span className={isExpired(guarantee) ? 'text-red-600 font-medium' : ''}>
                   <FormattedDate date={guarantee.expiry_date} format="MMM DD, YYYY" />
-                  {isExpired(guarantee) && ' (Expired)'}
+                  {isExpired(guarantee) && ` ${t('guarantees.expired')}`}
                 </span>
               </TableCell>
               <TableCell>
@@ -125,13 +125,13 @@ export function GuaranteeTable({
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onView(guarantee)}>
                       <Eye className="me-2 h-4 w-4" />
-                      View Details
+                      {t('common.view')}
                     </DropdownMenuItem>
                     
                     {canEdit(guarantee) && (
                       <DropdownMenuItem onClick={() => onEdit(guarantee)}>
                         <Edit className="me-2 h-4 w-4" />
-                        Edit
+                        {t('common.edit')}
                       </DropdownMenuItem>
                     )}
                     
@@ -139,11 +139,11 @@ export function GuaranteeTable({
                       <>
                         <DropdownMenuItem onClick={() => onApprove(guarantee)} className="text-green-600">
                           <CheckCircle className="me-2 h-4 w-4" />
-                          Approve
+                          {t('common.approve')}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onReject(guarantee)} className="text-red-600">
                           <XCircle className="me-2 h-4 w-4" />
-                          Reject
+                          {t('common.reject')}
                         </DropdownMenuItem>
                       </>
                     )}
@@ -151,14 +151,14 @@ export function GuaranteeTable({
                     {canRenew(guarantee) && (
                       <DropdownMenuItem onClick={() => onRenew(guarantee)} className="text-blue-600">
                         <RefreshCw className="me-2 h-4 w-4" />
-                        Renew
+                        {t('common.renew')}
                       </DropdownMenuItem>
                     )}
                     
                     {canCancel(guarantee) && (
                       <DropdownMenuItem onClick={() => onCancel(guarantee)} className="text-orange-600">
                         <Ban className="me-2 h-4 w-4" />
-                        Cancel
+                        {t('common.cancel')}
                       </DropdownMenuItem>
                     )}
                     
@@ -167,7 +167,7 @@ export function GuaranteeTable({
                       className="text-destructive"
                     >
                       <Trash2 className="me-2 h-4 w-4" />
-                      Delete
+                      {t('common.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

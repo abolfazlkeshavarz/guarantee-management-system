@@ -71,6 +71,19 @@ func (r *RepairComponentRepository) CountItemsUsing(componentID uint) (int64, er
 	return count, err
 }
 
+// DeleteOrphanedItems hard-deletes the line items whose parent repair no longer
+// exists or has been soft-deleted. Those orphans would otherwise keep this row
+// locked behind the RESTRICT FK on repair_component_items.repair_component_id.
+func (r *RepairComponentRepository) DeleteOrphanedItems(componentID uint) error {
+	return r.db.Exec(
+		`DELETE FROM repair_component_items rci
+		 WHERE rci.repair_component_id = ?
+		   AND NOT EXISTS (
+			   SELECT 1 FROM repairs rep
+			   WHERE rep.id = rci.repair_id AND rep.deleted_at IS NULL
+		   )`, componentID).Error
+}
+
 type RepairServiceRepository struct {
 	db *gorm.DB
 }
@@ -138,4 +151,17 @@ func (r *RepairServiceRepository) CountItemsUsing(serviceID uint) (int64, error)
 	var count int64
 	err := r.db.Table("repair_service_items").Where("repair_service_id = ?", serviceID).Count(&count).Error
 	return count, err
+}
+
+// DeleteOrphanedItems hard-deletes the line items whose parent repair no longer
+// exists or has been soft-deleted. Those orphans would otherwise keep this row
+// locked behind the RESTRICT FK on repair_service_items.repair_service_id.
+func (r *RepairServiceRepository) DeleteOrphanedItems(serviceID uint) error {
+	return r.db.Exec(
+		`DELETE FROM repair_service_items rsi
+		 WHERE rsi.repair_service_id = ?
+		   AND NOT EXISTS (
+			   SELECT 1 FROM repairs rep
+			   WHERE rep.id = rsi.repair_id AND rep.deleted_at IS NULL
+		   )`, serviceID).Error
 }

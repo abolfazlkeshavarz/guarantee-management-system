@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -25,6 +26,7 @@ interface CategoryFormProps {
 }
 
 export function CategoryForm({ open, onOpenChange, category, onSubmit, isLoading }: CategoryFormProps) {
+  const { t } = useTranslation()
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
     defaultValues: { name: '', description: '', is_active: true },
@@ -54,9 +56,9 @@ export function CategoryForm({ open, onOpenChange, category, onSubmit, isLoading
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
-          <DialogTitle>{category ? 'Edit Category' : 'Add New Category'}</DialogTitle>
+          <DialogTitle>{category ? t('categories.form.editTitle') : t('categories.form.createTitle')}</DialogTitle>
           <DialogDescription>
-            {category ? 'Update the category information below.' : 'Fill in the details to add a new product category.'}
+            {category ? t('categories.form.editDescription') : t('categories.form.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -66,7 +68,7 @@ export function CategoryForm({ open, onOpenChange, category, onSubmit, isLoading
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name *</FormLabel>
+                  <FormLabel>{t('common.name')} *</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g. Electronics" {...field} />
                   </FormControl>
@@ -79,9 +81,9 @@ export function CategoryForm({ open, onOpenChange, category, onSubmit, isLoading
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('common.description')}</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Optional description" className="resize-none" {...field} />
+                    <Textarea placeholder={t('forms.optional')} className="resize-none" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -92,9 +94,9 @@ export function CategoryForm({ open, onOpenChange, category, onSubmit, isLoading
               name="is_active"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>{t('common.status')}</FormLabel>
                   <Select
-                    items={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
+                    items={[{ value: 'true', label: t('forms.active') }, { value: 'false', label: t('forms.inactive') }]}
                     value={field.value ? 'true' : 'false'}
                     onValueChange={(value) => field.onChange(value === 'true')}
                   >
@@ -104,8 +106,8 @@ export function CategoryForm({ open, onOpenChange, category, onSubmit, isLoading
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="true">Active</SelectItem>
-                      <SelectItem value="false">Inactive</SelectItem>
+                      <SelectItem value="true">{t('forms.active')}</SelectItem>
+                      <SelectItem value="false">{t('forms.inactive')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -114,10 +116,10 @@ export function CategoryForm({ open, onOpenChange, category, onSubmit, isLoading
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Saving...' : category ? 'Update' : 'Create'}
+                {isLoading ? t('common.saving') : category ? t('common.update') : t('common.create')}
               </Button>
             </DialogFooter>
           </form>

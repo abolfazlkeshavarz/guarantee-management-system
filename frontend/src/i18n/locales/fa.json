@@ -27,7 +27,33 @@
     "reject": "رد",
     "renew": "تمدید",
     "noResultsTitle": "نتیجه‌ای یافت نشد",
-    "tryAdjustFilters": "فیلترها را تغییر دهید یا مورد جدیدی ایجاد کنید."
+    "tryAdjustFilters": "فیلترها را تغییر دهید یا مورد جدیدی ایجاد کنید.",
+    "confirmDelete": "آیا مطمئن هستید؟",
+    "deleteWarning": "این عمل قابل بازگشت نیست.",
+    "deleting": "در حال حذف...",
+    "saving": "در حال ذخیره...",
+    "showingRange": "نمایش {{from}} تا {{to}} از {{total}} {{entity}}",
+    "activate": "فعال کردن",
+    "deactivate": "غیرفعال کردن",
+    "notes": "یادداشت‌ها",
+    "notesPlaceholder": "یادداشت خود را در مورد این تصمیم اضافه کنید...",
+    "error": "مشکلی پیش آمده است. لطفا دوباره تلاش کنید."
+  },
+  "forms": {
+    "active": "فعال",
+    "inactive": "غیرفعال",
+    "status": "وضعیت",
+    "name": "نام",
+    "description": "توضیحات",
+    "cancel": "انصراف",
+    "create": "ایجاد",
+    "update": "به‌روزرسانی",
+    "edit": "ویرایش",
+    "delete": "حذف",
+    "confirmDelete": "تایید حذف",
+    "selectOption": "یک گزینه انتخاب کنید",
+    "required": "اجباری",
+    "optional": "اختیاری"
   },
   "nav": {
     "dashboard": "داشبورد",
@@ -99,13 +125,24 @@
     "allStatus": "همه وضعیت‌ها",
     "allCustomers": "همه مشتریان",
     "allProducts": "همه محصولات",
+    "entity": "گارانتی",
+    "expired": "(منقضی شده)",
+    "cancelConfirm": "آیا مطمئن هستید که می‌خواهید {{code}} را برای {{customer}} لغو کنید؟",
     "table": {
       "code": "کد",
       "customer": "مشتری",
       "product": "محصول",
       "purchaseDate": "تاریخ خرید",
       "expiryDate": "تاریخ انقضا"
-    }
+    },
+    "deleteDesc": "این عملیات گارانتی {{code}} برای مشتری {{customer}} را به طور دائمی حذف می‌کند. این عمل قابل بازگشت نیست.",
+    "deleteSuccess": "گارانتی با موفقیت حذف شد",
+    "createSuccess": "گارانتی با موفقیت ایجاد شد",
+    "updateSuccess": "گارانتی با موفقیت به‌روزرسانی شد",
+    "approveSuccess": "گارانتی با موفقیت تایید شد",
+    "rejectSuccess": "گارانتی با موفقیت رد شد",
+    "renewSuccess": "گارانتی با موفقیت تمدید شد",
+    "cancelSuccess": "گارانتی با موفقیت لغو شد"
   },
   "customers": {
     "title": "مشتریان",
@@ -123,14 +160,38 @@
     "add": "افزودن محصول",
     "searchPlaceholder": "جستجو بر اساس نام یا توضیحات...",
     "allCategories": "همه دسته‌بندی‌ها",
+    "entity": "محصول",
     "table": {
       "category": "دسته‌بندی"
-    }
+    },
+    "form": {
+      "title": "محصول",
+      "editTitle": "ویرایش محصول",
+      "createTitle": "افزودن محصول جدید",
+      "description": "برای افزودن محصول جدید، اطلاعات را تکمیل کنید.",
+      "editDescription": "اطلاعات محصول را به‌روزرسانی کنید."
+    },
+    "deleteDesc": "این عملیات محصول \"{{name}}\" را به طور دائمی حذف می‌کند. این عمل قابل بازگشت نیست.",
+    "deleteSuccess": "محصول با موفقیت حذف شد",
+    "createSuccess": "محصول با موفقیت ایجاد شد",
+    "updateSuccess": "محصول با موفقیت به‌روزرسانی شد"
   },
   "categories": {
     "title": "دسته‌بندی محصولات",
     "add": "افزودن دسته‌بندی",
-    "searchPlaceholder": "جستجو بر اساس نام..."
+    "searchPlaceholder": "جستجو بر اساس نام...",
+    "entity": "دسته‌بندی",
+    "form": {
+      "title": "دسته‌بندی",
+      "editTitle": "ویرایش دسته‌بندی",
+      "createTitle": "افزودن دسته‌بندی جدید",
+      "description": "برای افزودن دسته‌بندی جدید، اطلاعات را تکمیل کنید.",
+      "editDescription": "اطلاعات دسته‌بندی را به‌روزرسانی کنید."
+    },
+    "deleteDesc": "این عملیات دسته‌بندی \"{{name}}\" را به طور دائمی حذف می‌کند. این کار فقط در صورتی امکان‌پذیر است که هیچ محصولی به آن اختصاص داده نشده باشد.",
+    "deleteSuccess": "دسته‌بندی با موفقیت حذف شد",
+    "createSuccess": "دسته‌بندی با موفقیت ایجاد شد",
+    "updateSuccess": "دسته‌بندی با موفقیت به‌روزرسانی شد"
   },
   "repairCatalog": {
     "title": "قطعات و خدمات تعمیر",
@@ -146,19 +207,58 @@
     "title": "تکنسین‌ها",
     "add": "افزودن تکنسین",
     "searchPlaceholder": "جستجو بر اساس نام یا نام کاربری...",
+    "entity": "تکنسین",
     "table": {
       "username": "نام کاربری"
-    }
+    },
+    "form": {
+      "title": "تکنسین",
+      "editTitle": "ویرایش تکنسین",
+      "createTitle": "افزودن تکنسین جدید",
+      "description": "برای افزودن تکنسین جدید، اطلاعات را تکمیل کنید.",
+      "editDescription": "اطلاعات تکنسین را به‌روزرسانی کنید.",
+      "fullName": "نام کامل",
+      "username": "نام کاربری",
+      "password": "رمز عبور",
+      "newPassword": "رمز عبور جدید (اختیاری)",
+      "phone": "تلفن",
+      "nationalId": "کد ملی",
+      "address": "آدرس",
+      "status": "وضعیت",
+      "passwordRequired": "پسورد نیاز  است",
+      "fullNamePlaceholder": "نادعلی جعفری",
+      "usernamePlaceholder": "nadali",
+      "passwordPlaceholder": "اگه میخواید قبلی بمونه خالی بزارید",
+      "phonePlaceholder": "+989122222222",
+      "nationalIdPlaceholder": "کد ملی",
+      "addressPlaceholder": "آدرس کامل"
+    },
+    "deleteDesc": "این عملیات تکنسین \"{{name}}\" را به طور دائمی حذف می‌کند. این عمل قابل بازگشت نیست.",
+    "deleteSuccess": "تکنسین با موفقیت حذف شد",
+    "createSuccess": "تکنسین با موفقیت ایجاد شد",
+    "updateSuccess": "تکنسین با موفقیت به‌روزرسانی شد",
+    "toggleSuccess": "وضعیت تکنسین به‌روزرسانی شد"
   },
   "repairs": {
     "title": "تعمیرات",
     "subtitle": "مدیریت درخواست‌های تعمیر و پیگیری وضعیت آن‌ها",
     "new": "تعمیر جدید",
     "searchPlaceholder": "جستجو بر اساس توضیحات...",
+    "entity": "تعمیر",
     "table": {
       "guarantee": "گارانتی",
       "technician": "تکنسین"
-    }
+    },
+    "deleteDesc": "این عملیات درخواست تعمیر برای {{code}} ({{customer}}) را به طور دائمی حذف می‌کند. این عمل قابل بازگشت نیست.",
+    "deleteSuccess": "تعمیر با موفقیت حذف شد",
+    "createSuccess": "تعمیر با موفقیت ایجاد شد",
+    "reviewSuccess": "تعمیر با موفقیت بررسی شد",
+    "cancelSuccess": "تعمیر با موفقیت لغو شد",
+    "cancelConfirm": "لغو این تعمیر؟",
+    "cancelDesc": "این عملیات تعمیر برای {{code}} ({{customer}}) را به عنوان لغو شده علامت‌گذاری می‌کند.",
+    "reviewTitle": "بررسی تعمیر",
+    "approveAction": "تایید تعمیر",
+    "rejectAction": "رد تعمیر"
   },
   "status": {
     "Pending": "در انتظار",
@@ -253,7 +353,12 @@
       "submitting": "در حال ثبت...",
       "cancel": "انصراف",
       "alreadyRegistered": "گارانتی خود را قبلاً ثبت کرده‌اید؟",
-      "checkStatusLink": "بررسی وضعیت"
+      "checkStatusLink": "بررسی وضعیت",
+      "successTitle": "ثبت با موفقیت انجام شد!",
+      "successDesc": "گارانتی شما ثبت شده و در انتظار تایید مدیر است.",
+      "pendingApproval": "در انتظار تایید",
+      "registerAnother": "ثبت گارانتی دیگر",
+      "goHome": "بازگشت به خانه"
     },
     "checkStatus": {
       "title": "بررسی وضعیت گارانتی",

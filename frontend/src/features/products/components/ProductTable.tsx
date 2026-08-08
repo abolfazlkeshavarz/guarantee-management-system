@@ -56,7 +56,7 @@ export function ProductTable({ products, onEdit, onDelete, isLoading }: ProductT
               <TableCell className="max-w-xs truncate">{product.description || '-'}</TableCell>
               <TableCell>
                 <Badge variant={product.is_active ? 'default' : 'secondary'}>
-                  {product.is_active ? 'Active' : 'Inactive'}
+                  {product.is_active ? t('forms.active') : t('forms.inactive')}
                 </Badge>
               </TableCell>
               <TableCell><FormattedDate date={product.created_at} format="MMM DD, YYYY" /></TableCell>
@@ -69,11 +69,11 @@ export function ProductTable({ products, onEdit, onDelete, isLoading }: ProductT
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onEdit(product)}>
                       <Edit className="me-2 h-4 w-4" />
-                      Edit
+                      {t('common.edit')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onDelete(product)} className="text-destructive">
                       <Trash2 className="me-2 h-4 w-4" />
-                      Delete
+                      {t('common.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

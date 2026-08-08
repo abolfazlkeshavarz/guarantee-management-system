@@ -319,7 +319,7 @@ export function GuaranteesPage() {
         onRenew={(g) => { setSelectedGuarantee(g); setIsRenewOpen(true) }}
         onCancel={(g) => { 
           setSelectedGuarantee(g)
-          if (confirm(`Are you sure you want to cancel ${g.code} for ${g.customer_name}?`)) {
+          if (confirm(t('guarantees.cancelConfirm', { code: g.code, customer: g.customer_name }))) {
             handleCancel()
           }
         }}
@@ -327,12 +327,15 @@ export function GuaranteesPage() {
         isLoading={isLoading}
       />
 
-      {/* Pagination */}
       {data && data.total > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
-            Showing {((data.page - 1) * data.limit) + 1} to{' '}
-            {Math.min(data.page * data.limit, data.total)} of {data.total} guarantees
+            {t('common.showingRange', {
+              from: ((data.page - 1) * data.limit) + 1,
+              to: Math.min(data.page * data.limit, data.total),
+              total: data.total,
+              entity: t('guarantees.entity')
+            })}
           </p>
           <div className="flex gap-2">
             <Button
@@ -340,14 +343,14 @@ export function GuaranteesPage() {
               disabled={data.page <= 1}
               onClick={() => setPage(data.page - 1)}
             >
-              Previous
+              {t('common.previous')}
             </Button>
             <Button
               variant="outline"
               disabled={data.page >= data.last_page}
               onClick={() => setPage(data.page + 1)}
             >
-              Next
+              {t('common.next')}
             </Button>
           </div>
         </div>

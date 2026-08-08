@@ -1,5 +1,6 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ export function RepairReviewDialog({
   onConfirm,
   isLoading,
 }: RepairReviewDialogProps) {
+  const { t } = useTranslation()
   const form = useForm<ReviewRepairFormValues>({
     resolver: zodResolver(reviewRepairSchema),
     defaultValues: {
@@ -54,7 +56,7 @@ export function RepairReviewDialog({
     }
   }
 
-  const title = action === 'approve' ? 'Approve Repair' : 'Reject Repair'
+  const title = action === 'approve' ? t('repairs.approveAction') : t('repairs.rejectAction')
   const buttonClass = action === 'approve'
     ? 'bg-green-600 hover:bg-green-700'
     : 'bg-red-600 hover:bg-red-700'
@@ -77,10 +79,10 @@ export function RepairReviewDialog({
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
+                  <FormLabel>{t('common.notes')}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Add notes about this decision..."
+                      placeholder={t('common.notesPlaceholder')}
                       className="resize-none min-h-[80px]"
                       {...field}
                     />
@@ -91,10 +93,10 @@ export function RepairReviewDialog({
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading} className={buttonClass}>
-                {isLoading ? 'Processing...' : title}
+                {isLoading ? t('common.saving') : title}
               </Button>
             </DialogFooter>
           </form>

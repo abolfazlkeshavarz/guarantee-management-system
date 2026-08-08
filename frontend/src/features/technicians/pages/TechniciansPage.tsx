@@ -49,11 +49,11 @@ export function TechniciansPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['technicians'] })
       invalidateDashboard()
-      toast.success('Technician created successfully')
+      toast.success(t('technicians.createSuccess'))
       setIsFormOpen(false)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create technician')
+      toast.error(error.response?.data?.message || t('common.error'))
     },
   })
 
@@ -63,12 +63,12 @@ export function TechniciansPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['technicians'] })
       invalidateDashboard()
-      toast.success('Technician updated successfully')
+      toast.success(t('technicians.updateSuccess'))
       setIsFormOpen(false)
       setSelectedTechnician(null)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update technician')
+      toast.error(error.response?.data?.message || t('common.error'))
     },
   })
 
@@ -77,12 +77,12 @@ export function TechniciansPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['technicians'] })
       invalidateDashboard()
-      toast.success('Technician deleted successfully')
+      toast.success(t('technicians.deleteSuccess'))
       setIsDeleteOpen(false)
       setSelectedTechnician(null)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete technician')
+      toast.error(error.response?.data?.message || t('common.error'))
     },
   })
 
@@ -92,17 +92,16 @@ export function TechniciansPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['technicians'] })
       invalidateDashboard()
-      toast.success('Technician status updated')
+      toast.success(t('technicians.toggleSuccess'))
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update status')
+      toast.error(error.response?.data?.message || t('common.error'))
     },
   })
 
   const handleCreate = async (data: TechnicianFormValues) => {
-    // Ensure password is provided for creation
     if (!data.password) {
-      toast.error('Password is required')
+      toast.error(t('technicians.form.passwordRequired'))
       return
     }
     await createMutation.mutateAsync(data as any)
@@ -110,7 +109,6 @@ export function TechniciansPage() {
 
   const handleUpdate = async (data: TechnicianFormValues) => {
     if (selectedTechnician) {
-      // Remove username from update data
       const { username, ...updateData } = data
       await updateMutation.mutateAsync({ 
         id: selectedTechnician.id, 
@@ -194,8 +192,12 @@ export function TechniciansPage() {
       {data && data.total > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
-            Showing {Math.min((data.page - 1) * data.limit + 1, data.total)} to{' '}
-            {Math.min(data.page * data.limit, data.total)} of {data.total} technicians
+            {t('common.showingRange', {
+              from: Math.min((data.page - 1) * data.limit + 1, data.total),
+              to: Math.min(data.page * data.limit, data.total),
+              total: data.total,
+              entity: t('technicians.entity')
+            })}
           </p>
           <div className="flex gap-2">
             <Button
@@ -203,14 +205,14 @@ export function TechniciansPage() {
               disabled={data.page <= 1}
               onClick={() => setPage(data.page - 1)}
             >
-              Previous
+              {t('common.previous')}
             </Button>
             <Button
               variant="outline"
               disabled={data.page >= data.last_page}
               onClick={() => setPage(data.page + 1)}
             >
-              Next
+              {t('common.next')}
             </Button>
           </div>
         </div>

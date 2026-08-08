@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,23 +26,28 @@ export function RepairCancelDialog({
   onConfirm,
   isLoading,
 }: RepairCancelDialogProps) {
+  const { t } = useTranslation()
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Cancel this repair?</AlertDialogTitle>
+          <AlertDialogTitle>{t('repairs.cancelConfirm')}</AlertDialogTitle>
           <AlertDialogDescription>
-            This will mark the repair for <span className="font-medium">{repair?.guarantee_code}</span> ({repair?.customer_name}) as cancelled.
+            {t('repairs.cancelDesc', { 
+              code: repair?.guarantee_code, 
+              customer: repair?.customer_name 
+            })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Back</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isLoading}
             className="bg-orange-600 text-white hover:bg-orange-700"
           >
-            {isLoading ? 'Cancelling...' : 'Cancel Repair'}
+            {isLoading ? t('common.saving') : t('common.cancel')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

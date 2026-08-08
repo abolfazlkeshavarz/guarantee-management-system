@@ -17,6 +17,7 @@ import {
 import { productSchema, ProductFormValues } from '../schemas/productSchema'
 import { Product } from '../types'
 import { categoryService } from '@/features/categories/api/categories'
+import { useTranslation } from 'react-i18next'
 
 interface ProductFormProps {
   open: boolean
@@ -27,6 +28,7 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }: ProductFormProps) {
+  const { t } = useTranslation()
   const { data: categories = [] } = useQuery({
     queryKey: ['categories-active'],
     queryFn: categoryService.listActive,
@@ -63,9 +65,9 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{product ? 'Edit Product' : 'Add New Product'}</DialogTitle>
+          <DialogTitle>{product ? t('products.form.editTitle') : t('products.form.createTitle')}</DialogTitle>
           <DialogDescription>
-            {product ? 'Update the product information below.' : 'Fill in the details to add a new product.'}
+            {product ? t('products.form.editDescription') : t('products.form.description')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -139,8 +141,8 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="true">Active</SelectItem>
-                      <SelectItem value="false">Inactive</SelectItem>
+                      <SelectItem value="true">{t('forms.active')}</SelectItem>
+                      <SelectItem value="false">{t('forms.inactive')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -148,9 +150,11 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                {t('common.cancel')}
+              </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Saving...' : product ? 'Update' : 'Create'}
+                {isLoading ? t('common.saving') : product ? t('common.update') : t('common.create')}
               </Button>
             </DialogFooter>
           </form>

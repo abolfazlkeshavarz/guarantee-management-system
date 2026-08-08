@@ -76,11 +76,11 @@ export function TechnicianTable({
               <TableCell>{tech.phone || '-'}</TableCell>
               <TableCell>
                 <Badge variant={tech.is_active ? 'default' : 'secondary'}>
-                  {tech.is_active ? 'Active' : 'Inactive'}
+                  {tech.is_active ? t('forms.active') : t('forms.inactive')}
                 </Badge>
               </TableCell>
               <TableCell>
-                {format(new Date(tech.created_at), 'MMM d, yyyy')}
+                <FormattedDate date={tech.created_at} format="MMM DD, YYYY" />
               </TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>
@@ -93,18 +93,18 @@ export function TechnicianTable({
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onEdit(tech)}>
                       <Edit className="me-2 h-4 w-4" />
-                      Edit
+                      {t('common.edit')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onToggleStatus(tech)}>
                       <Power className="me-2 h-4 w-4" />
-                      {tech.is_active ? 'Deactivate' : 'Activate'}
+                      {tech.is_active ? t('common.deactivate') : t('common.activate')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => onDelete(tech)}
                       className="text-destructive"
                     >
                       <Trash2 className="me-2 h-4 w-4" />
-                      Delete
+                      {t('common.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

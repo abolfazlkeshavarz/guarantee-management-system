@@ -27,7 +27,33 @@
     "reject": "Reject",
     "renew": "Renew",
     "noResultsTitle": "No results found",
-    "tryAdjustFilters": "Try adjusting your filters or create a new one."
+    "tryAdjustFilters": "Try adjusting your filters or create a new one.",
+    "confirmDelete": "Are you sure?",
+    "deleteWarning": "This action cannot be undone.",
+    "deleting": "Deleting...",
+    "saving": "Saving...",
+    "showingRange": "Showing {{from}} to {{to}} of {{total}} {{entity}}s",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "notes": "Notes",
+    "notesPlaceholder": "Add notes about this decision...",
+    "error": "Something went wrong. Please try again."
+  },
+  "forms": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "status": "Status",
+    "name": "Name",
+    "description": "Description",
+    "cancel": "Cancel",
+    "create": "Create",
+    "update": "Update",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirmDelete": "Confirm Delete",
+    "selectOption": "Select an option",
+    "required": "Required",
+    "optional": "Optional"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -99,13 +125,24 @@
     "allStatus": "All Status",
     "allCustomers": "All Customers",
     "allProducts": "All Products",
+    "entity": "guarantee",
+    "expired": "(Expired)",
+    "cancelConfirm": "Are you sure you want to cancel {{code}} for {{customer}}?",
     "table": {
       "code": "Code",
       "customer": "Customer",
       "product": "Product",
       "purchaseDate": "Purchase Date",
       "expiryDate": "Expiry Date"
-    }
+    },
+    "deleteDesc": "This will permanently delete the guarantee {{code}} for customer {{customer}}. This action cannot be undone.",
+    "deleteSuccess": "Guarantee deleted successfully",
+    "createSuccess": "Guarantee created successfully",
+    "updateSuccess": "Guarantee updated successfully",
+    "approveSuccess": "Guarantee approved successfully",
+    "rejectSuccess": "Guarantee rejected successfully",
+    "renewSuccess": "Guarantee renewed successfully",
+    "cancelSuccess": "Guarantee cancelled successfully"
   },
   "customers": {
     "title": "Customers",
@@ -123,14 +160,38 @@
     "add": "Add Product",
     "searchPlaceholder": "Search by name or description...",
     "allCategories": "All categories",
+    "entity": "product",
     "table": {
       "category": "Category"
-    }
+    },
+    "form": {
+      "title": "Product",
+      "editTitle": "Edit Product",
+      "createTitle": "Add New Product",
+      "description": "Fill in the details to add a new product.",
+      "editDescription": "Update the product information below."
+    },
+    "deleteDesc": "This will permanently delete the product \"{{name}}\". This action cannot be undone.",
+    "deleteSuccess": "Product deleted successfully",
+    "createSuccess": "Product created successfully",
+    "updateSuccess": "Product updated successfully"
   },
   "categories": {
     "title": "Product Categories",
     "add": "Add Category",
-    "searchPlaceholder": "Search by name..."
+    "searchPlaceholder": "Search by name...",
+    "entity": "category",
+    "form": {
+      "title": "Category",
+      "editTitle": "Edit Category",
+      "createTitle": "Add New Category",
+      "description": "Fill in the details to add a new product category.",
+      "editDescription": "Update the category information below."
+    },
+    "deleteDesc": "This will permanently delete the category \"{{name}}\". This is only possible if no products are assigned to it.",
+    "deleteSuccess": "Category deleted successfully",
+    "createSuccess": "Category created successfully",
+    "updateSuccess": "Category updated successfully"
   },
   "repairCatalog": {
     "title": "Repair Components & Services",
@@ -146,19 +207,58 @@
     "title": "Technicians",
     "add": "Add Technician",
     "searchPlaceholder": "Search by name or username...",
+    "entity": "technician",
     "table": {
       "username": "Username"
-    }
+    },
+    "form": {
+      "title": "Technician",
+      "editTitle": "Edit Technician",
+      "createTitle": "Add New Technician",
+      "description": "Fill in the details to add a new technician.",
+      "editDescription": "Update the technician information below.",
+      "fullName": "Full Name",
+      "username": "Username",
+      "password": "Password",
+      "newPassword": "New Password (optional)",
+      "phone": "Phone",
+      "nationalId": "National ID",
+      "address": "Address",
+      "status": "Status",
+      "passwordRequired": "Password is required",
+      "fullNamePlaceholder": "John Technician",
+      "usernamePlaceholder": "johntech",
+      "passwordPlaceholder": "Leave blank to keep current",
+      "phonePlaceholder": "+1234567890",
+      "nationalIdPlaceholder": "ID123456",
+      "addressPlaceholder": "123 Tech Street, City"
+    },
+    "deleteDesc": "This will permanently delete the technician \"{{name}}\". This action cannot be undone.",
+    "deleteSuccess": "Technician deleted successfully",
+    "createSuccess": "Technician created successfully",
+    "updateSuccess": "Technician updated successfully",
+    "toggleSuccess": "Technician status updated"
   },
   "repairs": {
     "title": "Repairs",
     "subtitle": "Manage repair requests and track their status",
     "new": "New Repair",
     "searchPlaceholder": "Search by description...",
+    "entity": "repair",
     "table": {
       "guarantee": "Guarantee",
       "technician": "Technician"
-    }
+    },
+    "deleteDesc": "This will permanently delete the repair request for {{code}} ({{customer}}). This action cannot be undone.",
+    "deleteSuccess": "Repair deleted successfully",
+    "createSuccess": "Repair created successfully",
+    "reviewSuccess": "Repair reviewed successfully",
+    "cancelSuccess": "Repair cancelled successfully",
+    "cancelConfirm": "Cancel this repair?",
+    "cancelDesc": "This will mark the repair for {{code}} ({{customer}}) as cancelled.",
+    "reviewTitle": "Repair Review",
+    "approveAction": "Approve Repair",
+    "rejectAction": "Reject Repair"
   },
   "status": {
     "Pending": "Pending",
@@ -253,7 +353,12 @@
       "submitting": "Registering...",
       "cancel": "Cancel",
       "alreadyRegistered": "Already have a registered guarantee?",
-      "checkStatusLink": "Check status"
+      "checkStatusLink": "Check status",
+      "successTitle": "Registration Successful!",
+      "successDesc": "Your guarantee has been registered and is pending admin approval.",
+      "pendingApproval": "Pending Approval",
+      "registerAnother": "Register Another",
+      "goHome": "Go to Home"
     },
     "checkStatus": {
       "title": "Check Guarantee Status",
