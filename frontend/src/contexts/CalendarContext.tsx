@@ -53,14 +53,7 @@ const GREGORIAN_MONTHS = [
   'December',
 ]
 
-// Date strings coming from the backend (purchase_date, expiry_date, created_at,
-// etc.) are always plain Gregorian "YYYY-MM-DD" -- regardless of the active
-// display calendar. They must NEVER be run through the calendar-aware
-// `parseDate` below (that one is for user-typed input, which really is in
-// whatever calendar is currently selected). Mixing the two produces dates
-// like "شهریور 5، 2026" -- a Jalali month name paired with the untouched
-// Gregorian year, because a Gregorian string got misread as if it were
-// already Jalali.
+// Date strings coming from the backend are always plain Gregorian "YYYY-MM-DD".
 function parseGregorianDate(value: string): Date | null {
   if (!value) return null
   const parts = value.split('-')
@@ -76,26 +69,31 @@ function parseGregorianDate(value: string): Date | null {
   return isNaN(date.getTime()) ? null : date
 }
 
-const JALALI_MONTHS_DATA = [
-  { number: 1, name: 'فروردین', days: 31 },
-  { number: 2, name: 'اردیبهشت', days: 31 },
-  { number: 3, name: 'خرداد', days: 31 },
-  { number: 4, name: 'تیر', days: 31 },
-  { number: 5, name: 'مرداد', days: 31 },
-  { number: 6, name: 'شهریور', days: 31 },
-  { number: 7, name: 'مهر', days: 30 },
-  { number: 8, name: 'آبان', days: 30 },
-  { number: 9, name: 'آذر', days: 30 },
-  { number: 10, name: 'دی', days: 30 },
-  { number: 11, name: 'بهمن', days: 30 },
-  { number: 12, name: 'اسفند', days: 29 }
-]
+// Correct Jalali month lengths:
+// Months 1-6: 31 days
+// Months 7-11: 30 days
+// Month 12: 29 days (30 in leap years)
+function getJalaliMonthLength(year: number, month: number): number {
+  if (month <= 6) return 31
+  if (month <= 11) return 30
+  // Month 12 (Esfand)
+  return isJalaliLeap(year) ? 30 : 29
+}
 
-export function CalendarProvider({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+// Jalali leap year detection using the 33-year cycle
+function isJalaliLeap(year: number): boolean {
+  const remainders = [1, 5, 9, 13, 17, 22, 26, 30]
+  return remainders.includes(((year % 33) + 33) % 33)
+}
+
+// Build month data with correct day counts
+const JALALI_MONTHS_DATA = Array.from({ length: 12 }, (_, i) => ({
+  number: i + 1,
+  name: JALALI_MONTHS[i],
+  days: getJalaliMonthLength(1404, i + 1), // days field here is just for reference
+}))
+
+export function CalendarProvider({ children }: { children: React.ReactNode }) {
   const [calendarType, setCalendarType] = useState<CalendarType>(() => {
     const saved = localStorage.getItem('calendarType')
     return (saved as CalendarType) || 'gregorian'
@@ -106,57 +104,48 @@ export function CalendarProvider({
   }, [calendarType])
 
   const toggleCalendar = () => {
-    setCalendarType((prev) =>
-      prev === 'gregorian' ? 'jalali' : 'gregorian'
-    )
+    setCalendarType((prev) => (prev === 'gregorian' ? 'jalali' : 'gregorian'))
   }
 
-  const getJalaliMonthName = (month: number) =>
-    JALALI_MONTHS[month - 1] ?? ''
+  const getJalaliMonthName = (month: number) => JALALI_MONTHS[month - 1] ?? ''
+  const getGregorianMonthName = (month: number) => GREGORIAN_MONTHS[month - 1] ?? ''
 
-  const getGregorianMonthName = (month: number) =>
-    GREGORIAN_MONTHS[month - 1] ?? ''
-
-  const getJalaliMonths = () => JALALI_MONTHS_DATA
-
-  const isJalaliLeapYear = (year: number): boolean => {
-    const remainders = [1, 5, 9, 13, 17, 22, 26, 30]
-    return remainders.includes(year % 33)
+  const getJalaliMonths = (): Array<{ number: number; name: string; days: number }> => {
+    // Return months with correct day counts for a reference year
+    return JALALI_MONTHS.map((name, i) => ({
+      number: i + 1,
+      name,
+      days: getJalaliMonthLength(1404, i + 1),
+    }))
   }
+
+  const isJalaliLeapYear = (year: number): boolean => isJalaliLeap(year)
 
   const getDaysInJalaliMonth = (year: number, month: number): number => {
-    const jDate = moment(`${year}/${month}/1`, 'jYYYY/jMM/jDD')
-    return jDate.daysInMonth()
+    return getJalaliMonthLength(year, month)
   }
 
   const getJalaliFirstDayOfMonth = (year: number, month: number): number => {
-    const jDate = moment(`${year}/${month}/1`, 'jYYYY/jMM/jDD')
-    const dayOfWeek = jDate.day()
+    // Convert the 1st of the Jalali month to Gregorian, then get day-of-week
+    const gregorianDate = toGregorianDate({ year, month, day: 1 })
+    const dayOfWeek = gregorianDate.getUTCDay() // 0=Sun ... 6=Sat
+    // Jalali week starts Saturday: Sat=0, Sun=1, Mon=2, ... Fri=6
     return (dayOfWeek + 1) % 7
   }
 
-  const toGregorian = (jalaliDate: {
-    year: number
-    month: number
-    day: number
-  }): Date => {
-    const jDate = moment(`${jalaliDate.year}/${jalaliDate.month}/${jalaliDate.day}`, 'jYYYY/jMM/jDD')
-    // Use UTC to avoid timezone issues
+  const toGregorianDate = (jalaliDate: { year: number; month: number; day: number }): Date => {
+    const jDate = moment(
+      `${jalaliDate.year}/${jalaliDate.month}/${jalaliDate.day}`,
+      'jYYYY/jMM/jDD'
+    )
     const gregorian = jDate.toDate()
-    return new Date(Date.UTC(
-      gregorian.getFullYear(),
-      gregorian.getMonth(),
-      gregorian.getDate()
-    ))
+    return new Date(Date.UTC(gregorian.getFullYear(), gregorian.getMonth(), gregorian.getDate()))
   }
 
+  const toGregorian = toGregorianDate
+
   const toJalali = (date: Date): { year: number; month: number; day: number } => {
-    // Use UTC to avoid timezone issues
-    const utcDate = new Date(Date.UTC(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate()
-    ))
+    const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
     const jDate = moment(utcDate)
     return {
       year: jDate.jYear(),
@@ -168,7 +157,6 @@ export function CalendarProvider({
   const parseDate = (value: string): Date | null => {
     if (!value) return null
 
-    // Try parsing as Jalali date first
     if (calendarType === 'jalali') {
       const parts = value.split('-')
       if (parts.length === 3) {
@@ -179,17 +167,12 @@ export function CalendarProvider({
           const jDate = moment(`${y}/${m}/${d}`, 'jYYYY/jMM/jDD')
           if (jDate.isValid()) {
             const gregorian = jDate.toDate()
-            return new Date(Date.UTC(
-              gregorian.getFullYear(),
-              gregorian.getMonth(),
-              gregorian.getDate()
-            ))
+            return new Date(Date.UTC(gregorian.getFullYear(), gregorian.getMonth(), gregorian.getDate()))
           }
         }
       }
     }
 
-    // Try parsing as Gregorian
     const parts = value.split('-')
     if (parts.length === 3) {
       const y = Number(parts[0])
@@ -199,22 +182,14 @@ export function CalendarProvider({
         return new Date(Date.UTC(y, m - 1, d))
       }
     }
-
     const date = new Date(value)
     return isNaN(date.getTime()) ? null : date
   }
 
-  const formatDate = (
-    value: Date | string,
-    format = 'YYYY-MM-DD'
-  ) => {
+  const formatDate = (value: Date | string, format = 'YYYY-MM-DD'): string => {
     if (!value) return ''
-
     let date: Date
-
     if (typeof value === 'string') {
-      // `value` here is always a Gregorian string from the backend/JS Date
-      // being displayed -- never calendar-mode-dependent user input.
       const parsed = parseGregorianDate(value)
       if (!parsed) return ''
       date = parsed
@@ -230,28 +205,16 @@ export function CalendarProvider({
             String(date.getMonth() + 1).padStart(2, '0'),
             String(date.getDate()).padStart(2, '0'),
           ].join('-')
-
         case 'DD/MM/YYYY':
           return [
             String(date.getDate()).padStart(2, '0'),
             String(date.getMonth() + 1).padStart(2, '0'),
             date.getFullYear(),
           ].join('/')
-
         case 'MMM DD, YYYY':
-          return date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })
-
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         case 'full':
-          return date.toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-          })
-
+          return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
         default:
           return [
             date.getFullYear(),
@@ -262,11 +225,7 @@ export function CalendarProvider({
     }
 
     // Jalali format
-    const utcDate = new Date(Date.UTC(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate()
-    ))
+    const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
     const jDate = moment(utcDate)
     const jYear = jDate.jYear()
     const jMonth = jDate.jMonth() + 1
@@ -275,37 +234,27 @@ export function CalendarProvider({
     switch (format) {
       case 'YYYY-MM-DD':
         return `${jYear}-${String(jMonth).padStart(2, '0')}-${String(jDay).padStart(2, '0')}`
-
       case 'DD/MM/YYYY':
         return `${String(jDay).padStart(2, '0')}/${String(jMonth).padStart(2, '0')}/${jYear}`
-
       case 'MMM DD, YYYY':
         return `${JALALI_MONTHS[jMonth - 1]} ${jDay}، ${jYear}`
-
       case 'full':
         return `${jDay} ${JALALI_MONTHS[jMonth - 1]} ${jYear}`
-
       default:
         return `${jYear}-${String(jMonth).padStart(2, '0')}-${String(jDay).padStart(2, '0')}`
     }
   }
 
-  // Format date for backend (always returns Gregorian YYYY-MM-DD)
   const formatDateForBackend = (value: Date | string): string => {
     if (!value) return ''
-
     let date: Date
     if (typeof value === 'string') {
-      // Same reasoning as formatDate: a string here is a Gregorian value
-      // being passed through, not calendar-mode-dependent user input.
       const parsed = parseGregorianDate(value)
       if (!parsed) return ''
       date = parsed
     } else {
       date = value
     }
-
-    // Always return Gregorian format for backend
     return [
       date.getFullYear(),
       String(date.getMonth() + 1).padStart(2, '0'),
@@ -313,15 +262,10 @@ export function CalendarProvider({
     ].join('-')
   }
 
-  // Helper function to check if a date is valid
   const isValidDate = (date: any): boolean => {
     if (!date) return false
-    if (date instanceof Date) {
-      return !isNaN(date.getTime())
-    }
-    if (typeof date === 'string') {
-      return parseDate(date) !== null
-    }
+    if (date instanceof Date) return !isNaN(date.getTime())
+    if (typeof date === 'string') return parseDate(date) !== null
     return false
   }
 
@@ -352,12 +296,8 @@ export function CalendarProvider({
 
 export function useCalendar() {
   const context = useContext(CalendarContext)
-
   if (!context) {
-    throw new Error(
-      'useCalendar must be used within a CalendarProvider'
-    )
+    throw new Error('useCalendar must be used within a CalendarProvider')
   }
-
   return context
 }

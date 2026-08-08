@@ -29,6 +29,7 @@ interface ProductFormProps {
 
 export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }: ProductFormProps) {
   const { t } = useTranslation()
+
   const { data: categories = [] } = useQuery({
     queryKey: ['categories-active'],
     queryFn: categoryService.listActive,
@@ -37,7 +38,16 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: { name: '', description: '', category_id: 0, is_active: true },
+    defaultValues: { 
+      name: '', 
+      description: '', 
+      category_id: 0, 
+      is_active: true,
+      code_prefix: '',
+      code_format: 'simple',
+      default_guarantee_months: 12,
+      golden_guarantee_months: 3,
+    },
   })
 
   useEffect(() => {
@@ -47,9 +57,22 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
         description: product.description || '',
         category_id: product.category_id,
         is_active: product.is_active,
+        code_prefix: product.code_prefix || '',
+        code_format: (product.code_format as any) || 'simple',
+        default_guarantee_months: product.default_guarantee_months || 12,
+        golden_guarantee_months: product.golden_guarantee_months || 3,
       })
     } else {
-      form.reset({ name: '', description: '', category_id: 0, is_active: true })
+      form.reset({ 
+        name: '', 
+        description: '', 
+        category_id: 0, 
+        is_active: true,
+        code_prefix: '',
+        code_format: 'simple',
+        default_guarantee_months: 12,
+        golden_guarantee_months: 3,
+      })
     }
   }, [product, form])
 
@@ -77,7 +100,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name *</FormLabel>
+                  <FormLabel>{t('common.name')} *</FormLabel>
                   <FormControl>
                     <Input placeholder='e.g. Smart TV 55"' {...field} />
                   </FormControl>
@@ -90,7 +113,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
               name="category_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category *</FormLabel>
+                  <FormLabel>{t('products.table.category')} *</FormLabel>
                   <Select
                     items={categories.map((cat) => ({ value: String(cat.id), label: cat.name }))}
                     value={field.value ? String(field.value) : ''}
@@ -116,7 +139,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('common.description')}</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Optional description" className="resize-none" {...field} />
                   </FormControl>
@@ -124,14 +147,89 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
                 </FormItem>
               )}
             />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="code_prefix"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('products.form.codePrefix')} *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. EVC" {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="code_format"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('products.form.codeFormat')} *</FormLabel>
+                    <Select
+                      items={[
+                        { value: 'simple', label: 'Simple' }, 
+                        { value: 'jalali_encoded', label: 'Jalali Encoded' }
+                      ]}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="simple">Simple</SelectItem>
+                        <SelectItem value="jalali_encoded">Jalali Encoded</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="default_guarantee_months"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('products.form.defaultMonths')} *</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="golden_guarantee_months"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('products.form.goldenMonths')} *</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">{t('products.form.goldenHint', { n: field.value })}</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="is_active"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>{t('common.status')}</FormLabel>
                   <Select
-                    items={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
+                    items={[{ value: 'true', label: t('forms.active') }, { value: 'false', label: t('forms.inactive') }]}
                     value={field.value ? 'true' : 'false'}
                     onValueChange={(value) => field.onChange(value === 'true')}
                   >

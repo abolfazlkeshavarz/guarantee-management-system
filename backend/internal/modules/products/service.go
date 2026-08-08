@@ -2,11 +2,12 @@ package products
 
 import (
 	"time"
-
+	"strings"
 	"guarantee-management-system/internal/modules/categories"
 	"guarantee-management-system/internal/shared/errors"
 	"guarantee-management-system/internal/shared/warrantycode"
-
+	"fmt"
+	"regexp"
 	"gorm.io/gorm"
 )
 
@@ -33,16 +34,43 @@ func (s *ProductService) Create(req *CreateProductRequest) (*ProductDTO, error) 
 		return nil, ErrProductDuplicate
 	}
 
+	// Validate guarantee periods
+	if req.GoldenGuaranteeMonths > req.DefaultGuaranteeMonths {
+		return nil, errors.NewAppError(errors.ErrValidation,
+			"Golden period cannot exceed the total guarantee period", 400)
+	}
+
+	// Build code pattern
+	pattern, err := BuildCodePattern(req.CodePrefix, req.CodeFormat, req.CodePattern)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check prefix uniqueness
+	existingPrefix, err := s.repo.FindByCodePrefix(strings.ToUpper(req.CodePrefix))
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check code prefix", 500)
+	}
+	if existingPrefix != nil {
+		return nil, errors.NewAppError(errors.ErrDuplicateEntry,
+			"Another product already uses this code prefix", 409)
+	}
+
 	isActive := true
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
 
 	product := &Product{
-		Name:        req.Name,
-		Description: req.Description,
-		CategoryID:  req.CategoryID,
-		IsActive:    isActive,
+		Name:                   req.Name,
+		Description:            req.Description,
+		CategoryID:             req.CategoryID,
+		IsActive:               isActive,
+		CodePrefix:             strings.ToUpper(req.CodePrefix),
+		CodePattern:            pattern,
+		CodeFormat:             req.CodeFormat,
+		DefaultGuaranteeMonths: req.DefaultGuaranteeMonths,
+		GoldenGuaranteeMonths:  req.GoldenGuaranteeMonths,
 	}
 
 	if err := s.repo.Create(product); err != nil {
@@ -203,5 +231,23 @@ func (s *ProductService) mapToDTO(product *Product, categoryName string) *Produc
 		IsActive:     product.IsActive,
 		CreatedAt:    product.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    product.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func BuildCodePattern(prefix, format, manual string) (string, error) {
+	prefix = strings.ToUpper(strings.TrimSpace(prefix))
+	switch format {
+	case CodeFormatJalaliEncoded:
+		return fmt.Sprintf(`^[0-9]{4}%s(0[1-9]|1[0-2])[0-9]{5}$`, regexp.QuoteMeta(prefix)), nil
+	case CodeFormatSimple:
+		if manual == "" {
+			return fmt.Sprintf(`^%s-[0-9]{6}$`, regexp.QuoteMeta(prefix)), nil
+		}
+		if _, err := regexp.Compile(manual); err != nil {
+			return "", errors.NewAppError(errors.ErrValidation, "Invalid code pattern: "+err.Error(), 400)
+		}
+		return manual, nil
+	default:
+		return "", errors.NewAppError(errors.ErrValidation, "Unknown code format", 400)
 	}
 }

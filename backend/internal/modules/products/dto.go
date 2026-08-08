@@ -9,10 +9,11 @@ type ProductDTO struct {
 	IsActive     bool   `json:"is_active"`
 	CreatedAt    string `json:"created_at"`
 	UpdatedAt    string `json:"updated_at"`
-
-	// Warranty is only populated by LookupByCode for products whose
-	// CodeFormat is "jalali_encoded" -- it carries the manufacture date
-	// parsed from the guarantee code plus the season/expiry rules.
+	CodePrefix             string `json:"code_prefix"`
+	CodePattern            string `json:"code_pattern"`
+	CodeFormat             string `json:"code_format"`
+	DefaultGuaranteeMonths int    `json:"default_guarantee_months"`
+	GoldenGuaranteeMonths  int    `json:"golden_guarantee_months"`
 	Warranty *WarrantyInfoDTO `json:"warranty,omitempty"`
 }
 
@@ -33,6 +34,11 @@ type CreateProductRequest struct {
 	Description string `json:"description"`
 	CategoryID  uint   `json:"category_id" binding:"required"`
 	IsActive    *bool  `json:"is_active"`
+	CodePrefix             string `json:"code_prefix" binding:"required,min=2,max=20,alphanum"`
+	CodeFormat             string `json:"code_format" binding:"required,oneof=simple jalali_encoded"`
+	CodePattern            string `json:"code_pattern"` // only used when code_format=simple
+	DefaultGuaranteeMonths int    `json:"default_guarantee_months" binding:"required,min=1,max=120"`
+	GoldenGuaranteeMonths  int    `json:"golden_guarantee_months" binding:"min=0,max=120"`
 }
 
 type UpdateProductRequest struct {
@@ -40,6 +46,11 @@ type UpdateProductRequest struct {
 	Description string `json:"description"`
 	CategoryID  uint   `json:"category_id" binding:"omitempty"`
 	IsActive    *bool  `json:"is_active"`
+	CodePrefix             string `json:"code_prefix" binding:"omitempty,min=2,max=20,alphanum"`
+	CodeFormat             string `json:"code_format" binding:"omitempty,oneof=simple jalali_encoded"`
+	CodePattern            string `json:"code_pattern"`
+	DefaultGuaranteeMonths *int   `json:"default_guarantee_months" binding:"omitempty,min=1,max=120"`
+	GoldenGuaranteeMonths  *int   `json:"golden_guarantee_months" binding:"omitempty,min=0,max=120"`
 }
 
 type ListProductsResponse struct {

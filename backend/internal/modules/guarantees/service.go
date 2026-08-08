@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"guarantee-management-system/internal/shared/errors"
+
 	"gorm.io/gorm"
 )
 
@@ -17,6 +18,17 @@ type GuaranteeService struct {
 
 func NewGuaranteeService(repo *GuaranteeRepository, db *gorm.DB) *GuaranteeService {
 	return &GuaranteeService{repo: repo, db: db}
+}
+
+func applyPeriods(g *Guarantee, purchase time.Time, defaultMonths, goldenMonths int) {
+	g.PurchaseDate = purchase
+	g.ExpiryDate = purchase.AddDate(0, defaultMonths, 0)
+	if goldenMonths > 0 {
+		goldenStart := purchase
+		goldenEnd := purchase.AddDate(0, goldenMonths, 0)
+		g.GoldenStartDate = &goldenStart
+		g.GoldenExpiryDate = &goldenEnd
+	}
 }
 
 func (s *GuaranteeService) generateCode() (string, error) {
@@ -38,7 +50,6 @@ func (s *GuaranteeService) validateDates(purchaseDate, expiryDate time.Time) err
 }
 
 func (s *GuaranteeService) Create(req *CreateGuaranteeRequest, adminID uint) (*GuaranteeDTO, error) {
-	// Parse dates
 	purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
 	if err != nil {
 		return nil, ErrInvalidDate
@@ -47,12 +58,10 @@ func (s *GuaranteeService) Create(req *CreateGuaranteeRequest, adminID uint) (*G
 	if err != nil {
 		return nil, ErrInvalidDate
 	}
-
 	if err := s.validateDates(purchaseDate, expiryDate); err != nil {
 		return nil, err
 	}
 
-	// Verify customer exists
 	var customerExists bool
 	if err := s.db.Table("customers").Where("id = ? AND deleted_at IS NULL", req.CustomerID).Select("count(*) > 0").Find(&customerExists).Error; err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify customer", 500)
@@ -61,7 +70,6 @@ func (s *GuaranteeService) Create(req *CreateGuaranteeRequest, adminID uint) (*G
 		return nil, ErrCustomerNotFound
 	}
 
-	// Verify product exists
 	var productExists bool
 	if err := s.db.Table("products").Where("id = ? AND deleted_at IS NULL", req.ProductID).Select("count(*) > 0").Find(&productExists).Error; err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify product", 500)
@@ -70,7 +78,6 @@ func (s *GuaranteeService) Create(req *CreateGuaranteeRequest, adminID uint) (*G
 		return nil, ErrProductNotFound
 	}
 
-	// Generate unique code
 	var code string
 	for i := 0; i < 3; i++ {
 		code, err = s.generateCode()
@@ -103,12 +110,10 @@ func (s *GuaranteeService) Create(req *CreateGuaranteeRequest, adminID uint) (*G
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create guarantee", 500)
 	}
 
-	// Reload with relations
 	created, err := s.repo.FindByID(guarantee.ID)
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load created guarantee", 500)
 	}
-
 	return s.mapToDTO(created), nil
 }
 
@@ -123,29 +128,25 @@ func (s *GuaranteeService) GetByID(id uint) (*GuaranteeDTO, error) {
 	return s.mapToDTO(guarantee), nil
 }
 
-func (s *GuaranteeService) List(page, limit int, search, status string, customerID, productID *uint) (*ListGuaranteesResponse, error) {
+func (s *GuaranteeService) List(page, limit int, search, status string, customerID, productID *uint, tier string) (*ListGuaranteesResponse, error) {
 	if page < 1 {
 		page = 1
 	}
 	if limit < 1 || limit > 100 {
 		limit = 10
 	}
-
-	guarantees, total, err := s.repo.FindAll(page, limit, search, status, customerID, productID)
+	guarantees, total, err := s.repo.FindAll(page, limit, search, status, customerID, productID, tier)
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list guarantees", 500)
 	}
-
 	dtos := make([]GuaranteeDTO, len(guarantees))
 	for i, guarantee := range guarantees {
 		dtos[i] = *s.mapToDTO(&guarantee)
 	}
-
 	lastPage := int(total) / limit
 	if int(total)%limit != 0 {
 		lastPage++
 	}
-
 	return &ListGuaranteesResponse{
 		Guarantees: dtos,
 		Total:      total,
@@ -163,12 +164,9 @@ func (s *GuaranteeService) Update(id uint, req *UpdateGuaranteeRequest) (*Guaran
 		}
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
 	}
-
-	// Only allow updates if status is Pending
 	if guarantee.Status != StatusPending {
 		return nil, errors.NewAppError(errors.ErrValidation, "Can only update pending guarantees", 400)
 	}
-
 	if req.CustomerID > 0 {
 		var exists bool
 		if err := s.db.Table("customers").Where("id = ? AND deleted_at IS NULL", req.CustomerID).Select("count(*) > 0").Find(&exists).Error; err != nil {
@@ -179,7 +177,6 @@ func (s *GuaranteeService) Update(id uint, req *UpdateGuaranteeRequest) (*Guaran
 		}
 		guarantee.CustomerID = req.CustomerID
 	}
-
 	if req.ProductID > 0 {
 		var exists bool
 		if err := s.db.Table("products").Where("id = ? AND deleted_at IS NULL", req.ProductID).Select("count(*) > 0").Find(&exists).Error; err != nil {
@@ -190,7 +187,6 @@ func (s *GuaranteeService) Update(id uint, req *UpdateGuaranteeRequest) (*Guaran
 		}
 		guarantee.ProductID = req.ProductID
 	}
-
 	if req.PurchaseDate != "" {
 		purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
 		if err != nil {
@@ -198,7 +194,6 @@ func (s *GuaranteeService) Update(id uint, req *UpdateGuaranteeRequest) (*Guaran
 		}
 		guarantee.PurchaseDate = purchaseDate
 	}
-
 	if req.ExpiryDate != "" {
 		expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
 		if err != nil {
@@ -206,11 +201,9 @@ func (s *GuaranteeService) Update(id uint, req *UpdateGuaranteeRequest) (*Guaran
 		}
 		guarantee.ExpiryDate = expiryDate
 	}
-
 	if err := s.validateDates(guarantee.PurchaseDate, guarantee.ExpiryDate); err != nil {
 		return nil, err
 	}
-
 	if req.InvoiceImage != "" {
 		guarantee.InvoiceImage = req.InvoiceImage
 	}
@@ -220,16 +213,13 @@ func (s *GuaranteeService) Update(id uint, req *UpdateGuaranteeRequest) (*Guaran
 	if req.Notes != "" {
 		guarantee.Notes = req.Notes
 	}
-
 	if err := s.repo.Update(guarantee); err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
 	}
-
 	updated, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
 	}
-
 	return s.mapToDTO(updated), nil
 }
 
@@ -241,11 +231,9 @@ func (s *GuaranteeService) Approve(id uint, req *ApproveGuaranteeRequest, adminI
 		}
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
 	}
-
 	if guarantee.Status != StatusPending {
 		return nil, ErrCannotApprove
 	}
-
 	guarantee.Status = req.Status
 	guarantee.ApprovedBy = &adminID
 	now := time.Now()
@@ -253,16 +241,13 @@ func (s *GuaranteeService) Approve(id uint, req *ApproveGuaranteeRequest, adminI
 	if req.Notes != "" {
 		guarantee.Notes = req.Notes
 	}
-
 	if err := s.repo.Update(guarantee); err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
 	}
-
 	updated, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
 	}
-
 	return s.mapToDTO(updated), nil
 }
 
@@ -274,35 +259,28 @@ func (s *GuaranteeService) Renew(id uint, req *RenewGuaranteeRequest, adminID ui
 		}
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
 	}
-
 	if guarantee.Status != StatusApproved && guarantee.Status != StatusRenewed {
 		return nil, ErrCannotRenew
 	}
-
 	newExpiryDate, err := time.Parse("2006-01-02", req.NewExpiryDate)
 	if err != nil {
 		return nil, ErrInvalidDate
 	}
-
 	if newExpiryDate.Before(guarantee.ExpiryDate) {
 		return nil, errors.NewAppError(errors.ErrValidation, "New expiry date must be after current expiry date", 400)
 	}
-
 	guarantee.ExpiryDate = newExpiryDate
 	guarantee.Status = StatusRenewed
 	if req.Notes != "" {
 		guarantee.Notes = req.Notes
 	}
-
 	if err := s.repo.Update(guarantee); err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
 	}
-
 	updated, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
 	}
-
 	return s.mapToDTO(updated), nil
 }
 
@@ -314,21 +292,17 @@ func (s *GuaranteeService) Cancel(id uint, adminID uint) (*GuaranteeDTO, error) 
 		}
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
 	}
-
 	if guarantee.Status == StatusCancelled || guarantee.Status == StatusExpired {
 		return nil, ErrCannotCancel
 	}
-
 	guarantee.Status = StatusCancelled
 	if err := s.repo.Update(guarantee); err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
 	}
-
 	updated, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
 	}
-
 	return s.mapToDTO(updated), nil
 }
 
@@ -347,7 +321,6 @@ func (s *GuaranteeService) GetExpiringSoon(days int) ([]GuaranteeDTO, error) {
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find expiring guarantees", 500)
 	}
-
 	dtos := make([]GuaranteeDTO, len(guarantees))
 	for i, guarantee := range guarantees {
 		dtos[i] = *s.mapToDTO(&guarantee)
@@ -355,33 +328,123 @@ func (s *GuaranteeService) GetExpiringSoon(days int) ([]GuaranteeDTO, error) {
 	return dtos, nil
 }
 
-func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
-	dto := &GuaranteeDTO{
-		ID:                  guarantee.ID,
-		Code:                guarantee.Code,
-		CustomerID:          guarantee.CustomerID,
-		ProductID:           guarantee.ProductID,
-		Status:              guarantee.Status,
-		InvoiceImage:        guarantee.InvoiceImage,
-		GuaranteeCardImage:  guarantee.GuaranteeCardImage,
-		Notes:               guarantee.Notes,
-		CreatedAt:           guarantee.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:           guarantee.UpdatedAt.Format(time.RFC3339),
-		PurchaseDate:        guarantee.PurchaseDate.Format("2006-01-02"),
-		ExpiryDate:          guarantee.ExpiryDate.Format("2006-01-02"),
+// ─── Golden management ───────────────────────────────────────────────
+
+func (s *GuaranteeService) SetGolden(id uint, req *SetGoldenRequest, adminID uint) (*GuaranteeDTO, error) {
+	guarantee, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrGuaranteeNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
 	}
 
-	// Check if Customer is loaded (ID > 0 means it was preloaded)
+	if guarantee.Status != StatusApproved && guarantee.Status != StatusRenewed {
+		return nil, errors.NewAppError(errors.ErrValidation,
+			"Only approved or renewed guarantees can be set to golden", 400)
+	}
+
+	var startDate time.Time
+	switch req.StartDateType {
+	case "today":
+		now := time.Now()
+		startDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	case "purchase_date":
+		startDate = time.Date(guarantee.PurchaseDate.Year(), guarantee.PurchaseDate.Month(),
+			guarantee.PurchaseDate.Day(), 0, 0, 0, 0, time.UTC)
+	case "custom":
+		if req.CustomStartDate == "" {
+			return nil, errors.NewAppError(errors.ErrValidation, "Custom start date is required", 400)
+		}
+		startDate, err = time.Parse("2006-01-02", req.CustomStartDate)
+		if err != nil {
+			return nil, ErrInvalidDate
+		}
+		startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
+	default:
+		return nil, errors.NewAppError(errors.ErrValidation, "Invalid start date type", 400)
+	}
+
+	goldenExpiry := startDate.AddDate(0, req.GoldenMonths, 0)
+
+	if goldenExpiry.After(guarantee.ExpiryDate) {
+		return nil, errors.NewAppError(errors.ErrValidation,
+			"Golden expiry date cannot exceed the overall guarantee expiry date", 400)
+	}
+
+	guarantee.GoldenStartDate  = &startDate
+	guarantee.GoldenExpiryDate = &goldenExpiry
+
+	if err := s.repo.Update(guarantee); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
+	}
+
+	updated, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
+	}
+	return s.mapToDTO(updated), nil
+}
+
+func (s *GuaranteeService) RemoveGolden(id uint, adminID uint) (*GuaranteeDTO, error) {
+	guarantee, err := s.repo.FindByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrGuaranteeNotFound
+		}
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
+	}
+
+	guarantee.GoldenStartDate  = nil
+	guarantee.GoldenExpiryDate = nil
+
+	if err := s.repo.Update(guarantee); err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
+	}
+
+	updated, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
+	}
+	return s.mapToDTO(updated), nil
+}
+
+// ─── DTO mapping ─────────────────────────────────────────────────────
+
+func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
+	dto := &GuaranteeDTO{
+		ID:                 guarantee.ID,
+		Code:               guarantee.Code,
+		CustomerID:         guarantee.CustomerID,
+		ProductID:          guarantee.ProductID,
+		Status:             guarantee.Status,
+		InvoiceImage:       guarantee.InvoiceImage,
+		GuaranteeCardImage: guarantee.GuaranteeCardImage,
+		Notes:              guarantee.Notes,
+		CreatedAt:          guarantee.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:          guarantee.UpdatedAt.Format(time.RFC3339),
+		PurchaseDate:       guarantee.PurchaseDate.Format("2006-01-02"),
+		ExpiryDate:         guarantee.ExpiryDate.Format("2006-01-02"),
+	}
+
+	if guarantee.GoldenStartDate != nil {
+		gs := guarantee.GoldenStartDate.Format("2006-01-02")
+		dto.GoldenStartDate = &gs
+	}
+	if guarantee.GoldenExpiryDate != nil {
+		ge := guarantee.GoldenExpiryDate.Format("2006-01-02")
+		dto.GoldenExpiryDate = &ge
+	}
+	dto.Tier = guarantee.Tier(time.Now())
+
 	if guarantee.Customer.ID > 0 {
 		dto.CustomerName = guarantee.Customer.FullName
 	} else {
-		// If not preloaded, try to get the name from a separate query
 		var customer Customer
 		if err := s.db.Table("customers").Where("id = ? AND deleted_at IS NULL", guarantee.CustomerID).Select("full_name").Scan(&customer).Error; err == nil {
 			dto.CustomerName = customer.FullName
 		} else {
-			// Fallback: use a placeholder
-			dto.CustomerName = "Customer #" + fmt.Sprintf("%d", guarantee.CustomerID)
+			dto.CustomerName = fmt.Sprintf("Customer #%d", guarantee.CustomerID)
 		}
 	}
 
@@ -392,7 +455,7 @@ func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
 		if err := s.db.Table("products").Where("id = ? AND deleted_at IS NULL", guarantee.ProductID).Select("name").Scan(&product).Error; err == nil {
 			dto.ProductName = product.Name
 		} else {
-			dto.ProductName = "Product #" + fmt.Sprintf("%d", guarantee.ProductID)
+			dto.ProductName = fmt.Sprintf("Product #%d", guarantee.ProductID)
 		}
 	}
 
@@ -400,7 +463,6 @@ func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
 		dto.CreatedBy = &guarantee.CreatedByAdmin.ID
 		dto.CreatedByUsername = guarantee.CreatedByAdmin.Username
 	} else if guarantee.CreatedBy != nil {
-		// Try to get admin info from DB
 		var admin Admin
 		if err := s.db.Table("admins").Where("id = ?", *guarantee.CreatedBy).Select("id, username").Scan(&admin).Error; err == nil {
 			dto.CreatedBy = &admin.ID
@@ -427,10 +489,9 @@ func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
 	return dto
 }
 
-// Add this method to GuaranteeService
+// ─── Public registration ─────────────────────────────────────────────
 
 func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRegisterResponse, error) {
-	// Start a transaction
 	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -438,19 +499,15 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		}
 	}()
 
-	// 1. Check if customer exists by National ID or Phone
 	var existingCustomer Customer
 	var customerID uint
-	
 	err := tx.Table("customers").
 		Where("national_id = ? OR phone = ?", req.NationalID, req.Phone).
 		First(&existingCustomer).Error
-	
+
 	if err == nil {
-		// Customer exists
 		customerID = existingCustomer.ID
 	} else if err == gorm.ErrRecordNotFound {
-		// Create new customer
 		customer := map[string]interface{}{
 			"full_name":   req.FullName,
 			"phone":       req.Phone,
@@ -459,13 +516,10 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 			"city":        req.City,
 			"address":     req.Address,
 		}
-		
 		if err := tx.Table("customers").Create(&customer).Error; err != nil {
 			tx.Rollback()
 			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
 		}
-		
-		// Get the created customer ID
 		var newCustomer Customer
 		if err := tx.Table("customers").Where("national_id = ?", req.NationalID).First(&newCustomer).Error; err != nil {
 			tx.Rollback()
@@ -477,43 +531,33 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check customer existence", 500)
 	}
 
-	// 2. RESOLVE PRODUCT BY GUARANTEE CODE PATTERN - NOT BY NAME
-	// Find product by matching the guarantee code against code_pattern
-	var product Product
-	var productID uint
-	
-	// Use the product lookup by code pattern
+	var product struct {
+		ID                     uint
+		Name                   string
+		DefaultGuaranteeMonths int
+		GoldenGuaranteeMonths  int
+	}
 	err = tx.Table("products").
+		Select("id, name, default_guarantee_months, golden_guarantee_months").
 		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", req.GuaranteeCode).
-		Where("is_active = ?", true).
+		Where("is_active = ? AND deleted_at IS NULL", true).
 		First(&product).Error
-	
-	if err == nil {
-		productID = product.ID
-	} else if err == gorm.ErrRecordNotFound {
+
+	if err != nil {
 		tx.Rollback()
-		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code does not match any known product. Please check the code on your product.", 400)
-	} else {
-		tx.Rollback()
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.NewAppError(errors.ErrValidation,
+				"Guarantee code does not match any known product. Please check the code on your product.", 400)
+		}
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check product", 500)
 	}
 
-	// 3. Parse dates
 	purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
 	if err != nil {
 		tx.Rollback()
 		return nil, ErrInvalidDate
 	}
-	
-	// Calculate expiry date based on guarantee period (in months)
-	expiryDate := purchaseDate.AddDate(0, req.GuaranteePeriod, 0)
-	
-	if err := s.validateDates(purchaseDate, expiryDate); err != nil {
-		tx.Rollback()
-		return nil, err
-	}
 
-	// 4. Check if guarantee code already exists - use tx directly
 	var existingGuarantee Guarantee
 	err = tx.Where("code = ?", req.GuaranteeCode).First(&existingGuarantee).Error
 	if err == nil {
@@ -524,17 +568,20 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check guarantee code", 500)
 	}
 
-	// 5. Create guarantee
 	guarantee := &Guarantee{
 		Code:               req.GuaranteeCode,
 		CustomerID:         customerID,
-		ProductID:          productID,
-		PurchaseDate:       purchaseDate,
-		ExpiryDate:         expiryDate,
+		ProductID:          product.ID,
 		Status:             StatusPending,
 		InvoiceImage:       req.InvoiceImage,
 		GuaranteeCardImage: req.GuaranteeCardImage,
 		Notes:              req.Notes,
+	}
+	applyPeriods(guarantee, purchaseDate, product.DefaultGuaranteeMonths, product.GoldenGuaranteeMonths)
+
+	if err := s.validateDates(purchaseDate, guarantee.ExpiryDate); err != nil {
+		tx.Rollback()
+		return nil, err
 	}
 
 	if err := tx.Create(guarantee).Error; err != nil {
@@ -542,24 +589,21 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create guarantee", 500)
 	}
 
-	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to commit transaction", 500)
 	}
 
-	// Return response
 	return &PublicRegisterResponse{
 		GuaranteeID:   guarantee.ID,
 		GuaranteeCode: guarantee.Code,
 		CustomerID:    customerID,
 		CustomerName:  req.FullName,
-		ExpiryDate:    expiryDate.Format("2006-01-02"),
+		ExpiryDate:    guarantee.ExpiryDate.Format("2006-01-02"),
 		Status:        StatusPending,
 		Message:       "Guarantee registered successfully. Waiting for admin approval.",
 	}, nil
 }
 
-// GetGuaranteePeriods returns available guarantee periods
 func (s *GuaranteeService) GetGuaranteePeriods() []GuaranteePeriodOption {
 	return []GuaranteePeriodOption{
 		{Value: 3, Label: "3 Months", Months: 3},
@@ -574,7 +618,7 @@ func (s *GuaranteeService) GetGuaranteePeriods() []GuaranteePeriodOption {
 		{Value: 36, Label: "36 Months (3 Years)", Months: 36},
 	}
 }
-// Add this method to GuaranteeService
+
 func (s *GuaranteeService) GetByCode(code string) (*GuaranteeDTO, error) {
 	guarantee, err := s.repo.FindByCode(code)
 	if err != nil {
@@ -590,7 +634,6 @@ func (s *GuaranteeService) GetByCode(code string) (*GuaranteeDTO, error) {
 }
 
 func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, adminID uint) (*GuaranteeDTO, error) {
-	// Start transaction
 	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -601,9 +644,7 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 	var customerID uint
 	var err error
 
-	// Determine customer
 	if req.CustomerID != nil && *req.CustomerID > 0 {
-		// Use existing customer
 		var exists bool
 		if err := tx.Table("customers").Where("id = ? AND deleted_at IS NULL", *req.CustomerID).Select("count(*) > 0").Find(&exists).Error; err != nil {
 			tx.Rollback()
@@ -615,23 +656,17 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 		}
 		customerID = *req.CustomerID
 	} else {
-		// Create new customer
 		if req.CustomerFullName == "" || req.CustomerPhone == "" || req.CustomerNationalID == "" {
 			tx.Rollback()
 			return nil, errors.NewAppError(errors.ErrValidation, "Customer information is required when not selecting existing customer", 400)
 		}
-
-		// Check if customer exists by National ID or Phone
 		var existingCustomer Customer
 		err := tx.Table("customers").
 			Where("national_id = ? OR phone = ?", req.CustomerNationalID, req.CustomerPhone).
 			First(&existingCustomer).Error
-		
 		if err == nil {
-			// Customer exists, use it
 			customerID = existingCustomer.ID
 		} else if err == gorm.ErrRecordNotFound {
-			// Create new customer
 			customer := map[string]interface{}{
 				"full_name":   req.CustomerFullName,
 				"phone":       req.CustomerPhone,
@@ -640,13 +675,10 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 				"city":        req.CustomerCity,
 				"address":     req.CustomerAddress,
 			}
-			
 			if err := tx.Table("customers").Create(&customer).Error; err != nil {
 				tx.Rollback()
 				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
 			}
-			
-			// Get the created customer ID
 			var newCustomer Customer
 			if err := tx.Table("customers").Where("national_id = ?", req.CustomerNationalID).First(&newCustomer).Error; err != nil {
 				tx.Rollback()
@@ -659,73 +691,68 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 		}
 	}
 
-	// RESOLVE PRODUCT BY GUARANTEE CODE PATTERN
-	// First, check if we have a guarantee code to resolve product
 	if req.GuaranteeCode == "" {
 		tx.Rollback()
 		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code is required to resolve product", 400)
 	}
 
-	var product Product
-	var productID uint
-	
-	// Find product by matching the guarantee code against code_pattern
+	var product struct {
+		ID                     uint
+		Name                   string
+		DefaultGuaranteeMonths int
+		GoldenGuaranteeMonths  int
+	}
 	err = tx.Table("products").
+		Select("id, name, default_guarantee_months, golden_guarantee_months").
 		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", req.GuaranteeCode).
-		Where("is_active = ?", true).
+		Where("is_active = ? AND deleted_at IS NULL", true).
 		First(&product).Error
-	
-	if err == nil {
-		productID = product.ID
-	} else if err == gorm.ErrRecordNotFound {
+	if err != nil {
 		tx.Rollback()
-		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code does not match any known product", 400)
-	} else {
-		tx.Rollback()
+		if err == gorm.ErrRecordNotFound {
+			return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code does not match any known product", 400)
+		}
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to resolve product", 500)
 	}
 
-	// Parse dates
 	purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
 	if err != nil {
 		tx.Rollback()
 		return nil, ErrInvalidDate
 	}
-	expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
-	if err != nil {
-		tx.Rollback()
-		return nil, ErrInvalidDate
-	}
 
-	if err := s.validateDates(purchaseDate, expiryDate); err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-
-	// Use the guarantee code provided, don't generate a new one
 	code := req.GuaranteeCode
-
-	// Set status (default to Approved for admin-created)
 	status := StatusApproved
 	if req.Status != "" {
 		status = req.Status
 	}
 
-	// Create guarantee
 	guarantee := &Guarantee{
 		Code:               code,
 		CustomerID:         customerID,
-		ProductID:          productID,
-		PurchaseDate:       purchaseDate,
-		ExpiryDate:         expiryDate,
+		ProductID:          product.ID,
 		Status:             status,
 		InvoiceImage:       req.InvoiceImage,
 		GuaranteeCardImage: req.GuaranteeCardImage,
 		Notes:              req.Notes,
 		CreatedBy:          &adminID,
 	}
+	applyPeriods(guarantee, purchaseDate, product.DefaultGuaranteeMonths, product.GoldenGuaranteeMonths)
 
-	// If approved, set approval info
+	if req.ExpiryDate != "" {
+		expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
+		if err != nil {
+			tx.Rollback()
+			return nil, ErrInvalidDate
+		}
+		guarantee.ExpiryDate = expiryDate
+	}
+
+	if guarantee.ExpiryDate.Before(purchaseDate) {
+		tx.Rollback()
+		return nil, ErrExpiryDateBeforePurchase
+	}
+
 	if status == StatusApproved {
 		now := time.Now()
 		guarantee.ApprovedBy = &adminID
@@ -736,20 +763,13 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 		tx.Rollback()
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create guarantee", 500)
 	}
-
-	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to commit transaction", 500)
 	}
 
-	// Reload with relations - use a simpler approach
 	created, err := s.repo.FindByIDSimple(guarantee.ID)
 	if err != nil {
-		// Log the error but still return the guarantee we created
-		fmt.Printf("Warning: Failed to load created guarantee: %v\n", err)
-		// Return the guarantee without relations
 		return s.mapToDTO(guarantee), nil
 	}
-
 	return s.mapToDTO(created), nil
 }

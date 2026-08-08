@@ -1,0 +1,1 @@
+ALTER TABLE guarantees DROP COLUMN IF EXISTS golden_start_date;

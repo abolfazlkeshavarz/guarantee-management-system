@@ -27,6 +27,8 @@ type Product struct {
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+	DefaultGuaranteeMonths int `gorm:"not null;default:12" json:"default_guarantee_months"`
+	GoldenGuaranteeMonths  int `gorm:"not null;default:3"  json:"golden_guarantee_months"`
 }
 
 func (Product) TableName() string {

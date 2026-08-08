@@ -18,7 +18,7 @@ import {
 import { MoreHorizontal, Eye, CheckCircle, XCircle, Ban, Trash2 } from 'lucide-react'
 import { Repair } from '../types'
 import { RepairStatusBadge } from './RepairStatusBadge'
-import { format } from 'date-fns'
+import { FormattedDate } from '@/components/common/FormattedDate'
 
 interface RepairTableProps {
   repairs: Repair[]
@@ -84,7 +84,7 @@ export function RepairTable({
                 <RepairStatusBadge status={repair.status} />
               </TableCell>
               <TableCell>
-                {format(new Date(repair.created_at), 'MMM d, yyyy')}
+                <FormattedDate date={repair.created_at} format="MMM DD, YYYY" />
               </TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>

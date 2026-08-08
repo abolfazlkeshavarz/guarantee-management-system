@@ -2,7 +2,6 @@ package guarantees
 
 import (
 	"time"
-
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -44,11 +43,9 @@ func (r *GuaranteeRepository) FindByIDSimple(id uint) (*Guarantee, error) {
 	return &guarantee, nil
 }
 
-
-func (r *GuaranteeRepository) FindAll(page, limit int, search string, status string, customerID, productID *uint) ([]Guarantee, int64, error) {
+func (r *GuaranteeRepository) FindAll(page, limit int, search string, status string, customerID, productID *uint, tier string) ([]Guarantee, int64, error) {
 	var guarantees []Guarantee
 	var total int64
-
 	query := r.db.Model(&Guarantee{})
 
 	if search != "" {
@@ -71,13 +68,28 @@ func (r *GuaranteeRepository) FindAll(page, limit int, search string, status str
 		query = query.Where("guarantees.product_id = ?", productID)
 	}
 
+	if tier != "" && tier != "all" {
+		switch tier {
+		case "golden":
+			query = query.Where(
+				"guarantees.status IN ? AND guarantees.golden_expiry_date >= CURRENT_DATE AND guarantees.expiry_date >= CURRENT_DATE",
+				[]string{StatusApproved, StatusRenewed})
+		case "normal":
+			query = query.Where(
+				"guarantees.status IN ? AND guarantees.expiry_date >= CURRENT_DATE AND (guarantees.golden_expiry_date IS NULL OR guarantees.golden_expiry_date < CURRENT_DATE)",
+				[]string{StatusApproved, StatusRenewed})
+		case "expired":
+			query = query.Where("guarantees.expiry_date < CURRENT_DATE AND guarantees.status IN ?", []string{StatusApproved, StatusRenewed})
+		}
+	}
+
 	// Count total
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * limit
-	
+
 	// Use Select to avoid preloading issues
 	err := query.
 		Select("guarantees.*").
@@ -99,6 +111,7 @@ func (r *GuaranteeRepository) FindAll(page, limit int, search string, status str
 				guarantees[i].Customer = customer
 			}
 		}
+
 		// Load product name
 		if guarantees[i].ProductID > 0 {
 			var product Product
@@ -106,6 +119,7 @@ func (r *GuaranteeRepository) FindAll(page, limit int, search string, status str
 				guarantees[i].Product = product
 			}
 		}
+
 		// Load created by admin
 		if guarantees[i].CreatedBy != nil && *guarantees[i].CreatedBy > 0 {
 			var admin Admin
@@ -113,6 +127,7 @@ func (r *GuaranteeRepository) FindAll(page, limit int, search string, status str
 				guarantees[i].CreatedByAdmin = admin
 			}
 		}
+
 		// Load approved by admin
 		if guarantees[i].ApprovedBy != nil && *guarantees[i].ApprovedBy > 0 {
 			var admin Admin
@@ -136,7 +151,6 @@ func (r *GuaranteeRepository) FindByCode(code string) (*Guarantee, error) {
 	}
 	return &guarantee, nil
 }
-
 
 func (r *GuaranteeRepository) Update(guarantee *Guarantee) error {
 	// Omit associations so Save doesn't try to upsert the preloaded

@@ -19,11 +19,10 @@ interface JalaliCalendarProps {
   defaultMonth?: Date
   disabled?: boolean
   className?: string
-  /** First selectable year in the year dropdown (default 1398) */
   startYear?: number
 }
 
-const WEEKDAYS_FA = ["ش", "ی", "د¯", "س", "چ", "پ", "ج"]
+const WEEKDAYS_FA = ["ش", "ی", "د", "س", "چ", "پ", "ج"]
 
 export function JalaliCalendar({
   selected,
@@ -46,10 +45,10 @@ export function JalaliCalendar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   )
+
   const [viewYear, setViewYear] = React.useState(initial.year)
   const [viewMonth, setViewMonth] = React.useState(initial.month)
 
-  // Keep the view in sync if `selected` changes from outside (e.g. typed input)
   React.useEffect(() => {
     if (selected) {
       const j = toJalali(selected)
@@ -61,18 +60,17 @@ export function JalaliCalendar({
 
   const todayJalali = toJalali(new Date())
   const selectedJalali = selected ? toJalali(selected) : null
-
   const months = getJalaliMonths()
+
+  // Correct days in the currently viewed month
   const daysInMonth = getDaysInJalaliMonth(viewYear, viewMonth)
   const firstDayOffset = getJalaliFirstDayOfMonth(viewYear, viewMonth)
 
-  // Years from startYear through the current Jalali year.
-  // If the currently viewed/selected year falls outside that range
-  // (e.g. old data), extend the list so it still shows correctly.
+  // Year range: from startYear to currentYear + 5
   const years = React.useMemo(() => {
     const currentYear = todayJalali.year
     const rangeStart = Math.min(startYear, viewYear)
-    const rangeEnd = Math.max(currentYear, viewYear)
+    const rangeEnd = Math.max(currentYear + 5, viewYear)
     const arr: number[] = []
     for (let y = rangeStart; y <= rangeEnd; y++) arr.push(y)
     return arr
@@ -103,12 +101,14 @@ export function JalaliCalendar({
     onSelect?.(gregorianDate)
   }
 
+  // Build the grid cells
   const cells: (number | null)[] = []
   for (let i = 0; i < firstDayOffset; i++) cells.push(null)
   for (let d = 1; d <= daysInMonth; d++) cells.push(d)
 
   return (
     <div data-slot="jalali-calendar" className={cn("bg-background p-2 w-[272px]", className)}>
+      {/* Header: nav + month/year selectors */}
       <div className="flex items-center justify-between gap-1 px-1 pb-2">
         <Button
           type="button"
@@ -130,11 +130,7 @@ export function JalaliCalendar({
             <SelectTrigger size="sm" className="h-7 w-[96px] text-sm">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent
-              align="start"
-              alignItemWithTrigger={false}
-              className="w-[110px] min-w-[110px] max-h-[220px]"
-            >
+            <SelectContent align="start" alignItemWithTrigger={false} className="w-[110px] min-w-[110px] max-h-[220px]">
               {months.map((m) => (
                 <SelectItem key={m.number} value={String(m.number)}>
                   {m.name}
@@ -151,11 +147,7 @@ export function JalaliCalendar({
             <SelectTrigger size="sm" className="h-7 w-[76px] text-sm">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent
-              align="start"
-              alignItemWithTrigger={false}
-              className="w-[80px] min-w-[80px] max-h-[220px]"
-            >
+            <SelectContent align="start" alignItemWithTrigger={false} className="w-[80px] min-w-[80px] max-h-[220px]">
               {years.map((y) => (
                 <SelectItem key={y} value={String(y)}>
                   {y}
@@ -176,6 +168,7 @@ export function JalaliCalendar({
         </Button>
       </div>
 
+      {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 mb-1">
         {WEEKDAYS_FA.map((w, i) => (
           <div
@@ -187,6 +180,7 @@ export function JalaliCalendar({
         ))}
       </div>
 
+      {/* Day grid */}
       <div className="grid grid-cols-7 gap-1">
         {cells.map((day, idx) => {
           if (day === null) return <div key={idx} className="h-7 w-7" />

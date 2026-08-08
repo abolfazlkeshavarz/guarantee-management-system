@@ -2,9 +2,9 @@
   GUARANTEE MANAGEMENT SYSTEM - CODE SUMMARY
 ============================================
 
-Generated: 2026-08-08 07:55:09
+Generated: 2026-08-08 21:04:22
 Project Root: D:\Abolfazl Keshavarz\guarantee-management-system
-Total Files: 254
+Total Files: 256
 Total Directories: 84
 
 ============================================
@@ -6066,10 +6066,9 @@ FILE: dto.go
 Path: \backend\internal\modules\guarantees\dto.go
 Size: 5 KB
 ----------------------------------------
-Lines: 119
+Lines: 118
 
 package guarantees
-
 
 type GuaranteeDTO struct {
 	ID                  uint      `json:"id"`
@@ -6080,6 +6079,8 @@ type GuaranteeDTO struct {
 	ProductName         string    `json:"product_name"`
 	PurchaseDate        string    `json:"purchase_date"`
 	ExpiryDate          string    `json:"expiry_date"`
+	GoldenExpiryDate    *string   `json:"golden_expiry_date,omitempty"`
+	Tier                string    `json:"tier,omitempty"`
 	Status              string    `json:"status"`
 	InvoiceImage        string    `json:"invoice_image"`
 	GuaranteeCardImage  string    `json:"guarantee_card_image"`
@@ -6093,7 +6094,6 @@ type GuaranteeDTO struct {
 	UpdatedAt           string    `json:"updated_at"`
 }
 
-
 type AdminCreateGuaranteeRequest struct {
 	// Customer Information - either existing or new
 	CustomerID         *uint  `json:"customer_id"`
@@ -6103,11 +6103,11 @@ type AdminCreateGuaranteeRequest struct {
 	CustomerProvince   string `json:"customer_province"`
 	CustomerCity       string `json:"customer_city"`
 	CustomerAddress    string `json:"customer_address"`
-	
+
 	// Guarantee Information
 	GuaranteeCode      string `json:"guarantee_code" binding:"required,min=3,max=50"`
 	PurchaseDate       string `json:"purchase_date" binding:"required"`
-	ExpiryDate         string `json:"expiry_date" binding:"required"`
+	ExpiryDate         string `json:"expiry_date" binding:"omitempty"`
 	InvoiceImage       string `json:"invoice_image"`
 	GuaranteeCardImage string `json:"guarantee_card_image"`
 	Notes              string `json:"notes"`
@@ -6153,7 +6153,6 @@ type ListGuaranteesResponse struct {
 }
 
 // Add these to the existing dto.go file
-
 type PublicRegisterRequest struct {
 	// Customer Information
 	FullName   string `json:"full_name" binding:"required,min=2,max=100"`
@@ -6162,11 +6161,11 @@ type PublicRegisterRequest struct {
 	Province   string `json:"province" binding:"required,max=50"`
 	City       string `json:"city" binding:"required,max=50"`
 	Address    string `json:"address" binding:"required"`
-	
+
 	// Guarantee Information
 	GuaranteeCode      string `json:"guarantee_code" binding:"required,min=3,max=50"`
 	PurchaseDate       string `json:"purchase_date" binding:"required"`
-	GuaranteePeriod    int    `json:"guarantee_period" binding:"required,oneof=3 6 9 12 15 18 21 24 30 36"`
+	GuaranteePeriod    int    `json:"guarantee_period" binding:"omitempty"`
 	InvoiceImage       string `json:"invoice_image"`
 	GuaranteeCardImage string `json:"guarantee_card_image"`
 	Notes              string `json:"notes"`
@@ -6217,7 +6216,7 @@ FILE: handler.go
 Path: \backend\internal\modules\guarantees\handler.go
 Size: 9 KB
 ----------------------------------------
-Lines: 340
+Lines: 334
 
 package guarantees
 
@@ -6257,7 +6256,6 @@ func (h *GuaranteeHandler) Create(c *gin.Context) {
 	}
 
 	adminID := c.GetUint("admin_id")
-
 	guarantee, err := h.service.Create(req, adminID)
 	if err != nil {
 		handleError(c, err)
@@ -6288,18 +6286,20 @@ func (h *GuaranteeHandler) List(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	search := c.DefaultQuery("search", "")
 	status := c.DefaultQuery("status", "")
+	tier := c.DefaultQuery("tier", "")
 
 	var customerID, productID *uint
 	if id, err := strconv.ParseUint(c.DefaultQuery("customer_id", "0"), 10, 32); err == nil && id > 0 {
 		customerID = new(uint)
 		*customerID = uint(id)
 	}
+
 	if id, err := strconv.ParseUint(c.DefaultQuery("product_id", "0"), 10, 32); err == nil && id > 0 {
 		productID = new(uint)
 		*productID = uint(id)
 	}
 
-	result, err := h.service.List(page, limit, search, status, customerID, productID)
+	result, err := h.service.List(page, limit, search, status, customerID, productID, tier)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -6349,7 +6349,6 @@ func (h *GuaranteeHandler) Approve(c *gin.Context) {
 	}
 
 	adminID := c.GetUint("admin_id")
-
 	guarantee, err := h.service.Approve(uint(id), req, adminID)
 	if err != nil {
 		handleError(c, err)
@@ -6373,7 +6372,6 @@ func (h *GuaranteeHandler) Renew(c *gin.Context) {
 	}
 
 	adminID := c.GetUint("admin_id")
-
 	guarantee, err := h.service.Renew(uint(id), req, adminID)
 	if err != nil {
 		handleError(c, err)
@@ -6391,7 +6389,6 @@ func (h *GuaranteeHandler) Cancel(c *gin.Context) {
 	}
 
 	adminID := c.GetUint("admin_id")
-
 	guarantee, err := h.service.Cancel(uint(id), adminID)
 	if err != nil {
 		handleError(c, err)
@@ -6418,13 +6415,11 @@ func (h *GuaranteeHandler) Delete(c *gin.Context) {
 
 func (h *GuaranteeHandler) GetExpiringSoon(c *gin.Context) {
 	days, _ := strconv.Atoi(c.DefaultQuery("days", "30"))
-
 	guarantees, err := h.service.GetExpiringSoon(days)
 	if err != nil {
 		handleError(c, err)
 		return
 	}
-
 	responses.Success(c, guarantees)
 }
 
@@ -6437,19 +6432,18 @@ func handleError(c *gin.Context, err error) {
 }
 
 // Add these methods to GuaranteeHandler
-
 // PublicRegister handles public guarantee registration without authentication
 // PublicRegister handles public guarantee registration without authentication
 func (h *GuaranteeHandler) PublicRegister(c *gin.Context) {
 	var req PublicRegisterRequest
-	
+
 	// Log the request body for debugging
 	body, _ := c.GetRawData()
 	fmt.Println("Received request body:", string(body))
-	
+
 	// Restore the body since GetRawData consumes it
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		responses.Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
 		return
@@ -6503,7 +6497,6 @@ func (h *GuaranteeHandler) UploadFile(c *gin.Context) {
 		"image/webp": true,
 		"application/pdf": true,
 	}
-	
 	contentType := file.Header.Get("Content-Type")
 	if !allowedTypes[contentType] {
 		responses.Error(c, http.StatusBadRequest, "Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF")
@@ -6526,6 +6519,7 @@ func (h *GuaranteeHandler) UploadFile(c *gin.Context) {
 	// Return an absolute URL so it resolves correctly from any client origin
 	// (the frontend dev server, a mobile app, etc.), not just the API's own origin.
 	fileURL := fmt.Sprintf("%s/uploads/%s", strings.TrimRight(h.appURL, "/"), filepath.ToSlash(info.Path))
+
 	responses.Success(c, gin.H{
 		"url":      fileURL,
 		"filename": info.Name,
@@ -6535,43 +6529,41 @@ func (h *GuaranteeHandler) UploadFile(c *gin.Context) {
 }
 
 func (h *GuaranteeHandler) CreateByAdmin(c *gin.Context) {
-    var req AdminCreateGuaranteeRequest
-    
-    // Log request body for debugging
-    body, _ := c.GetRawData()
-    fmt.Println("Admin create request body:", string(body))
-    
-    // Restore body
-    c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
-    
-    if err := c.ShouldBindJSON(&req); err != nil {
-        responses.Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
-        return
-    }
+	var req AdminCreateGuaranteeRequest
 
-    adminID := c.GetUint("admin_id")
+	// Log request body for debugging
+	body, _ := c.GetRawData()
+	fmt.Println("Admin create request body:", string(body))
 
-    guarantee, err := h.service.CreateByAdmin(&req, adminID)
-    if err != nil {
-        handleError(c, err)
-        return
-    }
+	// Restore body
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 
-    responses.SuccessWithMessage(c, "Guarantee created successfully by admin", guarantee)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid request: "+err.Error())
+		return
+	}
+
+	adminID := c.GetUint("admin_id")
+	guarantee, err := h.service.CreateByAdmin(&req, adminID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Guarantee created successfully by admin", guarantee)
 }
 
 ----------------------------------------
 FILE: model.go
 Path: \backend\internal\modules\guarantees\model.go
-Size: 2 KB
+Size: 3 KB
 ----------------------------------------
-Lines: 64
+Lines: 83
 
 package guarantees
 
 import (
 	"time"
-
 	"gorm.io/gorm"
 )
 
@@ -6584,6 +6576,7 @@ type Guarantee struct {
 	Product             Product        `gorm:"foreignKey:ProductID" json:"product,omitempty"`
 	PurchaseDate        time.Time      `gorm:"type:date;not null" json:"purchase_date"`
 	ExpiryDate          time.Time      `gorm:"type:date;not null" json:"expiry_date"`
+	GoldenExpiryDate    *time.Time     `gorm:"type:date" json:"golden_expiry_date,omitempty"`
 	Status              string         `gorm:"size:20;default:'Pending'" json:"status"`
 	InvoiceImage        string         `gorm:"size:255" json:"invoice_image"`
 	GuaranteeCardImage  string         `gorm:"size:255" json:"guarantee_card_image"`
@@ -6599,7 +6592,6 @@ type Guarantee struct {
 }
 
 // backend/internal/modules/guarantees/model.go
-
 type Customer struct {
 	ID       uint   `json:"id"`
 	FullName string `json:"full_name"`
@@ -6632,18 +6624,37 @@ const (
 	StatusExpired   = "Expired"
 )
 
+const (
+	TierGolden  = "Golden"
+	TierNormal  = "Normal"
+	TierExpired = "Expired"
+)
+
+func (g *Guarantee) Tier(now time.Time) string {
+	if g.Status != StatusApproved && g.Status != StatusRenewed {
+		return ""
+	}
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	if today.After(g.ExpiryDate) {
+		return TierExpired
+	}
+	if g.GoldenExpiryDate != nil && !today.After(*g.GoldenExpiryDate) {
+		return TierGolden
+	}
+	return TierNormal
+}
+
 ----------------------------------------
 FILE: repository.go
 Path: \backend\internal\modules\guarantees\repository.go
 Size: 5 KB
 ----------------------------------------
-Lines: 163
+Lines: 177
 
 package guarantees
 
 import (
 	"time"
-
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -6685,11 +6696,9 @@ func (r *GuaranteeRepository) FindByIDSimple(id uint) (*Guarantee, error) {
 	return &guarantee, nil
 }
 
-
-func (r *GuaranteeRepository) FindAll(page, limit int, search string, status string, customerID, productID *uint) ([]Guarantee, int64, error) {
+func (r *GuaranteeRepository) FindAll(page, limit int, search string, status string, customerID, productID *uint, tier string) ([]Guarantee, int64, error) {
 	var guarantees []Guarantee
 	var total int64
-
 	query := r.db.Model(&Guarantee{})
 
 	if search != "" {
@@ -6712,13 +6721,28 @@ func (r *GuaranteeRepository) FindAll(page, limit int, search string, status str
 		query = query.Where("guarantees.product_id = ?", productID)
 	}
 
+	if tier != "" && tier != "all" {
+		switch tier {
+		case "golden":
+			query = query.Where(
+				"guarantees.status IN ? AND guarantees.golden_expiry_date >= CURRENT_DATE AND guarantees.expiry_date >= CURRENT_DATE",
+				[]string{StatusApproved, StatusRenewed})
+		case "normal":
+			query = query.Where(
+				"guarantees.status IN ? AND guarantees.expiry_date >= CURRENT_DATE AND (guarantees.golden_expiry_date IS NULL OR guarantees.golden_expiry_date < CURRENT_DATE)",
+				[]string{StatusApproved, StatusRenewed})
+		case "expired":
+			query = query.Where("guarantees.expiry_date < CURRENT_DATE AND guarantees.status IN ?", []string{StatusApproved, StatusRenewed})
+		}
+	}
+
 	// Count total
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * limit
-	
+
 	// Use Select to avoid preloading issues
 	err := query.
 		Select("guarantees.*").
@@ -6740,6 +6764,7 @@ func (r *GuaranteeRepository) FindAll(page, limit int, search string, status str
 				guarantees[i].Customer = customer
 			}
 		}
+
 		// Load product name
 		if guarantees[i].ProductID > 0 {
 			var product Product
@@ -6747,6 +6772,7 @@ func (r *GuaranteeRepository) FindAll(page, limit int, search string, status str
 				guarantees[i].Product = product
 			}
 		}
+
 		// Load created by admin
 		if guarantees[i].CreatedBy != nil && *guarantees[i].CreatedBy > 0 {
 			var admin Admin
@@ -6754,6 +6780,7 @@ func (r *GuaranteeRepository) FindAll(page, limit int, search string, status str
 				guarantees[i].CreatedByAdmin = admin
 			}
 		}
+
 		// Load approved by admin
 		if guarantees[i].ApprovedBy != nil && *guarantees[i].ApprovedBy > 0 {
 			var admin Admin
@@ -6777,7 +6804,6 @@ func (r *GuaranteeRepository) FindByCode(code string) (*Guarantee, error) {
 	}
 	return &guarantee, nil
 }
-
 
 func (r *GuaranteeRepository) Update(guarantee *Guarantee) error {
 	// Omit associations so Save doesn't try to upsert the preloaded
@@ -6873,9 +6899,9 @@ func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
 ----------------------------------------
 FILE: service.go
 Path: \backend\internal\modules\guarantees\service.go
-Size: 24 KB
+Size: 25 KB
 ----------------------------------------
-Lines: 755
+Lines: 781
 
 package guarantees
 
@@ -6884,7 +6910,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"time"
-
 	"guarantee-management-system/internal/shared/errors"
 	"gorm.io/gorm"
 )
@@ -6896,6 +6921,18 @@ type GuaranteeService struct {
 
 func NewGuaranteeService(repo *GuaranteeRepository, db *gorm.DB) *GuaranteeService {
 	return &GuaranteeService{repo: repo, db: db}
+}
+
+// applyPeriods derives expiry and golden-expiry from the purchase date and
+// the product's configured periods. Both are anchored to purchase_date, so a
+// late registration can legitimately start already past its golden phase.
+func applyPeriods(g *Guarantee, purchase time.Time, defaultMonths, goldenMonths int) {
+	g.PurchaseDate = purchase
+	g.ExpiryDate = purchase.AddDate(0, defaultMonths, 0)
+	if goldenMonths > 0 {
+		golden := purchase.AddDate(0, goldenMonths, 0)
+		g.GoldenExpiryDate = &golden
+	}
 }
 
 func (s *GuaranteeService) generateCode() (string, error) {
@@ -6999,10 +7036,11 @@ func (s *GuaranteeService) GetByID(id uint) (*GuaranteeDTO, error) {
 		}
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
 	}
+
 	return s.mapToDTO(guarantee), nil
 }
 
-func (s *GuaranteeService) List(page, limit int, search, status string, customerID, productID *uint) (*ListGuaranteesResponse, error) {
+func (s *GuaranteeService) List(page, limit int, search, status string, customerID, productID *uint, tier string) (*ListGuaranteesResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -7010,7 +7048,7 @@ func (s *GuaranteeService) List(page, limit int, search, status string, customer
 		limit = 10
 	}
 
-	guarantees, total, err := s.repo.FindAll(page, limit, search, status, customerID, productID)
+	guarantees, total, err := s.repo.FindAll(page, limit, search, status, customerID, productID, tier)
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list guarantees", 500)
 	}
@@ -7129,6 +7167,7 @@ func (s *GuaranteeService) Approve(id uint, req *ApproveGuaranteeRequest, adminI
 	guarantee.ApprovedBy = &adminID
 	now := time.Now()
 	guarantee.ApprovedAt = &now
+
 	if req.Notes != "" {
 		guarantee.Notes = req.Notes
 	}
@@ -7169,6 +7208,7 @@ func (s *GuaranteeService) Renew(id uint, req *RenewGuaranteeRequest, adminID ui
 
 	guarantee.ExpiryDate = newExpiryDate
 	guarantee.Status = StatusRenewed
+
 	if req.Notes != "" {
 		guarantee.Notes = req.Notes
 	}
@@ -7199,6 +7239,7 @@ func (s *GuaranteeService) Cancel(id uint, adminID uint) (*GuaranteeDTO, error) 
 	}
 
 	guarantee.Status = StatusCancelled
+
 	if err := s.repo.Update(guarantee); err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
 	}
@@ -7249,6 +7290,12 @@ func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
 		PurchaseDate:        guarantee.PurchaseDate.Format("2006-01-02"),
 		ExpiryDate:          guarantee.ExpiryDate.Format("2006-01-02"),
 	}
+
+	if guarantee.GoldenExpiryDate != nil {
+		g := guarantee.GoldenExpiryDate.Format("2006-01-02")
+		dto.GoldenExpiryDate = &g
+	}
+	dto.Tier = guarantee.Tier(time.Now())
 
 	// Check if Customer is loaded (ID > 0 means it was preloaded)
 	if guarantee.Customer.ID > 0 {
@@ -7307,7 +7354,6 @@ func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
 }
 
 // Add this method to GuaranteeService
-
 func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRegisterResponse, error) {
 	// Start a transaction
 	tx := s.db.Begin()
@@ -7320,11 +7366,10 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 	// 1. Check if customer exists by National ID or Phone
 	var existingCustomer Customer
 	var customerID uint
-	
 	err := tx.Table("customers").
 		Where("national_id = ? OR phone = ?", req.NationalID, req.Phone).
 		First(&existingCustomer).Error
-	
+
 	if err == nil {
 		// Customer exists
 		customerID = existingCustomer.ID
@@ -7338,12 +7383,11 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 			"city":        req.City,
 			"address":     req.Address,
 		}
-		
 		if err := tx.Table("customers").Create(&customer).Error; err != nil {
 			tx.Rollback()
 			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
 		}
-		
+
 		// Get the created customer ID
 		var newCustomer Customer
 		if err := tx.Table("customers").Where("national_id = ?", req.NationalID).First(&newCustomer).Error; err != nil {
@@ -7357,18 +7401,20 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 	}
 
 	// 2. RESOLVE PRODUCT BY GUARANTEE CODE PATTERN - NOT BY NAME
-	// Find product by matching the guarantee code against code_pattern
-	var product Product
-	var productID uint
-	
-	// Use the product lookup by code pattern
+	var product struct {
+		ID                     uint
+		Name                   string
+		DefaultGuaranteeMonths int
+		GoldenGuaranteeMonths  int
+	}
 	err = tx.Table("products").
+		Select("id, name, default_guarantee_months, golden_guarantee_months").
 		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", req.GuaranteeCode).
-		Where("is_active = ?", true).
+		Where("is_active = ? AND deleted_at IS NULL", true).
 		First(&product).Error
-	
+
 	if err == nil {
-		productID = product.ID
+		// Product found
 	} else if err == gorm.ErrRecordNotFound {
 		tx.Rollback()
 		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code does not match any known product. Please check the code on your product.", 400)
@@ -7382,14 +7428,6 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 	if err != nil {
 		tx.Rollback()
 		return nil, ErrInvalidDate
-	}
-	
-	// Calculate expiry date based on guarantee period (in months)
-	expiryDate := purchaseDate.AddDate(0, req.GuaranteePeriod, 0)
-	
-	if err := s.validateDates(purchaseDate, expiryDate); err != nil {
-		tx.Rollback()
-		return nil, err
 	}
 
 	// 4. Check if guarantee code already exists - use tx directly
@@ -7407,13 +7445,19 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 	guarantee := &Guarantee{
 		Code:               req.GuaranteeCode,
 		CustomerID:         customerID,
-		ProductID:          productID,
+		ProductID:          product.ID,
 		PurchaseDate:       purchaseDate,
-		ExpiryDate:         expiryDate,
 		Status:             StatusPending,
 		InvoiceImage:       req.InvoiceImage,
 		GuaranteeCardImage: req.GuaranteeCardImage,
 		Notes:              req.Notes,
+	}
+
+	applyPeriods(guarantee, purchaseDate, product.DefaultGuaranteeMonths, product.GoldenGuaranteeMonths)
+
+	if err := s.validateDates(purchaseDate, guarantee.ExpiryDate); err != nil {
+		tx.Rollback()
+		return nil, err
 	}
 
 	if err := tx.Create(guarantee).Error; err != nil {
@@ -7432,7 +7476,7 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		GuaranteeCode: guarantee.Code,
 		CustomerID:    customerID,
 		CustomerName:  req.FullName,
-		ExpiryDate:    expiryDate.Format("2006-01-02"),
+		ExpiryDate:    guarantee.ExpiryDate.Format("2006-01-02"),
 		Status:        StatusPending,
 		Message:       "Guarantee registered successfully. Waiting for admin approval.",
 	}, nil
@@ -7453,6 +7497,7 @@ func (s *GuaranteeService) GetGuaranteePeriods() []GuaranteePeriodOption {
 		{Value: 36, Label: "36 Months (3 Years)", Months: 36},
 	}
 }
+
 // Add this method to GuaranteeService
 func (s *GuaranteeService) GetByCode(code string) (*GuaranteeDTO, error) {
 	guarantee, err := s.repo.FindByCode(code)
@@ -7505,7 +7550,7 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 		err := tx.Table("customers").
 			Where("national_id = ? OR phone = ?", req.CustomerNationalID, req.CustomerPhone).
 			First(&existingCustomer).Error
-		
+
 		if err == nil {
 			// Customer exists, use it
 			customerID = existingCustomer.ID
@@ -7519,12 +7564,11 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 				"city":        req.CustomerCity,
 				"address":     req.CustomerAddress,
 			}
-			
 			if err := tx.Table("customers").Create(&customer).Error; err != nil {
 				tx.Rollback()
 				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
 			}
-			
+
 			// Get the created customer ID
 			var newCustomer Customer
 			if err := tx.Table("customers").Where("national_id = ?", req.CustomerNationalID).First(&newCustomer).Error; err != nil {
@@ -7545,17 +7589,20 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code is required to resolve product", 400)
 	}
 
-	var product Product
-	var productID uint
-	
-	// Find product by matching the guarantee code against code_pattern
+	var product struct {
+		ID                     uint
+		Name                   string
+		DefaultGuaranteeMonths int
+		GoldenGuaranteeMonths  int
+	}
 	err = tx.Table("products").
+		Select("id, name, default_guarantee_months, golden_guarantee_months").
 		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", req.GuaranteeCode).
-		Where("is_active = ?", true).
+		Where("is_active = ? AND deleted_at IS NULL", true).
 		First(&product).Error
-	
+
 	if err == nil {
-		productID = product.ID
+		// Found
 	} else if err == gorm.ErrRecordNotFound {
 		tx.Rollback()
 		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code does not match any known product", 400)
@@ -7569,16 +7616,6 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 	if err != nil {
 		tx.Rollback()
 		return nil, ErrInvalidDate
-	}
-	expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
-	if err != nil {
-		tx.Rollback()
-		return nil, ErrInvalidDate
-	}
-
-	if err := s.validateDates(purchaseDate, expiryDate); err != nil {
-		tx.Rollback()
-		return nil, err
 	}
 
 	// Use the guarantee code provided, don't generate a new one
@@ -7594,14 +7631,29 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 	guarantee := &Guarantee{
 		Code:               code,
 		CustomerID:         customerID,
-		ProductID:          productID,
+		ProductID:          product.ID,
 		PurchaseDate:       purchaseDate,
-		ExpiryDate:         expiryDate,
 		Status:             status,
 		InvoiceImage:       req.InvoiceImage,
 		GuaranteeCardImage: req.GuaranteeCardImage,
 		Notes:              req.Notes,
 		CreatedBy:          &adminID,
+	}
+
+	applyPeriods(guarantee, purchaseDate, product.DefaultGuaranteeMonths, product.GoldenGuaranteeMonths)
+
+	if req.ExpiryDate != "" {
+		expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
+		if err != nil {
+			tx.Rollback()
+			return nil, ErrInvalidDate
+		}
+		guarantee.ExpiryDate = expiryDate
+	}
+
+	if guarantee.ExpiryDate.Before(purchaseDate) {
+		tx.Rollback()
+		return nil, ErrExpiryDateBeforePurchase
 	}
 
 	// If approved, set approval info
@@ -7706,9 +7758,9 @@ DIRECTORY: \backend\internal\modules\products
 ----------------------------------------
 FILE: dto.go
 Path: \backend\internal\modules\products\dto.go
-Size: 2 KB
+Size: 3 KB
 ----------------------------------------
-Lines: 51
+Lines: 62
 
 package products
 
@@ -7721,10 +7773,11 @@ type ProductDTO struct {
 	IsActive     bool   `json:"is_active"`
 	CreatedAt    string `json:"created_at"`
 	UpdatedAt    string `json:"updated_at"`
-
-	// Warranty is only populated by LookupByCode for products whose
-	// CodeFormat is "jalali_encoded" -- it carries the manufacture date
-	// parsed from the guarantee code plus the season/expiry rules.
+	CodePrefix             string `json:"code_prefix"`
+	CodePattern            string `json:"code_pattern"`
+	CodeFormat             string `json:"code_format"`
+	DefaultGuaranteeMonths int    `json:"default_guarantee_months"`
+	GoldenGuaranteeMonths  int    `json:"golden_guarantee_months"`
 	Warranty *WarrantyInfoDTO `json:"warranty,omitempty"`
 }
 
@@ -7745,6 +7798,11 @@ type CreateProductRequest struct {
 	Description string `json:"description"`
 	CategoryID  uint   `json:"category_id" binding:"required"`
 	IsActive    *bool  `json:"is_active"`
+	CodePrefix             string `json:"code_prefix" binding:"required,min=2,max=20,alphanum"`
+	CodeFormat             string `json:"code_format" binding:"required,oneof=simple jalali_encoded"`
+	CodePattern            string `json:"code_pattern"` // only used when code_format=simple
+	DefaultGuaranteeMonths int    `json:"default_guarantee_months" binding:"required,min=1,max=120"`
+	GoldenGuaranteeMonths  int    `json:"golden_guarantee_months" binding:"min=0,max=120"`
 }
 
 type UpdateProductRequest struct {
@@ -7752,6 +7810,11 @@ type UpdateProductRequest struct {
 	Description string `json:"description"`
 	CategoryID  uint   `json:"category_id" binding:"omitempty"`
 	IsActive    *bool  `json:"is_active"`
+	CodePrefix             string `json:"code_prefix" binding:"omitempty,min=2,max=20,alphanum"`
+	CodeFormat             string `json:"code_format" binding:"omitempty,oneof=simple jalali_encoded"`
+	CodePattern            string `json:"code_pattern"`
+	DefaultGuaranteeMonths *int   `json:"default_guarantee_months" binding:"omitempty,min=1,max=120"`
+	GoldenGuaranteeMonths  *int   `json:"golden_guarantee_months" binding:"omitempty,min=0,max=120"`
 }
 
 type ListProductsResponse struct {
@@ -7913,7 +7976,7 @@ FILE: model.go
 Path: \backend\internal\modules\products\model.go
 Size: 1 KB
 ----------------------------------------
-Lines: 34
+Lines: 36
 
 package products
 
@@ -7944,6 +8007,8 @@ type Product struct {
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+	DefaultGuaranteeMonths int `gorm:"not null;default:12" json:"default_guarantee_months"`
+	GoldenGuaranteeMonths  int `gorm:"not null;default:3"  json:"golden_guarantee_months"`
 }
 
 func (Product) TableName() string {
@@ -7955,7 +8020,7 @@ FILE: repository.go
 Path: \backend\internal\modules\products\repository.go
 Size: 2 KB
 ----------------------------------------
-Lines: 81
+Lines: 93
 
 package products
 
@@ -8000,6 +8065,18 @@ func (r *ProductRepository) FindByGuaranteeCode(code string) (*Product, error) {
 		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", code).
 		Where("is_active = ?", true).
 		First(&product).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &product, nil
+}
+
+func (r *ProductRepository) FindByCodePrefix(prefix string) (*Product, error) {
+	var product Product
+	err := r.db.Where("code_prefix = ?", prefix).First(&product).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
@@ -8092,19 +8169,20 @@ func (m *ProductModule) RegisterRoutes(router *gin.RouterGroup) {
 ----------------------------------------
 FILE: service.go
 Path: \backend\internal\modules\products\service.go
-Size: 6 KB
+Size: 8 KB
 ----------------------------------------
-Lines: 207
+Lines: 253
 
 package products
 
 import (
 	"time"
-
+	"strings"
 	"guarantee-management-system/internal/modules/categories"
 	"guarantee-management-system/internal/shared/errors"
 	"guarantee-management-system/internal/shared/warrantycode"
-
+	"fmt"
+	"regexp"
 	"gorm.io/gorm"
 )
 
@@ -8131,16 +8209,43 @@ func (s *ProductService) Create(req *CreateProductRequest) (*ProductDTO, error) 
 		return nil, ErrProductDuplicate
 	}
 
+	// Validate guarantee periods
+	if req.GoldenGuaranteeMonths > req.DefaultGuaranteeMonths {
+		return nil, errors.NewAppError(errors.ErrValidation,
+			"Golden period cannot exceed the total guarantee period", 400)
+	}
+
+	// Build code pattern
+	pattern, err := BuildCodePattern(req.CodePrefix, req.CodeFormat, req.CodePattern)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check prefix uniqueness
+	existingPrefix, err := s.repo.FindByCodePrefix(strings.ToUpper(req.CodePrefix))
+	if err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check code prefix", 500)
+	}
+	if existingPrefix != nil {
+		return nil, errors.NewAppError(errors.ErrDuplicateEntry,
+			"Another product already uses this code prefix", 409)
+	}
+
 	isActive := true
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
 
 	product := &Product{
-		Name:        req.Name,
-		Description: req.Description,
-		CategoryID:  req.CategoryID,
-		IsActive:    isActive,
+		Name:                   req.Name,
+		Description:            req.Description,
+		CategoryID:             req.CategoryID,
+		IsActive:               isActive,
+		CodePrefix:             strings.ToUpper(req.CodePrefix),
+		CodePattern:            pattern,
+		CodeFormat:             req.CodeFormat,
+		DefaultGuaranteeMonths: req.DefaultGuaranteeMonths,
+		GoldenGuaranteeMonths:  req.GoldenGuaranteeMonths,
 	}
 
 	if err := s.repo.Create(product); err != nil {
@@ -8304,6 +8409,24 @@ func (s *ProductService) mapToDTO(product *Product, categoryName string) *Produc
 	}
 }
 
+func BuildCodePattern(prefix, format, manual string) (string, error) {
+	prefix = strings.ToUpper(strings.TrimSpace(prefix))
+	switch format {
+	case CodeFormatJalaliEncoded:
+		return fmt.Sprintf(`^[0-9]{4}%s(0[1-9]|1[0-2])[0-9]{5}$`, regexp.QuoteMeta(prefix)), nil
+	case CodeFormatSimple:
+		if manual == "" {
+			return fmt.Sprintf(`^%s-[0-9]{6}$`, regexp.QuoteMeta(prefix)), nil
+		}
+		if _, err := regexp.Compile(manual); err != nil {
+			return "", errors.NewAppError(errors.ErrValidation, "Invalid code pattern: "+err.Error(), 400)
+		}
+		return manual, nil
+	default:
+		return "", errors.NewAppError(errors.ErrValidation, "Unknown code format", 400)
+	}
+}
+
 ----------------------------------------
 FILE: validator.go
 Path: \backend\internal\modules\products\validator.go
@@ -8445,7 +8568,7 @@ var (
 ----------------------------------------
 FILE: handler.go
 Path: \backend\internal\modules\repaircatalog\handler.go
-Size: 5 KB
+Size: 6 KB
 ----------------------------------------
 Lines: 212
 
@@ -8947,7 +9070,7 @@ func (m *RepairCatalogModule) RegisterRoutes(router *gin.RouterGroup) {
 ----------------------------------------
 FILE: service.go
 Path: \backend\internal\modules\repaircatalog\service.go
-Size: 9 KB
+Size: 10 KB
 ----------------------------------------
 Lines: 332
 
@@ -9680,7 +9803,7 @@ func handleError(c *gin.Context, err error) {
 ----------------------------------------
 FILE: model.go
 Path: \backend\internal\modules\repairs\model.go
-Size: 2 KB
+Size: 3 KB
 ----------------------------------------
 Lines: 67
 
@@ -12328,6 +12451,44 @@ SELECT name FROM (VALUES
 ) AS defaults(name)
 WHERE NOT EXISTS (SELECT 1 FROM repair_services WHERE repair_services.name = defaults.name);
 
+
+----------------------------------------
+FILE: 014_add_guarantee_periods.down.sql
+Path: \backend\migrations\014_add_guarantee_periods.down.sql
+Size: 0 KB
+----------------------------------------
+Lines: 5
+
+-- migrations/014_add_guarantee_periods.down.sql
+ALTER TABLE guarantees DROP COLUMN IF EXISTS golden_expiry_date;
+ALTER TABLE products DROP CONSTRAINT IF EXISTS chk_products_golden_le_default;
+ALTER TABLE products DROP COLUMN IF EXISTS golden_guarantee_months;
+ALTER TABLE products DROP COLUMN IF EXISTS default_guarantee_months;
+
+----------------------------------------
+FILE: 014_add_guarantee_periods.up.sql
+Path: \backend\migrations\014_add_guarantee_periods.up.sql
+Size: 1 KB
+----------------------------------------
+Lines: 17
+
+-- migrations/014_add_guarantee_periods.up.sql
+ALTER TABLE products ADD COLUMN IF NOT EXISTS default_guarantee_months INT NOT NULL DEFAULT 12;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS golden_guarantee_months  INT NOT NULL DEFAULT 3;
+
+ALTER TABLE products ADD CONSTRAINT chk_products_golden_le_default
+    CHECK (golden_guarantee_months >= 0 AND golden_guarantee_months <= default_guarantee_months);
+
+ALTER TABLE guarantees ADD COLUMN IF NOT EXISTS golden_expiry_date DATE;
+
+CREATE INDEX IF NOT EXISTS idx_guarantees_golden_expiry ON guarantees(golden_expiry_date);
+
+-- Backfill: derive golden expiry for existing rows from their product's setting.
+UPDATE guarantees g
+   SET golden_expiry_date = g.purchase_date + (p.golden_guarantee_months || ' months')::interval
+  FROM products p
+ WHERE p.id = g.product_id
+   AND g.golden_expiry_date IS NULL;
 
 ----------------------------------------
 FILE: 20260721085726_create_products_table.down.sql
@@ -28562,7 +28723,7 @@ FILE: guarantees.ts
 Path: \frontend\src\features\guarantees\api\guarantees.ts
 Size: 3 KB
 ----------------------------------------
-Lines: 107
+Lines: 110
 
 import { api } from '@/api/axios'
 import { Guarantee, GuaranteeFormData, GuaranteeListResponse } from '../types'
@@ -28576,6 +28737,7 @@ export interface AdminCreateGuaranteeData {
   customer_province?: string
   customer_city?: string
   customer_address?: string
+
   // Guarantee
   product_id: number
   purchase_date: string
@@ -28594,7 +28756,8 @@ export const guaranteeService = {
     search: string = '',
     status: string = '',
     customerId?: number,
-    productId?: number
+    productId?: number,
+    tier?: string
   ): Promise<GuaranteeListResponse> {
     const response = await api.get('/guarantees', {
       params: {
@@ -28604,6 +28767,7 @@ export const guaranteeService = {
         status: status || undefined,
         customer_id: customerId || undefined,
         product_id: productId || undefined,
+        tier: tier || undefined,
       },
     })
     return {
@@ -28755,10 +28919,7 @@ FILE: AdminGuaranteeForm.tsx
 Path: \frontend\src\features\guarantees\components\AdminGuaranteeForm.tsx
 Size: 29 KB
 ----------------------------------------
-Lines: 726
-
-// frontend/src/features/guarantees/components/AdminGuaranteeForm.tsx
-// Add guarantee_code field with product lookup
+Lines: 735
 
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
@@ -28798,6 +28959,7 @@ const adminGuaranteeSchema = z.object({
   customer_province: z.string().optional(),
   customer_city: z.string().optional(),
   customer_address: z.string().optional(),
+
   // Guarantee - all required
   guarantee_code: z.string().min(3, 'Guarantee code is required').max(50),
   purchase_date: z.string().min(1, 'Purchase date is required'),
@@ -28805,6 +28967,7 @@ const adminGuaranteeSchema = z.object({
   invoice_image: z.string().optional(),
   guarantee_card_image: z.string().optional(),
   notes: z.string().optional(),
+
   // Status is required with a default
   status: z.enum(['Pending', 'Approved']),
 })
@@ -28815,6 +28978,8 @@ interface ProductLookupResult {
   id: number
   name: string
   category_name: string
+  default_guarantee_months: number
+  golden_guarantee_months: number
   warranty?: {
     manufacture_year: number
     manufacture_month_name: string
@@ -28844,6 +29009,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
   const [invoicePreview, setInvoicePreview] = useState<string | null>(null)
   const [cardFile, setCardFile] = useState<File | null>(null)
   const [cardPreview, setCardPreview] = useState<string | null>(null)
+
   const invoiceInputRef = useRef<HTMLInputElement>(null)
   const cardInputRef = useRef<HTMLInputElement>(null)
 
@@ -28874,6 +29040,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
   })
 
   const guaranteeCode = form.watch('guarantee_code')
+  const purchaseDate = form.watch('purchase_date')
   const debouncedCode = useDebounce(guaranteeCode, 500)
 
   // Product lookup by guarantee code
@@ -28918,6 +29085,14 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
   }, [debouncedCode])
 
   useEffect(() => {
+    if (lookupResult && purchaseDate) {
+      const d = new Date(purchaseDate)
+      d.setMonth(d.getMonth() + lookupResult.default_guarantee_months)
+      form.setValue('expiry_date', d.toISOString().slice(0, 10))
+    }
+  }, [lookupResult, purchaseDate, form])
+
+  useEffect(() => {
     if (!open) {
       form.reset()
       setActiveTab('existing')
@@ -28935,7 +29110,6 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     setIsUploading(true)
     try {
       const result = await publicGuaranteeService.uploadFile(file)
-
       if (type === 'invoice') {
         form.setValue('invoice_image', result.url)
         toast.success('Invoice uploaded successfully')
@@ -28957,13 +29131,11 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
         toast.error('File size exceeds 10MB limit')
         return
       }
-
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
         return
       }
-
       setInvoiceFile(file)
       setInvoicePreview(URL.createObjectURL(file))
       handleFileUpload(file, 'invoice')
@@ -28977,13 +29149,11 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
         toast.error('File size exceeds 10MB limit')
         return
       }
-
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
         return
       }
-
       setCardFile(file)
       setCardPreview(URL.createObjectURL(file))
       handleFileUpload(file, 'card')
@@ -29024,9 +29194,9 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
   const handleSubmit = async (data: AdminGuaranteeFormValues) => {
     // Validate that product was found
     if (!lookupResult) {
-      form.setError('guarantee_code', { 
-        type: 'manual', 
-        message: 'Please enter a valid guarantee code that matches a product' 
+      form.setError('guarantee_code', {
+        type: 'manual',
+        message: 'Please enter a valid guarantee code that matches a product'
       })
       return
     }
@@ -29048,9 +29218,9 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     } else {
       // New customer - validate required fields
       if (!data.customer_full_name || !data.customer_phone || !data.customer_national_id) {
-        form.setError('customer_full_name', { 
-          type: 'manual', 
-          message: 'Full name, phone, and national ID are required for new customer registration' 
+        form.setError('customer_full_name', {
+          type: 'manual',
+          message: 'Full name, phone, and national ID are required for new customer registration'
         })
         return
       }
@@ -29063,6 +29233,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     }
 
     await onSubmit(submitData)
+
     if (!isLoading) {
       form.reset()
       onOpenChange(false)
@@ -29232,7 +29403,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
               {/* Guarantee Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Guarantee Information</h3>
-                
+
                 {/* Guarantee Code with Product Lookup */}
                 <FormField
                   control={form.control}
@@ -29242,9 +29413,9 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       <FormLabel>Guarantee Code (Printed on Product) *</FormLabel>
                       <FormControl>
                         <div className="space-y-2">
-                          <Input 
-                            placeholder="Enter the code from the product" 
-                            {...field} 
+                          <Input
+                            placeholder="Enter the code from the product"
+                            {...field}
                             onChange={(e) => {
                               field.onChange(e.target.value.toUpperCase())
                             }}
@@ -29301,6 +29472,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                     )}
                   />
                   <div></div> {/* Spacer */}
+
                   <FormField
                     control={form.control}
                     name="purchase_date"
@@ -29319,6 +29491,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       </FormItem>
                     )}
                   />
+
                   <FormField
                     control={form.control}
                     name="expiry_date"
@@ -30037,9 +30210,9 @@ export function GuaranteeStatusBadge({ status, className }: GuaranteeStatusBadge
 ----------------------------------------
 FILE: GuaranteeTable.tsx
 Path: \frontend\src\features\guarantees\components\GuaranteeTable.tsx
-Size: 7 KB
+Size: 8 KB
 ----------------------------------------
-Lines: 181
+Lines: 204
 
 import { useTranslation } from 'react-i18next'
 import {
@@ -30051,26 +30224,42 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { 
-  MoreHorizontal, 
-  Eye, 
-  Edit, 
-  Trash2, 
-  CheckCircle, 
-  XCircle, 
-  RefreshCw, 
+import {
+  MoreHorizontal,
+  Eye,
+  Edit,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
   Ban,
   AlertTriangle
 } from 'lucide-react'
 import { Guarantee } from '../types'
 import { GuaranteeStatusBadge } from './GuaranteeStatusBadge'
 import { FormattedDate } from '@/components/common/FormattedDate'
+
+function GuaranteeTierBadge({ tier }: { tier?: string }) {
+  const { t } = useTranslation()
+  if (!tier) return null
+  const colors: Record<string, string> = {
+    Golden: 'bg-amber-100 text-amber-800 border-amber-200',
+    Normal: 'bg-slate-100 text-slate-800 border-slate-200',
+    Expired: 'bg-red-100 text-red-800 border-red-200',
+  }
+  return (
+    <Badge variant="outline" className={colors[tier] || ''}>
+      {t(`guarantees.tier.${tier}`, { defaultValue: tier })}
+    </Badge>
+  )
+}
 
 interface GuaranteeTableProps {
   guarantees: Guarantee[]
@@ -30123,8 +30312,8 @@ export function GuaranteeTable({
     !['Cancelled', 'Expired'].includes(guarantee.status)
 
   const isExpired = (guarantee: Guarantee) => {
-    return new Date(guarantee.expiry_date) < new Date() && 
-           ['Approved', 'Renewed'].includes(guarantee.status)
+    return new Date(guarantee.expiry_date) < new Date() &&
+      ['Approved', 'Renewed'].includes(guarantee.status)
   }
 
   return (
@@ -30136,7 +30325,9 @@ export function GuaranteeTable({
             <TableHead>{t('guarantees.table.customer')}</TableHead>
             <TableHead>{t('guarantees.table.product')}</TableHead>
             <TableHead>{t('guarantees.table.purchaseDate')}</TableHead>
+            <TableHead>{t('guarantees.goldenExpiry')}</TableHead>
             <TableHead>{t('guarantees.table.expiryDate')}</TableHead>
+            <TableHead>{t('guarantees.tier._')}</TableHead>
             <TableHead>{t('common.status')}</TableHead>
             <TableHead className="text-end">{t('common.actions')}</TableHead>
           </TableRow>
@@ -30151,10 +30342,20 @@ export function GuaranteeTable({
                 <FormattedDate date={guarantee.purchase_date} format="MMM DD, YYYY" />
               </TableCell>
               <TableCell>
+                {guarantee.golden_expiry_date ? (
+                  <FormattedDate date={guarantee.golden_expiry_date} format="MMM DD, YYYY" />
+                ) : (
+                  '-'
+                )}
+              </TableCell>
+              <TableCell>
                 <span className={isExpired(guarantee) ? 'text-red-600 font-medium' : ''}>
                   <FormattedDate date={guarantee.expiry_date} format="MMM DD, YYYY" />
                   {isExpired(guarantee) && ` ${t('guarantees.expired')}`}
                 </span>
+              </TableCell>
+              <TableCell>
+                <GuaranteeTierBadge tier={guarantee.tier} />
               </TableCell>
               <TableCell>
                 <GuaranteeStatusBadge status={guarantee.status} />
@@ -30170,14 +30371,12 @@ export function GuaranteeTable({
                       <Eye className="me-2 h-4 w-4" />
                       {t('common.view')}
                     </DropdownMenuItem>
-                    
                     {canEdit(guarantee) && (
                       <DropdownMenuItem onClick={() => onEdit(guarantee)}>
                         <Edit className="me-2 h-4 w-4" />
                         {t('common.edit')}
                       </DropdownMenuItem>
                     )}
-                    
                     {canApprove(guarantee) && (
                       <>
                         <DropdownMenuItem onClick={() => onApprove(guarantee)} className="text-green-600">
@@ -30190,21 +30389,18 @@ export function GuaranteeTable({
                         </DropdownMenuItem>
                       </>
                     )}
-                    
                     {canRenew(guarantee) && (
                       <DropdownMenuItem onClick={() => onRenew(guarantee)} className="text-blue-600">
                         <RefreshCw className="me-2 h-4 w-4" />
                         {t('common.renew')}
                       </DropdownMenuItem>
                     )}
-                    
                     {canCancel(guarantee) && (
                       <DropdownMenuItem onClick={() => onCancel(guarantee)} className="text-orange-600">
                         <Ban className="me-2 h-4 w-4" />
                         {t('common.cancel')}
                       </DropdownMenuItem>
                     )}
-                    
                     <DropdownMenuItem
                       onClick={() => onDelete(guarantee)}
                       className="text-destructive"
@@ -30684,11 +30880,9 @@ export function CheckGuaranteePage() {
 ----------------------------------------
 FILE: GuaranteesPage.tsx
 Path: \frontend\src\features\guarantees\pages\GuaranteesPage.tsx
-Size: 14 KB
+Size: 15 KB
 ----------------------------------------
-Lines: 399
-
-// frontend/src/features/guarantees/pages/GuaranteesPage.tsx
+Lines: 410
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -30702,6 +30896,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Search, RefreshCw, Filter, UserCog } from 'lucide-react'
 import { toast } from 'sonner'
 import { GuaranteeTable } from '../components/GuaranteeTable'
@@ -30719,13 +30914,16 @@ import { queryClient, invalidateDashboard } from '@/lib/query-client'
 export function GuaranteesPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [tierFilter, setTierFilter] = useState<string>('all')
   const [customerFilter, setCustomerFilter] = useState<string>('all')
   const [productFilter, setProductFilter] = useState<string>('all')
+
   const [selectedGuarantee, setSelectedGuarantee] = useState<Guarantee | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -30756,7 +30954,7 @@ export function GuaranteesPage() {
 
   // Fetch guarantees
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['guarantees', page, limit, debouncedSearch, statusFilter, customerFilter, productFilter],
+    queryKey: ['guarantees', page, limit, debouncedSearch, statusFilter, tierFilter, customerFilter, productFilter],
     queryFn: () =>
       guaranteeService.list(
         page,
@@ -30764,7 +30962,8 @@ export function GuaranteesPage() {
         debouncedSearch,
         statusFilter !== 'all' ? statusFilter : '',
         customerFilter !== 'all' ? Number(customerFilter) : undefined,
-        productFilter !== 'all' ? Number(productFilter) : undefined
+        productFilter !== 'all' ? Number(productFilter) : undefined,
+        tierFilter !== 'all' ? tierFilter : undefined
       ),
   })
 
@@ -30897,6 +31096,7 @@ export function GuaranteesPage() {
 
   const resetFilters = () => {
     setStatusFilter('all')
+    setTierFilter('all')
     setCustomerFilter('all')
     setProductFilter('all')
     setSearch('')
@@ -30917,6 +31117,14 @@ export function GuaranteesPage() {
           {t('guarantees.create')}
         </Button>
       </div>
+
+      <Tabs value={tierFilter} onValueChange={(v) => { setTierFilter(v); setPage(1) }}>
+        <TabsList>
+          <TabsTrigger value="all">{t('guarantees.tabs.all')}</TabsTrigger>
+          <TabsTrigger value="golden">{t('guarantees.tabs.golden')}</TabsTrigger>
+          <TabsTrigger value="normal">{t('guarantees.tabs.normal')}</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
@@ -30992,7 +31200,6 @@ export function GuaranteesPage() {
         <Button variant="outline" onClick={() => refetch()} size="icon">
           <RefreshCw className="h-4 w-4" />
         </Button>
-        
         <Button variant="ghost" onClick={resetFilters} size="sm">
           <Filter className="h-4 w-4 mr-2" />
           Reset
@@ -31007,7 +31214,7 @@ export function GuaranteesPage() {
         onApprove={(g) => openApproveDialog(g, 'approve')}
         onReject={(g) => openApproveDialog(g, 'reject')}
         onRenew={(g) => { setSelectedGuarantee(g); setIsRenewOpen(true) }}
-        onCancel={(g) => { 
+        onCancel={(g) => {
           setSelectedGuarantee(g)
           if (confirm(t('guarantees.cancelConfirm', { code: g.code, customer: g.customer_name }))) {
             handleCancel()
@@ -31093,10 +31300,7 @@ FILE: PublicRegisterPage.tsx
 Path: \frontend\src\features\guarantees\pages\PublicRegisterPage.tsx
 Size: 31 KB
 ----------------------------------------
-Lines: 766
-
-// frontend/src/features/guarantees/pages/PublicRegisterPage.tsx
-// Replace the product_name field with guarantee_code lookup
+Lines: 773
 
 import { useState, useRef, useMemo, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
@@ -31147,7 +31351,7 @@ const publicRegisterSchema = z.object({
   province: z.string().min(2, 'Province is required').max(50),
   city: z.string().min(2, 'City is required').max(50),
   address: z.string().min(5, 'Address is required'),
-  
+
   // Guarantee
   guarantee_code: z.string().min(3, 'Guarantee code is required').max(50),
   purchase_date: z.string().min(1, 'Purchase date is required'),
@@ -31163,6 +31367,8 @@ interface ProductLookupResult {
   id: number
   name: string
   category_name: string
+  default_guarantee_months: number
+  golden_guarantee_months: number
   warranty?: {
     manufacture_year: number
     manufacture_month_name: string
@@ -31175,6 +31381,7 @@ interface ProductLookupResult {
 export function PublicRegisterPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [registrationResult, setRegistrationResult] = useState<{
@@ -31182,18 +31389,20 @@ export function PublicRegisterPage() {
     message: string
     data?: any
   } | null>(null)
+
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [lookupResult, setLookupResult] = useState<ProductLookupResult | null>(null)
   const [isLookupLoading, setIsLookupLoading] = useState(false)
-  
+
   // File upload states
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
   const [invoicePreview, setInvoicePreview] = useState<string | null>(null)
   const [invoiceUploadedUrl, setInvoiceUploadedUrl] = useState<string>('')
+
   const [cardFile, setCardFile] = useState<File | null>(null)
   const [cardPreview, setCardPreview] = useState<string | null>(null)
   const [cardUploadedUrl, setCardUploadedUrl] = useState<string>('')
-  
+
   const invoiceInputRef = useRef<HTMLInputElement>(null)
   const cardInputRef = useRef<HTMLInputElement>(null)
 
@@ -31243,6 +31452,7 @@ export function PublicRegisterPage() {
       const product = response.data.data
       setLookupResult(product)
       setLookupError(null)
+      form.setValue('guarantee_period', product.default_guarantee_months)
       toast.success(`Product matched: ${product.name}`)
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -31254,7 +31464,7 @@ export function PublicRegisterPage() {
     } finally {
       setIsLookupLoading(false)
     }
-  }, [])
+  }, [form])
 
   // Trigger lookup when debounced code changes
   useMemo(() => {
@@ -31270,7 +31480,6 @@ export function PublicRegisterPage() {
     setIsUploading(true)
     try {
       const result = await publicGuaranteeService.uploadFile(file)
-      
       if (type === 'invoice') {
         setInvoiceUploadedUrl(result.url)
         form.setValue('invoice_image', result.url)
@@ -31294,13 +31503,11 @@ export function PublicRegisterPage() {
         toast.error('File size exceeds 10MB limit')
         return
       }
-      
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
         return
       }
-      
       setInvoiceFile(file)
       setInvoicePreview(URL.createObjectURL(file))
       handleFileUpload(file, 'invoice')
@@ -31314,13 +31521,11 @@ export function PublicRegisterPage() {
         toast.error('File size exceeds 10MB limit')
         return
       }
-      
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
         return
       }
-      
       setCardFile(file)
       setCardPreview(URL.createObjectURL(file))
       handleFileUpload(file, 'card')
@@ -31356,7 +31561,7 @@ export function PublicRegisterPage() {
 
     setIsSubmitting(true)
     setRegistrationResult(null)
-    
+
     try {
       // Clean up data - remove product_name (not needed anymore)
       const cleanedData = {
@@ -31366,15 +31571,16 @@ export function PublicRegisterPage() {
         notes: data.notes || undefined,
         // product_name is removed - backend resolves from guarantee_code
       }
-      
+
       const response = await publicGuaranteeService.register(cleanedData)
+
       setRegistrationResult({
         success: true,
         message: response.message || 'Guarantee registered successfully!',
         data: response,
       })
+
       toast.success('Guarantee registered successfully!')
-      
       form.reset()
       setInvoiceFile(null)
       setInvoicePreview(null)
@@ -31383,6 +31589,7 @@ export function PublicRegisterPage() {
       setCardPreview(null)
       setCardUploadedUrl('')
       setLookupResult(null)
+
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to register guarantee'
       setRegistrationResult({
@@ -31431,6 +31638,7 @@ export function PublicRegisterPage() {
                 </span>
               </div>
             </div>
+
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
@@ -31438,6 +31646,7 @@ export function PublicRegisterPage() {
                 You can check the status using your guarantee code.
               </AlertDescription>
             </Alert>
+
             <div className="flex gap-4">
               <Button
                 variant="outline"
@@ -31469,6 +31678,7 @@ export function PublicRegisterPage() {
         <div className="flex justify-end mb-4">
           <LanguageSwitcher />
         </div>
+
         <Card className="shadow-lg">
           <CardHeader className="text-center border-b">
             <div className="flex justify-center mb-4">
@@ -31481,6 +31691,7 @@ export function PublicRegisterPage() {
               {t('public.register.subtitle')}
             </CardDescription>
           </CardHeader>
+
           <CardContent className="p-6">
             {registrationResult?.success === false && (
               <Alert variant="destructive" className="mb-6">
@@ -31589,6 +31800,7 @@ export function PublicRegisterPage() {
                     <span className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold">2</span>
                     {t('public.register.guaranteeInfo')}
                   </h3>
+
                   <div className="space-y-4">
                     {/* Guarantee Code with Product Lookup */}
                     <FormField
@@ -31599,9 +31811,9 @@ export function PublicRegisterPage() {
                           <FormLabel>{t('public.register.guaranteeCode')} *</FormLabel>
                           <FormControl>
                             <div className="space-y-2">
-                              <Input 
-                                placeholder="Enter the code from your product" 
-                                {...field} 
+                              <Input
+                                placeholder="Enter the code from your product"
+                                {...field}
                                 onChange={(e) => {
                                   field.onChange(e.target.value.toUpperCase())
                                 }}
@@ -31653,6 +31865,7 @@ export function PublicRegisterPage() {
                           </FormItem>
                         )}
                       />
+
                       <FormField
                         control={form.control}
                         name="guarantee_period"
@@ -31663,7 +31876,7 @@ export function PublicRegisterPage() {
                               items={periods.map((period) => ({ value: String(period.value), label: period.label }))}
                               value={field.value ? String(field.value) : ''}
                               onValueChange={(value) => field.onChange(Number(value))}
-                              disabled={periodsLoading}
+                              disabled={periodsLoading || !!lookupResult}
                             >
                               <FormControl>
                                 <SelectTrigger className="w-full">
@@ -31684,173 +31897,174 @@ export function PublicRegisterPage() {
                       />
                     </div>
                   </div>
-                  
-                  {/* File Upload Section */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    {/* Invoice Upload */}
-                    <div>
-                      <FormLabel>{t('public.register.invoiceImage')}</FormLabel>
-                      <div className="mt-1">
-                        {invoicePreview ? (
-                          <div className="relative">
-                            <div className="border rounded-lg p-2 bg-muted/30">
-                              {invoiceFile?.type.startsWith('image/') ? (
-                                <img 
-                                  src={invoicePreview} 
-                                  alt="Invoice preview" 
-                                  className="w-full h-32 object-contain rounded"
-                                />
-                              ) : (
-                                <div className="flex items-center justify-center h-32">
-                                  <FileText className="h-12 w-12 text-muted-foreground" />
-                                </div>
-                              )}
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-1 end-1 h-6 w-6 p-0"
-                                onClick={removeInvoiceFile}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            {isUploading && (
-                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                                <Loader2 className="h-8 w-8 text-white animate-spin" />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div
-                            className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
-                            onClick={() => invoiceInputRef.current?.click()}
-                          >
-                            <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                            <p className="text-sm text-muted-foreground">Click to upload invoice</p>
-                            <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
-                          </div>
-                        )}
-                        <input
-                          ref={invoiceInputRef}
-                          type="file"
-                          accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
-                          className="hidden"
-                          onChange={handleInvoiceFileChange}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Guarantee Card Upload */}
-                    <div>
-                      <FormLabel>{t('public.register.guaranteeCardImage')}</FormLabel>
-                      <div className="mt-1">
-                        {cardPreview ? (
-                          <div className="relative">
-                            <div className="border rounded-lg p-2 bg-muted/30">
-                              {cardFile?.type.startsWith('image/') ? (
-                                <img 
-                                  src={cardPreview} 
-                                  alt="Card preview" 
-                                  className="w-full h-32 object-contain rounded"
-                                />
-                              ) : (
-                                <div className="flex items-center justify-center h-32">
-                                  <Image className="h-12 w-12 text-muted-foreground" />
-                                </div>
-                              )}
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-1 end-1 h-6 w-6 p-0"
-                                onClick={removeCardFile}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            {isUploading && (
-                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                                <Loader2 className="h-8 w-8 text-white animate-spin" />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div
-                            className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
-                            onClick={() => cardInputRef.current?.click()}
-                          >
-                            <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                            <p className="text-sm text-muted-foreground">Click to upload card</p>
-                            <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
-                          </div>
-                        )}
-                        <input
-                          ref={cardInputRef}
-                          type="file"
-                          accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
-                          className="hidden"
-                          onChange={handleCardFileChange}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem className="mt-4">
-                        <FormLabel>{t('public.register.notes')}</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Any additional information about your product or guarantee..."
-                            className="resize-none min-h-[80px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
-                <div className="pt-4 border-t">
-                  <Alert className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Your guarantee will be pending admin approval. You will receive a confirmation once approved.
-                      Make sure all information is accurate.
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <div className="flex gap-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => navigate('/')}
-                    >
-                      {t('public.register.cancel')}
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1"
-                      disabled={isSubmitting || isUploading || !lookupResult}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                          {t('public.register.submitting')}
-                        </>
+                {/* File Upload Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  {/* Invoice Upload */}
+                  <div>
+                    <FormLabel>{t('public.register.invoiceImage')}</FormLabel>
+                    <div className="mt-1">
+                      {invoicePreview ? (
+                        <div className="relative">
+                          <div className="border rounded-lg p-2 bg-muted/30">
+                            {invoiceFile?.type.startsWith('image/') ? (
+                              <img
+                                src={invoicePreview}
+                                alt="Invoice preview"
+                                className="w-full h-32 object-contain rounded"
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center h-32">
+                                <FileText className="h-12 w-12 text-muted-foreground" />
+                              </div>
+                            )}
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 end-1 h-6 w-6 p-0"
+                              onClick={removeInvoiceFile}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          {isUploading && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                              <Loader2 className="h-8 w-8 text-white animate-spin" />
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        t('public.register.submit')
+                        <div
+                          className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                          onClick={() => invoiceInputRef.current?.click()}
+                        >
+                          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">Click to upload invoice</p>
+                          <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
+                        </div>
                       )}
-                    </Button>
+                      <input
+                        ref={invoiceInputRef}
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
+                        className="hidden"
+                        onChange={handleInvoiceFileChange}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Guarantee Card Upload */}
+                  <div>
+                    <FormLabel>{t('public.register.guaranteeCardImage')}</FormLabel>
+                    <div className="mt-1">
+                      {cardPreview ? (
+                        <div className="relative">
+                          <div className="border rounded-lg p-2 bg-muted/30">
+                            {cardFile?.type.startsWith('image/') ? (
+                              <img
+                                src={cardPreview}
+                                alt="Card preview"
+                                className="w-full h-32 object-contain rounded"
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center h-32">
+                                <Image className="h-12 w-12 text-muted-foreground" />
+                              </div>
+                            )}
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 end-1 h-6 w-6 p-0"
+                              onClick={removeCardFile}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          {isUploading && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                              <Loader2 className="h-8 w-8 text-white animate-spin" />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                          onClick={() => cardInputRef.current?.click()}
+                        >
+                          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">Click to upload card</p>
+                          <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
+                        </div>
+                      )}
+                      <input
+                        ref={cardInputRef}
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
+                        className="hidden"
+                        onChange={handleCardFileChange}
+                      />
+                    </div>
                   </div>
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem className="mt-4">
+                      <FormLabel>{t('public.register.notes')}</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Any additional information about your product or guarantee..."
+                          className="resize-none min-h-[80px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </form>
             </Form>
+
+            <div className="pt-4 border-t">
+              <Alert className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Your guarantee will be pending admin approval. You will receive a confirmation once approved.
+                  Make sure all information is accurate.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => navigate('/')}
+                >
+                  {t('public.register.cancel')}
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={isSubmitting || isUploading || !lookupResult}
+                  onClick={form.handleSubmit(onSubmit)}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                      {t('public.register.submitting')}
+                    </>
+                  ) : (
+                    t('public.register.submit')
+                  )}
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -31910,7 +32124,7 @@ FILE: index.ts
 Path: \frontend\src\features\guarantees\types\index.ts
 Size: 2 KB
 ----------------------------------------
-Lines: 63
+Lines: 65
 
 export interface Guarantee {
   id: number
@@ -31921,6 +32135,8 @@ export interface Guarantee {
   product_name: string
   purchase_date: string
   expiry_date: string
+  golden_expiry_date?: string
+  tier?: string
   status: 'Pending' | 'Approved' | 'Rejected' | 'Renewed' | 'Cancelled' | 'Expired'
   invoice_image: string
   guarantee_card_image: string
@@ -32080,9 +32296,9 @@ export function ProductDeleteDialog({ open, onOpenChange, product, onConfirm, is
 ----------------------------------------
 FILE: ProductForm.tsx
 Path: \frontend\src\features\products\components\ProductForm.tsx
-Size: 6 KB
+Size: 10 KB
 ----------------------------------------
-Lines: 165
+Lines: 263
 
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
@@ -32115,6 +32331,7 @@ interface ProductFormProps {
 
 export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }: ProductFormProps) {
   const { t } = useTranslation()
+
   const { data: categories = [] } = useQuery({
     queryKey: ['categories-active'],
     queryFn: categoryService.listActive,
@@ -32123,7 +32340,16 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: { name: '', description: '', category_id: 0, is_active: true },
+    defaultValues: { 
+      name: '', 
+      description: '', 
+      category_id: 0, 
+      is_active: true,
+      code_prefix: '',
+      code_format: 'simple',
+      default_guarantee_months: 12,
+      golden_guarantee_months: 3,
+    },
   })
 
   useEffect(() => {
@@ -32133,9 +32359,22 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
         description: product.description || '',
         category_id: product.category_id,
         is_active: product.is_active,
+        code_prefix: product.code_prefix || '',
+        code_format: (product.code_format as any) || 'simple',
+        default_guarantee_months: product.default_guarantee_months || 12,
+        golden_guarantee_months: product.golden_guarantee_months || 3,
       })
     } else {
-      form.reset({ name: '', description: '', category_id: 0, is_active: true })
+      form.reset({ 
+        name: '', 
+        description: '', 
+        category_id: 0, 
+        is_active: true,
+        code_prefix: '',
+        code_format: 'simple',
+        default_guarantee_months: 12,
+        golden_guarantee_months: 3,
+      })
     }
   }, [product, form])
 
@@ -32163,7 +32402,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name *</FormLabel>
+                  <FormLabel>{t('common.name')} *</FormLabel>
                   <FormControl>
                     <Input placeholder='e.g. Smart TV 55"' {...field} />
                   </FormControl>
@@ -32176,7 +32415,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
               name="category_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category *</FormLabel>
+                  <FormLabel>{t('products.table.category')} *</FormLabel>
                   <Select
                     items={categories.map((cat) => ({ value: String(cat.id), label: cat.name }))}
                     value={field.value ? String(field.value) : ''}
@@ -32202,7 +32441,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('common.description')}</FormLabel>
                   <FormControl>
                     <Textarea placeholder="Optional description" className="resize-none" {...field} />
                   </FormControl>
@@ -32210,14 +32449,89 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
                 </FormItem>
               )}
             />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="code_prefix"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('products.form.codePrefix')} *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. EVC" {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="code_format"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('products.form.codeFormat')} *</FormLabel>
+                    <Select
+                      items={[
+                        { value: 'simple', label: 'Simple' }, 
+                        { value: 'jalali_encoded', label: 'Jalali Encoded' }
+                      ]}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="simple">Simple</SelectItem>
+                        <SelectItem value="jalali_encoded">Jalali Encoded</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="default_guarantee_months"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('products.form.defaultMonths')} *</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="golden_guarantee_months"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('products.form.goldenMonths')} *</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">{t('products.form.goldenHint', { n: field.value })}</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="is_active"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>{t('common.status')}</FormLabel>
                   <Select
-                    items={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
+                    items={[{ value: 'true', label: t('forms.active') }, { value: 'false', label: t('forms.inactive') }]}
                     value={field.value ? 'true' : 'false'}
                     onValueChange={(value) => field.onChange(value === 'true')}
                   >
@@ -32253,7 +32567,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
 ----------------------------------------
 FILE: ProductTable.tsx
 Path: \frontend\src\features\products\components\ProductTable.tsx
-Size: 3 KB
+Size: 4 KB
 ----------------------------------------
 Lines: 87
 
@@ -32556,9 +32870,9 @@ DIRECTORY: \frontend\src\features\products\schemas
 ----------------------------------------
 FILE: productSchema.ts
 Path: \frontend\src\features\products\schemas\productSchema.ts
-Size: 0 KB
+Size: 1 KB
 ----------------------------------------
-Lines: 18
+Lines: 22
 
 import { z } from 'zod'
 
@@ -32567,14 +32881,18 @@ export const productSchema = z.object({
     .string()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must be less than 100 characters'),
-
   description: z.string().optional(),
-
   category_id: z
     .number()
     .min(1, 'Please select a category'),
-
   is_active: z.boolean(),
+  code_prefix: z.string().min(2).max(20).regex(/^[A-Z0-9]+$/, 'Letters and digits only'),
+  code_format: z.enum(['simple', 'jalali_encoded']),
+  default_guarantee_months: z.number().min(1).max(120),
+  golden_guarantee_months: z.number().min(0).max(120),
+}).refine(d => d.golden_guarantee_months <= d.default_guarantee_months, {
+  message: 'Golden period cannot exceed the total period',
+  path: ['golden_guarantee_months'],
 })
 
 export type ProductFormValues = z.infer<typeof productSchema>
@@ -32586,9 +32904,9 @@ DIRECTORY: \frontend\src\features\products\types
 ----------------------------------------
 FILE: index.ts
 Path: \frontend\src\features\products\types\index.ts
-Size: 0 KB
+Size: 1 KB
 ----------------------------------------
-Lines: 25
+Lines: 33
 
 export interface Product {
   id: number
@@ -32597,6 +32915,10 @@ export interface Product {
   category_id: number
   category_name: string
   is_active: boolean
+  code_prefix: string
+  code_format: string
+  default_guarantee_months: number
+  golden_guarantee_months: number
   created_at: string
   updated_at: string
 }
@@ -32606,6 +32928,10 @@ export interface ProductFormData {
   description: string
   category_id: number
   is_active: boolean
+  code_prefix: string
+  code_format: string
+  default_guarantee_months: number
+  golden_guarantee_months: number
 }
 
 export interface ProductListResponse {
@@ -33342,7 +33668,7 @@ DIRECTORY: \frontend\src\features\repairs\components
 ----------------------------------------
 FILE: RepairCancelDialog.tsx
 Path: \frontend\src\features\repairs\components\RepairCancelDialog.tsx
-Size: 1 KB
+Size: 2 KB
 ----------------------------------------
 Lines: 56
 
@@ -34174,7 +34500,7 @@ export function RepairTable({
 ----------------------------------------
 FILE: RepairViewDialog.tsx
 Path: \frontend\src\features\repairs\components\RepairViewDialog.tsx
-Size: 5 KB
+Size: 6 KB
 ----------------------------------------
 Lines: 134
 
@@ -35291,7 +35617,7 @@ DIRECTORY: \frontend\src\features\technicianPortal\pages
 ----------------------------------------
 FILE: TechnicianDashboardPage.tsx
 Path: \frontend\src\features\technicianPortal\pages\TechnicianDashboardPage.tsx
-Size: 9 KB
+Size: 10 KB
 ----------------------------------------
 Lines: 197
 
@@ -36594,7 +36920,7 @@ FILE: en.json
 Path: \frontend\src\i18n\locales\en.json
 Size: 14 KB
 ----------------------------------------
-Lines: 381
+Lines: 389
 
 {
   "common": {
@@ -36726,6 +37052,9 @@ Lines: 381
     "entity": "guarantee",
     "expired": "(Expired)",
     "cancelConfirm": "Are you sure you want to cancel {{code}} for {{customer}}?",
+    "goldenExpiry": "Golden Expiry",
+    "tabs": { "all": "All", "golden": "Golden", "normal": "Normal" },
+    "tier": { "_": "Tier", "Golden": "Golden", "Normal": "Normal", "Expired": "Expired" },
     "table": {
       "code": "Code",
       "customer": "Customer",
@@ -36767,7 +37096,12 @@ Lines: 381
       "editTitle": "Edit Product",
       "createTitle": "Add New Product",
       "description": "Fill in the details to add a new product.",
-      "editDescription": "Update the product information below."
+      "editDescription": "Update the product information below.",
+      "codePrefix": "Code Prefix",
+      "codeFormat": "Code Format",
+      "defaultMonths": "Guarantee Period (months)",
+      "goldenMonths": "Golden Period (months)",
+      "goldenHint": "First {{n}} months of the total period"
     },
     "deleteDesc": "This will permanently delete the product \"{{name}}\". This action cannot be undone.",
     "deleteSuccess": "Product deleted successfully",
@@ -36981,9 +37315,9 @@ Lines: 381
 ----------------------------------------
 FILE: fa.json
 Path: \frontend\src\i18n\locales\fa.json
-Size: 18 KB
+Size: 19 KB
 ----------------------------------------
-Lines: 381
+Lines: 389
 
 {
   "common": {
@@ -37023,7 +37357,7 @@ Lines: 381
     "activate": "ÙØ¹Ø§Ù„ Ú©Ø±Ø¯Ù†",
     "deactivate": "ØºÛŒØ±ÙØ¹Ø§Ù„ Ú©Ø±Ø¯Ù†",
     "notes": "ÛŒØ§Ø¯Ø¯Ø§Ø´Øªâ€ŒÙ‡Ø§",
-    "notesPlaceholder": "ÛŒØ§Ø¯Ø¯Ø§Ø´Øª Ø®ÙˆØ¯ Ø±Ø§ Ø¯Ø± Ù…ÙˆØ±Ø¯ Ø§ÛŒÙ† ØªØµÙ…ÛŒÙ… Ø§Ø¶Ø§ÙÙ‡ Ú©Ù†ÛŒØ¯...",
+    "notesPlaceholder": "ÛŒØ§Ø¯Ø¯Ø§Ø´Øª Ø®ÙˆØ¯ Ø±Ø§ Ø¯Ø± Ù…ÙˆØ±Ø¯ Ø§ÛŒÙ† ØªØµÙ…ÛŒÙ… ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯...",
     "error": "Ù…Ø´Ú©Ù„ÛŒ Ù¾ÛŒØ´ Ø¢Ù…Ø¯Ù‡ Ø§Ø³Øª. Ù„Ø·ÙØ§ Ø¯ÙˆØ¨Ø§Ø±Ù‡ ØªÙ„Ø§Ø´ Ú©Ù†ÛŒØ¯."
   },
   "forms": {
@@ -37115,6 +37449,9 @@ Lines: 381
     "entity": "Ú¯Ø§Ø±Ø§Ù†ØªÛŒ",
     "expired": "(Ù…Ù†Ù‚Ø¶ÛŒ Ø´Ø¯Ù‡)",
     "cancelConfirm": "Ø¢ÛŒØ§ Ù…Ø·Ù…Ø¦Ù† Ù‡Ø³ØªÛŒØ¯ Ú©Ù‡ Ù…ÛŒâ€ŒØ®ÙˆØ§Ù‡ÛŒØ¯ {{code}} Ø±Ø§ Ø¨Ø±Ø§ÛŒ {{customer}} Ù„ØºÙˆ Ú©Ù†ÛŒØ¯ØŸ",
+    "goldenExpiry": "Ø§Ù†Ù‚Ø¶Ø§ÛŒ Ø·Ù„Ø§ÛŒÛŒ",
+    "tabs": { "all": "Ù‡Ù…Ù‡", "golden": "Ø·Ù„Ø§ÛŒÛŒ", "normal": "Ø¹Ø§Ø¯ÛŒ" },
+    "tier": { "_": "Ø³Ø·Ø­", "Golden": "Ø·Ù„Ø§ÛŒÛŒ", "Normal": "Ø¹Ø§Ø¯ÛŒ", "Expired": "Ù…Ù†Ù‚Ø¶ÛŒ" },
     "table": {
       "code": "Ú©Ø¯",
       "customer": "Ù…Ø´ØªØ±ÛŒ",
@@ -37155,8 +37492,13 @@ Lines: 381
       "title": "Ù…Ø­ØµÙˆÙ„",
       "editTitle": "ÙˆÛŒØ±Ø§ÛŒØ´ Ù…Ø­ØµÙˆÙ„",
       "createTitle": "Ø§ÙØ²ÙˆØ¯Ù† Ù…Ø­ØµÙˆÙ„ Ø¬Ø¯ÛŒØ¯",
-      "description": "Ø¨Ø±Ø§ÛŒ Ø§ÙØ²ÙˆØ¯Ù† Ù…Ø­ØµÙˆÙ„ Ø¬Ø¯ÛŒØ¯ØŒ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø±Ø§ ØªÚ©Ù…ÛŒÙ„ Ú©Ù†ÛŒØ¯.",
-      "editDescription": "Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ù…Ø­ØµÙˆÙ„ Ø±Ø§ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ú©Ù†ÛŒØ¯."
+      "description": "Ø¨Ø±Ø§ÛŒ Ø§ÙØ²ÙˆØ¯Ù† Ù…Ø­ØµÙˆÙ„ Ø¬Ø¯ÛŒØ¯ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø±Ø§ ØªÚ©Ù…ÛŒÙ„ Ú©Ù†ÛŒØ¯.",
+      "editDescription": "Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ù…Ø­ØµÙˆÙ„ Ø±Ø§ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ú©Ù†ÛŒØ¯.",
+      "codePrefix": "Ù¾ÛŒØ´ÙˆÙ†Ø¯ Ú©Ø¯",
+      "codeFormat": "ÙØ±Ù…Øª Ú©Ø¯",
+      "defaultMonths": "Ù…Ø¯Øª Ú¯Ø§Ø±Ø§Ù†ØªÛŒ (Ù…Ø§Ù‡)",
+      "goldenMonths": "Ù…Ø¯Øª Ú¯Ø§Ø±Ø§Ù†ØªÛŒ Ø·Ù„Ø§ÛŒÛŒ (Ù…Ø§Ù‡)",
+      "goldenHint": "{{n}} Ù…Ø§Ù‡ Ø§ÙˆÙ„ Ø§Ø² Ú©Ù„ Ø¯ÙˆØ±Ù‡"
     },
     "deleteDesc": "Ø§ÛŒÙ† Ø¹Ù…Ù„ÛŒØ§Øª Ù…Ø­ØµÙˆÙ„ \"{{name}}\" Ø±Ø§ Ø¨Ù‡ Ø·ÙˆØ± Ø¯Ø§Ø¦Ù…ÛŒ Ø­Ø°Ù Ù…ÛŒâ€ŒÚ©Ù†Ø¯. Ø§ÛŒÙ† Ø¹Ù…Ù„ Ù‚Ø§Ø¨Ù„ Ø¨Ø§Ø²Ú¯Ø´Øª Ù†ÛŒØ³Øª.",
     "deleteSuccess": "Ù…Ø­ØµÙˆÙ„ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø­Ø°Ù Ø´Ø¯",
@@ -37172,7 +37514,7 @@ Lines: 381
       "title": "Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ",
       "editTitle": "ÙˆÛŒØ±Ø§ÛŒØ´ Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ",
       "createTitle": "Ø§ÙØ²ÙˆØ¯Ù† Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ Ø¬Ø¯ÛŒØ¯",
-      "description": "Ø¨Ø±Ø§ÛŒ Ø§ÙØ²ÙˆØ¯Ù† Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ Ø¬Ø¯ÛŒØ¯ØŒ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø±Ø§ ØªÚ©Ù…ÛŒÙ„ Ú©Ù†ÛŒØ¯.",
+      "description": "Ø¨Ø±Ø§ÛŒ Ø§ÙØ²ÙˆØ¯Ù† Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ Ø¬Ø¯ÛŒØ¯ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø±Ø§ ØªÚ©Ù…ÛŒÙ„ Ú©Ù†ÛŒØ¯.",
       "editDescription": "Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ Ø±Ø§ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ú©Ù†ÛŒØ¯."
     },
     "deleteDesc": "Ø§ÛŒÙ† Ø¹Ù…Ù„ÛŒØ§Øª Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ \"{{name}}\" Ø±Ø§ Ø¨Ù‡ Ø·ÙˆØ± Ø¯Ø§Ø¦Ù…ÛŒ Ø­Ø°Ù Ù…ÛŒâ€ŒÚ©Ù†Ø¯. Ø§ÛŒÙ† Ú©Ø§Ø± ÙÙ‚Ø· Ø¯Ø± ØµÙˆØ±ØªÛŒ Ø§Ù…Ú©Ø§Ù†â€ŒÙ¾Ø°ÛŒØ± Ø§Ø³Øª Ú©Ù‡ Ù‡ÛŒÚ† Ù…Ø­ØµÙˆÙ„ÛŒ Ø¨Ù‡ Ø¢Ù† Ø§Ø®ØªØµØ§Øµ Ø¯Ø§Ø¯Ù‡ Ù†Ø´Ø¯Ù‡ Ø¨Ø§Ø´Ø¯.",
@@ -37202,7 +37544,7 @@ Lines: 381
       "title": "ØªÚ©Ù†Ø³ÛŒÙ†",
       "editTitle": "ÙˆÛŒØ±Ø§ÛŒØ´ ØªÚ©Ù†Ø³ÛŒÙ†",
       "createTitle": "Ø§ÙØ²ÙˆØ¯Ù† ØªÚ©Ù†Ø³ÛŒÙ† Ø¬Ø¯ÛŒØ¯",
-      "description": "Ø¨Ø±Ø§ÛŒ Ø§ÙØ²ÙˆØ¯Ù† ØªÚ©Ù†Ø³ÛŒÙ† Ø¬Ø¯ÛŒØ¯ØŒ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø±Ø§ ØªÚ©Ù…ÛŒÙ„ Ú©Ù†ÛŒØ¯.",
+      "description": "Ø¨Ø±Ø§ÛŒ Ø§ÙØ²ÙˆØ¯Ù† ØªÚ©Ù†Ø³ÛŒÙ† Ø¬Ø¯ÛŒØ¯ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø±Ø§ ØªÚ©Ù…ÛŒÙ„ Ú©Ù†ÛŒØ¯.",
       "editDescription": "Ø§Ø·Ù„Ø§Ø¹Ø§Øª ØªÚ©Ù†Ø³ÛŒÙ† Ø±Ø§ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ú©Ù†ÛŒØ¯.",
       "fullName": "Ù†Ø§Ù… Ú©Ø§Ù…Ù„",
       "username": "Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø±ÛŒ",
@@ -37212,10 +37554,10 @@ Lines: 381
       "nationalId": "Ú©Ø¯ Ù…Ù„ÛŒ",
       "address": "Ø¢Ø¯Ø±Ø³",
       "status": "ÙˆØ¶Ø¹ÛŒØª",
-      "passwordRequired": "Ù¾Ø³ÙˆØ±Ø¯ Ù†ÛŒØ§Ø²  Ø§Ø³Øª",
-      "fullNamePlaceholder": "Ù†Ø§Ø¯Ø¹Ù„ÛŒ Ø¬Ø¹ÙØ±ÛŒ",
+      "passwordRequired": "Ù¾Ø³ÙˆØ±Ø¯ Ù†ÛŒØ§Ø² Ø§Ø³Øª",
+      "fullNamePlaceholder": "Ù†Ø§Ø¯Ø± Ø¬Ø¹ÙØ±ÛŒ",
       "usernamePlaceholder": "nadali",
-      "passwordPlaceholder": "Ø§Ú¯Ù‡ Ù…ÛŒØ®ÙˆØ§ÛŒØ¯ Ù‚Ø¨Ù„ÛŒ Ø¨Ù…ÙˆÙ†Ù‡ Ø®Ø§Ù„ÛŒ Ø¨Ø²Ø§Ø±ÛŒØ¯",
+      "passwordPlaceholder": "Ø§Ú¯Ø± Ù…ÛŒâ€ŒØ®ÙˆØ§Ù‡ÛŒØ¯ Ù‚Ø¨Ù„ÛŒ Ø¨Ù…Ø§Ù†Ø¯ Ø®Ø§Ù„ÛŒ Ø¨Ú¯Ø°Ø§Ø±ÛŒØ¯",
       "phonePlaceholder": "+989122222222",
       "nationalIdPlaceholder": "Ú©Ø¯ Ù…Ù„ÛŒ",
       "addressPlaceholder": "Ø¢Ø¯Ø±Ø³ Ú©Ø§Ù…Ù„"
@@ -37257,9 +37599,9 @@ Lines: 381
   },
   "technicianPortal": {
     "portalTitle": "Ù¾Ù†Ù„ ØªÚ©Ù†Ø³ÛŒÙ†",
-    "loginSubtitle": "Ø¯Ø³ØªØ±Ø³ÛŒ Ø¨Ù‡ ØªØ¹Ù…ÛŒØ±Ø§Øª Ù…Ø­ÙˆÙ„â€ŒØ´Ø¯Ù‡ Ùˆ Ø¨Ø±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ ÙˆØ¶Ø¹ÛŒØª",
+    "loginSubtitle": "Ø¯Ø³ØªØ±Ø³ÛŒ Ø¨Ù‡ ØªØ¹Ù…ÛŒØ±Ø§Øª Ù…Ø­ÙˆÙ„â€ŒØ´Ø¯Ù‡ Ùˆ Ø¨Ø±Ø±Ø³ÛŒ ÙˆØ¶Ø¹ÛŒØª",
     "signIn": "ÙˆØ±ÙˆØ¯",
-    "signInDesc": "Ø¨Ø±Ø§ÛŒ Ø¯Ø³ØªØ±Ø³ÛŒ Ø¨Ù‡ Ø¯Ø§Ø´Ø¨ÙˆØ±Ø¯ Ø®ÙˆØ¯ØŒ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ú©Ø§Ø±Ø¨Ø±ÛŒâ€ŒØªØ§Ù† Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯",
+    "signInDesc": "Ø¨Ø±Ø§ÛŒ Ø¯Ø³ØªØ±Ø³ÛŒ Ø¨Ù‡ Ø¯Ø§Ø´Ø¨ÙˆØ±Ø¯ Ø®ÙˆØ¯ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ú©Ø§Ø±Ø¨Ø±ÛŒâ€ŒØªØ§Ù† Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯",
     "signingIn": "Ø¯Ø± Ø­Ø§Ù„ ÙˆØ±ÙˆØ¯...",
     "invalidCredentials": "Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø±ÛŒ ÛŒØ§ Ø±Ù…Ø² Ø¹Ø¨ÙˆØ± Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª",
     "backToStaffLogin": "Ø¨Ø§Ø²Ú¯Ø´Øª Ø¨Ù‡ ÙˆØ±ÙˆØ¯ Ú©Ø§Ø±Ú©Ù†Ø§Ù†",
@@ -37267,14 +37609,14 @@ Lines: 381
     "dashboardNav": "Ø¯Ø§Ø´Ø¨ÙˆØ±Ø¯",
     "profileNav": "Ù¾Ø±ÙˆÙØ§ÛŒÙ„",
     "logout": "Ø®Ø±ÙˆØ¬",
-    "welcome": "Ø®ÙˆØ´ Ø¢Ù…Ø¯ÛŒØ¯ØŒ {{name}}!",
+    "welcome": "Ø®ÙˆØ´ Ø¢Ù…Ø¯ÛŒ {{name}}!",
     "welcomeSubtitle": "Ø§ÛŒÙ† Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§ÛŒ ØªØ¹Ù…ÛŒØ±ÛŒ Ø§Ø³Øª Ú©Ù‡ Ø«Ø¨Øª Ú©Ø±Ø¯Ù‡â€ŒØ§ÛŒØ¯ Ùˆ ÙˆØ¶Ø¹ÛŒØª Ø¨Ø±Ø±Ø³ÛŒ Ø¢Ù†â€ŒÙ‡Ø§.",
     "totalRepairs": "Ú©Ù„ ØªØ¹Ù…ÛŒØ±Ø§Øª",
     "pendingReview": "Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± Ø¨Ø±Ø±Ø³ÛŒ",
     "myRepairReports": "Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§ÛŒ ØªØ¹Ù…ÛŒØ± Ù…Ù†",
     "filterByStatus": "ÙÛŒÙ„ØªØ± Ø¨Ø± Ø§Ø³Ø§Ø³ ÙˆØ¶Ø¹ÛŒØª",
     "noRepairsTitle": "Ù‡Ù†ÙˆØ² Ú¯Ø²Ø§Ø±Ø´ ØªØ¹Ù…ÛŒØ±ÛŒ Ø«Ø¨Øª Ù†Ø´Ø¯Ù‡",
-    "noRepairsDesc": "Ø¨Ø±Ø§ÛŒ Ø«Ø¨Øª Ú¯Ø²Ø§Ø±Ø´ Ø¨Ø±Ø§ÛŒ ÛŒÚ© Ú¯Ø§Ø±Ø§Ù†ØªÛŒØŒ Ø§Ø² Â«ØªØ¹Ù…ÛŒØ± Ø¬Ø¯ÛŒØ¯Â» Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù†ÛŒØ¯.",
+    "noRepairsDesc": "Ø¨Ø±Ø§ÛŒ Ø«Ø¨Øª Ú¯Ø²Ø§Ø±Ø´ Ø¨Ø±Ø§ÛŒ ÛŒÚ© Ú¯Ø§Ø±Ø§Ù†ØªÛŒ Ø§Ø² Â«ØªØ¹Ù…ÛŒØ± Ø¬Ø¯ÛŒØ¯Â» Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù†ÛŒØ¯.",
     "tableFiled": "ØªØ§Ø±ÛŒØ® Ø«Ø¨Øª",
     "showingRepairs": "Ù†Ù…Ø§ÛŒØ´ {{from}} ØªØ§ {{to}} Ø§Ø² {{total}} ØªØ¹Ù…ÛŒØ±",
     "newRepair": "ØªØ¹Ù…ÛŒØ± Ø¬Ø¯ÛŒØ¯",
@@ -37298,8 +37640,8 @@ Lines: 381
     "servicesPerformed": "Ø®Ø¯Ù…Ø§Øª Ø§Ù†Ø¬Ø§Ù…â€ŒØ´Ø¯Ù‡",
     "addComponent": "Ø§ÙØ²ÙˆØ¯Ù† Ù‚Ø·Ø¹Ù‡",
     "addService": "Ø§ÙØ²ÙˆØ¯Ù† Ø®Ø¯Ù…Øª",
-    "noComponents": "Ù‚Ø·Ø¹Ù‡â€ŒØ§ÛŒ Ø§ÙØ²ÙˆØ¯Ù‡ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.",
-    "noServices": "Ø®Ø¯Ù…ØªÛŒ Ø§ÙØ²ÙˆØ¯Ù‡ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.",
+    "noComponents": "Ù‚Ø·Ø¹Ù‡â€ŒØ§ÛŒ Ø§Ø¶Ø§ÙÙ‡ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.",
+    "noServices": "Ø®Ø¯Ù…ØªÛŒ Ø§Ø¶Ø§ÙÙ‡ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.",
     "selectComponent": "Ø§Ù†ØªØ®Ø§Ø¨ Ù‚Ø·Ø¹Ù‡",
     "selectService": "Ø§Ù†ØªØ®Ø§Ø¨ Ø®Ø¯Ù…Øª",
     "componentReportPlaceholder": "Ú¯Ø²Ø§Ø±Ø´ Ø§ÛŒÙ† Ù‚Ø·Ø¹Ù‡...",
@@ -37321,7 +37663,7 @@ Lines: 381
   "public": {
     "register": {
       "title": "Ø«Ø¨Øª Ú¯Ø§Ø±Ø§Ù†ØªÛŒ",
-      "subtitle": "Ú©Ø¯ Ú¯Ø§Ø±Ø§Ù†ØªÛŒ Ù…Ø­ØµÙˆÙ„ Ø®ÙˆØ¯ Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯ ØªØ§ Ù…Ø­ØµÙˆÙ„ Ø´Ù…Ø§ Ø¨Ù‡â€ŒØ·ÙˆØ± Ø®ÙˆØ¯Ú©Ø§Ø± Ø´Ù†Ø§Ø³Ø§ÛŒÛŒ Ø´ÙˆØ¯. ØªÙ…Ø§Ù…ÛŒ ÙÛŒÙ„Ø¯Ù‡Ø§ÛŒ Ø³ØªØ§Ø±Ù‡â€ŒØ¯Ø§Ø± (*) Ø§Ù„Ø²Ø§Ù…ÛŒ Ù‡Ø³ØªÙ†Ø¯.",
+      "subtitle": "Ú©Ø¯ Ú¯Ø§Ø±Ø§Ù†ØªÛŒ Ù…Ø­ØµÙˆÙ„ Ø®ÙˆØ¯ Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯ ØªØ§ Ù…Ø­ØµÙˆÙ„ Ø´Ù…Ø§ Ø¨Ù‡â€ŒØ·ÙˆØ± Ø®ÙˆØ¯Ú©Ø§Ø± Ø´Ù†Ø§Ø³Ø§ÛŒÛŒ Ø´ÙˆØ¯. ØªÙ…Ø§Ù… ÙÛŒÙ„Ø¯Ù‡Ø§ÛŒ Ø³ØªØ§Ø±Ù‡â€ŒØ¯Ø§Ø± (*) Ø§Ø¬Ø¨Ø§Ø±ÛŒ Ù‡Ø³ØªÙ†Ø¯.",
       "customerInfo": "Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ù…Ø´ØªØ±ÛŒ",
       "guaranteeInfo": "Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ú¯Ø§Ø±Ø§Ù†ØªÛŒ",
       "fullName": "Ù†Ø§Ù… Ú©Ø§Ù…Ù„",
@@ -37342,7 +37684,7 @@ Lines: 381
       "alreadyRegistered": "Ú¯Ø§Ø±Ø§Ù†ØªÛŒ Ø®ÙˆØ¯ Ø±Ø§ Ù‚Ø¨Ù„Ø§Ù‹ Ø«Ø¨Øª Ú©Ø±Ø¯Ù‡â€ŒØ§ÛŒØ¯ØŸ",
       "checkStatusLink": "Ø¨Ø±Ø±Ø³ÛŒ ÙˆØ¶Ø¹ÛŒØª",
       "successTitle": "Ø«Ø¨Øª Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯!",
-      "successDesc": "Ú¯Ø§Ø±Ø§Ù†ØªÛŒ Ø´Ù…Ø§ Ø«Ø¨Øª Ø´Ø¯Ù‡ Ùˆ Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± ØªØ§ÛŒÛŒØ¯ Ù…Ø¯ÛŒØ± Ø§Ø³Øª.",
+      "successDesc": "Ú¯Ø§Ø±Ø§Ù†ØªÛŒ Ø´Ù…Ø§ Ø«Ø¨Øª Ø´Ø¯ Ùˆ Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± ØªØ§ÛŒÛŒØ¯ Ù…Ø¯ÛŒØ± Ø§Ø³Øª.",
       "pendingApproval": "Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± ØªØ§ÛŒÛŒØ¯",
       "registerAnother": "Ø«Ø¨Øª Ú¯Ø§Ø±Ø§Ù†ØªÛŒ Ø¯ÛŒÚ¯Ø±",
       "goHome": "Ø¨Ø§Ø²Ú¯Ø´Øª Ø¨Ù‡ Ø®Ø§Ù†Ù‡"
@@ -38110,7 +38452,7 @@ File Types:
   .md : 2 files
   .mod : 1 files
   .ps1 : 8 files
-  .sql : 17 files
+  .sql : 19 files
   .sum : 1 files
   .ts : 36 files
   .tsx : 88 files
@@ -38126,7 +38468,7 @@ Languages:
   Markdown : 2 files
   Other : 3 files
   PowerShell : 8 files
-  SQL : 17 files
+  SQL : 19 files
   TypeScript : 124 files
   YAML : 1 files
 

@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Edit, Trash2 } from 'lucide-react'
 import { Category } from '../types'
-import { format } from 'date-fns'
+import { FormattedDate } from '@/components/common/FormattedDate'
 
 interface CategoryTableProps {
   categories: Category[]
@@ -57,7 +57,9 @@ export function CategoryTable({ categories, onEdit, onDelete, isLoading }: Categ
                   {category.is_active ? t('forms.active') : t('forms.inactive')}
                 </Badge>
               </TableCell>
-              <TableCell>{format(new Date(category.created_at), 'MMM d, yyyy')}</TableCell>
+              <TableCell>
+                <FormattedDate date={category.created_at} format="MMM DD, YYYY" />
+              </TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>

@@ -1,4 +1,3 @@
-// backend/internal/modules/guarantees/routes.go
 package guarantees
 
 import (
@@ -18,12 +17,10 @@ func NewGuaranteeModule(db *gorm.DB, cfg *config.Config) *GuaranteeModule {
 	service := NewGuaranteeService(repo, db)
 	validator := NewGuaranteeValidator()
 	handler := NewGuaranteeHandler(service, validator, cfg.AppURL)
-
 	return &GuaranteeModule{handler: handler}
 }
 
 func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
-	// Public routes - no auth required
 	public := router.Group("/guarantees/public")
 	{
 		public.POST("/register", m.handler.PublicRegister)
@@ -32,7 +29,6 @@ func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
 		public.POST("/upload", m.handler.UploadFile)
 	}
 
-	// Read access — admins AND technicians
 	readOnly := router.Group("/guarantees")
 	readOnly.Use(middleware.AuthMiddleware())
 	{
@@ -40,7 +36,6 @@ func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
 		readOnly.GET("/:id", m.handler.Get)
 	}
 
-	// Write access — admins only
 	protected := router.Group("/guarantees")
 	protected.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
 	{
@@ -51,9 +46,10 @@ func (m *GuaranteeModule) RegisterRoutes(router *gin.RouterGroup) {
 		protected.POST("/:id/renew", m.handler.Renew)
 		protected.POST("/:id/cancel", m.handler.Cancel)
 		protected.DELETE("/:id", m.handler.Delete)
-		
-		// IMPORTANT: This must be defined AFTER the routes with dynamic parameters
-		// or use a different path pattern to avoid conflicts
 		protected.POST("/admin-create", m.handler.CreateByAdmin)
+
+		// Golden management
+		protected.POST("/:id/set-golden", m.handler.SetGolden)
+		protected.POST("/:id/remove-golden", m.handler.RemoveGolden)
 	}
 }

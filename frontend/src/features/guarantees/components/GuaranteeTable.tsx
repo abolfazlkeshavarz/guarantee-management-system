@@ -1,33 +1,35 @@
 import { useTranslation } from 'react-i18next'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { 
-  MoreHorizontal, 
-  Eye, 
-  Edit, 
-  Trash2, 
-  CheckCircle, 
-  XCircle, 
-  RefreshCw, 
-  Ban,
-  AlertTriangle
+import {
+  MoreHorizontal, Eye, Edit, Trash2, CheckCircle, XCircle,
+  RefreshCw, Ban, AlertTriangle, Sparkles, Sparkle,
 } from 'lucide-react'
 import { Guarantee } from '../types'
 import { GuaranteeStatusBadge } from './GuaranteeStatusBadge'
 import { FormattedDate } from '@/components/common/FormattedDate'
+
+function GuaranteeTierBadge({ tier }: { tier?: string }) {
+  const { t } = useTranslation()
+  if (!tier) return null
+  const colors: Record<string, string> = {
+    Golden: 'bg-amber-100 text-amber-800 border-amber-200',
+    Normal: 'bg-slate-100 text-slate-800 border-slate-200',
+    Expired: 'bg-red-100 text-red-800 border-red-200',
+  }
+  return (
+    <Badge variant="outline" className={colors[tier] || ''}>
+      {t(`guarantees.tier.${tier}`, { defaultValue: tier })}
+    </Badge>
+  )
+}
 
 interface GuaranteeTableProps {
   guarantees: Guarantee[]
@@ -38,19 +40,14 @@ interface GuaranteeTableProps {
   onRenew: (guarantee: Guarantee) => void
   onCancel: (guarantee: Guarantee) => void
   onDelete: (guarantee: Guarantee) => void
+  onSetGolden: (guarantee: Guarantee) => void
+  onRemoveGolden: (guarantee: Guarantee) => void
   isLoading?: boolean
 }
 
 export function GuaranteeTable({
-  guarantees,
-  onView,
-  onEdit,
-  onApprove,
-  onReject,
-  onRenew,
-  onCancel,
-  onDelete,
-  isLoading,
+  guarantees, onView, onEdit, onApprove, onReject, onRenew,
+  onCancel, onDelete, onSetGolden, onRemoveGolden, isLoading,
 }: GuaranteeTableProps) {
   const { t } = useTranslation()
 
@@ -72,17 +69,15 @@ export function GuaranteeTable({
     )
   }
 
-  const canEdit = (guarantee: Guarantee) => guarantee.status === 'Pending'
-  const canApprove = (guarantee: Guarantee) => guarantee.status === 'Pending'
-  const canRenew = (guarantee: Guarantee) =>
-    guarantee.status === 'Approved' || guarantee.status === 'Renewed'
-  const canCancel = (guarantee: Guarantee) =>
-    !['Cancelled', 'Expired'].includes(guarantee.status)
+  const canEdit = (g: Guarantee) => g.status === 'Pending'
+  const canApprove = (g: Guarantee) => g.status === 'Pending'
+  const canRenew = (g: Guarantee) => g.status === 'Approved' || g.status === 'Renewed'
+  const canCancel = (g: Guarantee) => !['Cancelled', 'Expired'].includes(g.status)
+  const canSetGolden = (g: Guarantee) => g.status === 'Approved' || g.status === 'Renewed'
+  const hasGolden = (g: Guarantee) => !!g.golden_expiry_date
 
-  const isExpired = (guarantee: Guarantee) => {
-    return new Date(guarantee.expiry_date) < new Date() && 
-           ['Approved', 'Renewed'].includes(guarantee.status)
-  }
+  const isExpired = (g: Guarantee) =>
+    new Date(g.expiry_date) < new Date() && ['Approved', 'Renewed'].includes(g.status)
 
   return (
     <div className="rounded-md border overflow-hidden">
@@ -93,29 +88,33 @@ export function GuaranteeTable({
             <TableHead>{t('guarantees.table.customer')}</TableHead>
             <TableHead>{t('guarantees.table.product')}</TableHead>
             <TableHead>{t('guarantees.table.purchaseDate')}</TableHead>
+            <TableHead>{t('guarantees.goldenExpiry')}</TableHead>
             <TableHead>{t('guarantees.table.expiryDate')}</TableHead>
+            <TableHead>{t('guarantees.tier._')}</TableHead>
             <TableHead>{t('common.status')}</TableHead>
             <TableHead className="text-end">{t('common.actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {guarantees.map((guarantee) => (
-            <TableRow key={guarantee.id} className={isExpired(guarantee) ? 'bg-red-50/50' : ''}>
-              <TableCell className="font-medium">{guarantee.code}</TableCell>
-              <TableCell>{guarantee.customer_name}</TableCell>
-              <TableCell>{guarantee.product_name}</TableCell>
+          {guarantees.map((g) => (
+            <TableRow key={g.id} className={isExpired(g) ? 'bg-red-50/50' : ''}>
+              <TableCell className="font-medium">{g.code}</TableCell>
+              <TableCell>{g.customer_name}</TableCell>
+              <TableCell>{g.product_name}</TableCell>
+              <TableCell><FormattedDate date={g.purchase_date} format="MMM DD, YYYY" /></TableCell>
               <TableCell>
-                <FormattedDate date={guarantee.purchase_date} format="MMM DD, YYYY" />
+                {g.golden_expiry_date
+                  ? <FormattedDate date={g.golden_expiry_date} format="MMM DD, YYYY" />
+                  : '-'}
               </TableCell>
               <TableCell>
-                <span className={isExpired(guarantee) ? 'text-red-600 font-medium' : ''}>
-                  <FormattedDate date={guarantee.expiry_date} format="MMM DD, YYYY" />
-                  {isExpired(guarantee) && ` ${t('guarantees.expired')}`}
+                <span className={isExpired(g) ? 'text-red-600 font-medium' : ''}>
+                  <FormattedDate date={g.expiry_date} format="MMM DD, YYYY" />
+                  {isExpired(g) && ` ${t('guarantees.expired')}`}
                 </span>
               </TableCell>
-              <TableCell>
-                <GuaranteeStatusBadge status={guarantee.status} />
-              </TableCell>
+              <TableCell><GuaranteeTierBadge tier={g.tier} /></TableCell>
+              <TableCell><GuaranteeStatusBadge status={g.status} /></TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
@@ -123,51 +122,52 @@ export function GuaranteeTable({
                     <MoreHorizontal className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onView(guarantee)}>
-                      <Eye className="me-2 h-4 w-4" />
-                      {t('common.view')}
+                    <DropdownMenuItem onClick={() => onView(g)}>
+                      <Eye className="me-2 h-4 w-4" /> {t('common.view')}
                     </DropdownMenuItem>
-                    
-                    {canEdit(guarantee) && (
-                      <DropdownMenuItem onClick={() => onEdit(guarantee)}>
-                        <Edit className="me-2 h-4 w-4" />
-                        {t('common.edit')}
+                    {canEdit(g) && (
+                      <DropdownMenuItem onClick={() => onEdit(g)}>
+                        <Edit className="me-2 h-4 w-4" /> {t('common.edit')}
                       </DropdownMenuItem>
                     )}
-                    
-                    {canApprove(guarantee) && (
+                    {canApprove(g) && (
                       <>
-                        <DropdownMenuItem onClick={() => onApprove(guarantee)} className="text-green-600">
-                          <CheckCircle className="me-2 h-4 w-4" />
-                          {t('common.approve')}
+                        <DropdownMenuItem onClick={() => onApprove(g)} className="text-green-600">
+                          <CheckCircle className="me-2 h-4 w-4" /> {t('common.approve')}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onReject(guarantee)} className="text-red-600">
-                          <XCircle className="me-2 h-4 w-4" />
-                          {t('common.reject')}
+                        <DropdownMenuItem onClick={() => onReject(g)} className="text-red-600">
+                          <XCircle className="me-2 h-4 w-4" /> {t('common.reject')}
                         </DropdownMenuItem>
                       </>
                     )}
-                    
-                    {canRenew(guarantee) && (
-                      <DropdownMenuItem onClick={() => onRenew(guarantee)} className="text-blue-600">
-                        <RefreshCw className="me-2 h-4 w-4" />
-                        {t('common.renew')}
+                    {canRenew(g) && (
+                      <DropdownMenuItem onClick={() => onRenew(g)} className="text-blue-600">
+                        <RefreshCw className="me-2 h-4 w-4" /> {t('common.renew')}
                       </DropdownMenuItem>
                     )}
-                    
-                    {canCancel(guarantee) && (
-                      <DropdownMenuItem onClick={() => onCancel(guarantee)} className="text-orange-600">
-                        <Ban className="me-2 h-4 w-4" />
-                        {t('common.cancel')}
+                    {canCancel(g) && (
+                      <DropdownMenuItem onClick={() => onCancel(g)} className="text-orange-600">
+                        <Ban className="me-2 h-4 w-4" /> {t('common.cancel')}
                       </DropdownMenuItem>
                     )}
-                    
-                    <DropdownMenuItem
-                      onClick={() => onDelete(guarantee)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="me-2 h-4 w-4" />
-                      {t('common.delete')}
+
+                    <DropdownMenuSeparator />
+
+                    {/* Golden actions */}
+                    {canSetGolden(g) && (
+                      <DropdownMenuItem onClick={() => onSetGolden(g)} className="text-amber-600">
+                        <Sparkles className="me-2 h-4 w-4" /> {t('guarantees.setGolden')}
+                      </DropdownMenuItem>
+                    )}
+                    {hasGolden(g) && (
+                      <DropdownMenuItem onClick={() => onRemoveGolden(g)} className="text-amber-600">
+                        <Sparkle className="me-2 h-4 w-4" /> {t('guarantees.removeGolden')}
+                      </DropdownMenuItem>
+                    )}
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => onDelete(g)} className="text-destructive">
+                      <Trash2 className="me-2 h-4 w-4" /> {t('common.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

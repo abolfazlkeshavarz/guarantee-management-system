@@ -50,6 +50,18 @@ func (r *ProductRepository) FindByGuaranteeCode(code string) (*Product, error) {
 	return &product, nil
 }
 
+func (r *ProductRepository) FindByCodePrefix(prefix string) (*Product, error) {
+	var product Product
+	err := r.db.Where("code_prefix = ?", prefix).First(&product).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &product, nil
+}
+
 func (r *ProductRepository) FindAll(page, limit int, search string, categoryID uint) ([]Product, int64, error) {
 	var products []Product
 	var total int64

@@ -7,6 +7,9 @@ export interface Guarantee {
   product_name: string
   purchase_date: string
   expiry_date: string
+  golden_start_date?: string
+  golden_expiry_date?: string
+  tier?: string
   status: 'Pending' | 'Approved' | 'Rejected' | 'Renewed' | 'Cancelled' | 'Expired'
   invoice_image: string
   guarantee_card_image: string
@@ -28,6 +31,12 @@ export interface GuaranteeFormData {
   invoice_image: string
   guarantee_card_image: string
   notes: string
+}
+
+export interface SetGoldenData {
+  start_date_type: 'today' | 'purchase_date' | 'custom'
+  custom_start_date?: string
+  golden_months: number
 }
 
 export interface GuaranteeListResponse {

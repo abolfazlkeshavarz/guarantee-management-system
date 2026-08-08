@@ -8,8 +8,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Edit, Trash2 } from 'lucide-react'
-import { format } from 'date-fns'
 import { RepairCatalogEntry } from '../types'
+import { FormattedDate } from '@/components/common/FormattedDate'
 
 interface RepairCatalogTableProps {
   entries: RepairCatalogEntry[]
@@ -57,7 +57,9 @@ export function RepairCatalogTable({ entries, onEdit, onDelete, isLoading }: Rep
                   {entry.is_active ? t('common.active') : t('common.inactive')}
                 </Badge>
               </TableCell>
-              <TableCell>{format(new Date(entry.created_at), 'MMM d, yyyy')}</TableCell>
+              <TableCell>
+                <FormattedDate date={entry.created_at} format="MMM DD, YYYY" />
+              </TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>

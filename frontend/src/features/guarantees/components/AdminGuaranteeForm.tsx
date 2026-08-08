@@ -1,6 +1,3 @@
-// frontend/src/features/guarantees/components/AdminGuaranteeForm.tsx
-// Add guarantee_code field with product lookup
-
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -39,6 +36,7 @@ const adminGuaranteeSchema = z.object({
   customer_province: z.string().optional(),
   customer_city: z.string().optional(),
   customer_address: z.string().optional(),
+
   // Guarantee - all required
   guarantee_code: z.string().min(3, 'Guarantee code is required').max(50),
   purchase_date: z.string().min(1, 'Purchase date is required'),
@@ -46,6 +44,7 @@ const adminGuaranteeSchema = z.object({
   invoice_image: z.string().optional(),
   guarantee_card_image: z.string().optional(),
   notes: z.string().optional(),
+
   // Status is required with a default
   status: z.enum(['Pending', 'Approved']),
 })
@@ -56,6 +55,8 @@ interface ProductLookupResult {
   id: number
   name: string
   category_name: string
+  default_guarantee_months: number
+  golden_guarantee_months: number
   warranty?: {
     manufacture_year: number
     manufacture_month_name: string
@@ -85,6 +86,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
   const [invoicePreview, setInvoicePreview] = useState<string | null>(null)
   const [cardFile, setCardFile] = useState<File | null>(null)
   const [cardPreview, setCardPreview] = useState<string | null>(null)
+
   const invoiceInputRef = useRef<HTMLInputElement>(null)
   const cardInputRef = useRef<HTMLInputElement>(null)
 
@@ -115,6 +117,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
   })
 
   const guaranteeCode = form.watch('guarantee_code')
+  const purchaseDate = form.watch('purchase_date')
   const debouncedCode = useDebounce(guaranteeCode, 500)
 
   // Product lookup by guarantee code
@@ -159,6 +162,14 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
   }, [debouncedCode])
 
   useEffect(() => {
+    if (lookupResult && purchaseDate) {
+      const d = new Date(purchaseDate)
+      d.setMonth(d.getMonth() + lookupResult.default_guarantee_months)
+      form.setValue('expiry_date', d.toISOString().slice(0, 10))
+    }
+  }, [lookupResult, purchaseDate, form])
+
+  useEffect(() => {
     if (!open) {
       form.reset()
       setActiveTab('existing')
@@ -176,7 +187,6 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     setIsUploading(true)
     try {
       const result = await publicGuaranteeService.uploadFile(file)
-
       if (type === 'invoice') {
         form.setValue('invoice_image', result.url)
         toast.success('Invoice uploaded successfully')
@@ -198,13 +208,11 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
         toast.error('File size exceeds 10MB limit')
         return
       }
-
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
         return
       }
-
       setInvoiceFile(file)
       setInvoicePreview(URL.createObjectURL(file))
       handleFileUpload(file, 'invoice')
@@ -218,13 +226,11 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
         toast.error('File size exceeds 10MB limit')
         return
       }
-
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
         return
       }
-
       setCardFile(file)
       setCardPreview(URL.createObjectURL(file))
       handleFileUpload(file, 'card')
@@ -265,9 +271,9 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
   const handleSubmit = async (data: AdminGuaranteeFormValues) => {
     // Validate that product was found
     if (!lookupResult) {
-      form.setError('guarantee_code', { 
-        type: 'manual', 
-        message: 'Please enter a valid guarantee code that matches a product' 
+      form.setError('guarantee_code', {
+        type: 'manual',
+        message: 'Please enter a valid guarantee code that matches a product'
       })
       return
     }
@@ -289,9 +295,9 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     } else {
       // New customer - validate required fields
       if (!data.customer_full_name || !data.customer_phone || !data.customer_national_id) {
-        form.setError('customer_full_name', { 
-          type: 'manual', 
-          message: 'Full name, phone, and national ID are required for new customer registration' 
+        form.setError('customer_full_name', {
+          type: 'manual',
+          message: 'Full name, phone, and national ID are required for new customer registration'
         })
         return
       }
@@ -304,6 +310,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     }
 
     await onSubmit(submitData)
+
     if (!isLoading) {
       form.reset()
       onOpenChange(false)
@@ -473,7 +480,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
               {/* Guarantee Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Guarantee Information</h3>
-                
+
                 {/* Guarantee Code with Product Lookup */}
                 <FormField
                   control={form.control}
@@ -483,9 +490,9 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       <FormLabel>Guarantee Code (Printed on Product) *</FormLabel>
                       <FormControl>
                         <div className="space-y-2">
-                          <Input 
-                            placeholder="Enter the code from the product" 
-                            {...field} 
+                          <Input
+                            placeholder="Enter the code from the product"
+                            {...field}
                             onChange={(e) => {
                               field.onChange(e.target.value.toUpperCase())
                             }}
@@ -542,6 +549,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                     )}
                   />
                   <div></div> {/* Spacer */}
+
                   <FormField
                     control={form.control}
                     name="purchase_date"
@@ -560,6 +568,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       </FormItem>
                     )}
                   />
+
                   <FormField
                     control={form.control}
                     name="expiry_date"

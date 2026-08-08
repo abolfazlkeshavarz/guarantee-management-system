@@ -1,6 +1,3 @@
-// frontend/src/features/guarantees/pages/PublicRegisterPage.tsx
-// Replace the product_name field with guarantee_code lookup
-
 import { useState, useRef, useMemo, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -50,7 +47,7 @@ const publicRegisterSchema = z.object({
   province: z.string().min(2, 'Province is required').max(50),
   city: z.string().min(2, 'City is required').max(50),
   address: z.string().min(5, 'Address is required'),
-  
+
   // Guarantee
   guarantee_code: z.string().min(3, 'Guarantee code is required').max(50),
   purchase_date: z.string().min(1, 'Purchase date is required'),
@@ -66,6 +63,8 @@ interface ProductLookupResult {
   id: number
   name: string
   category_name: string
+  default_guarantee_months: number
+  golden_guarantee_months: number
   warranty?: {
     manufacture_year: number
     manufacture_month_name: string
@@ -78,6 +77,7 @@ interface ProductLookupResult {
 export function PublicRegisterPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
+
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [registrationResult, setRegistrationResult] = useState<{
@@ -85,18 +85,20 @@ export function PublicRegisterPage() {
     message: string
     data?: any
   } | null>(null)
+
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [lookupResult, setLookupResult] = useState<ProductLookupResult | null>(null)
   const [isLookupLoading, setIsLookupLoading] = useState(false)
-  
+
   // File upload states
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null)
   const [invoicePreview, setInvoicePreview] = useState<string | null>(null)
   const [invoiceUploadedUrl, setInvoiceUploadedUrl] = useState<string>('')
+
   const [cardFile, setCardFile] = useState<File | null>(null)
   const [cardPreview, setCardPreview] = useState<string | null>(null)
   const [cardUploadedUrl, setCardUploadedUrl] = useState<string>('')
-  
+
   const invoiceInputRef = useRef<HTMLInputElement>(null)
   const cardInputRef = useRef<HTMLInputElement>(null)
 
@@ -146,6 +148,7 @@ export function PublicRegisterPage() {
       const product = response.data.data
       setLookupResult(product)
       setLookupError(null)
+      form.setValue('guarantee_period', product.default_guarantee_months)
       toast.success(`Product matched: ${product.name}`)
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -157,7 +160,7 @@ export function PublicRegisterPage() {
     } finally {
       setIsLookupLoading(false)
     }
-  }, [])
+  }, [form])
 
   // Trigger lookup when debounced code changes
   useMemo(() => {
@@ -173,7 +176,6 @@ export function PublicRegisterPage() {
     setIsUploading(true)
     try {
       const result = await publicGuaranteeService.uploadFile(file)
-      
       if (type === 'invoice') {
         setInvoiceUploadedUrl(result.url)
         form.setValue('invoice_image', result.url)
@@ -197,13 +199,11 @@ export function PublicRegisterPage() {
         toast.error('File size exceeds 10MB limit')
         return
       }
-      
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
         return
       }
-      
       setInvoiceFile(file)
       setInvoicePreview(URL.createObjectURL(file))
       handleFileUpload(file, 'invoice')
@@ -217,13 +217,11 @@ export function PublicRegisterPage() {
         toast.error('File size exceeds 10MB limit')
         return
       }
-      
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
         return
       }
-      
       setCardFile(file)
       setCardPreview(URL.createObjectURL(file))
       handleFileUpload(file, 'card')
@@ -259,7 +257,7 @@ export function PublicRegisterPage() {
 
     setIsSubmitting(true)
     setRegistrationResult(null)
-    
+
     try {
       // Clean up data - remove product_name (not needed anymore)
       const cleanedData = {
@@ -269,15 +267,16 @@ export function PublicRegisterPage() {
         notes: data.notes || undefined,
         // product_name is removed - backend resolves from guarantee_code
       }
-      
+
       const response = await publicGuaranteeService.register(cleanedData)
+
       setRegistrationResult({
         success: true,
         message: response.message || 'Guarantee registered successfully!',
         data: response,
       })
+
       toast.success('Guarantee registered successfully!')
-      
       form.reset()
       setInvoiceFile(null)
       setInvoicePreview(null)
@@ -286,6 +285,7 @@ export function PublicRegisterPage() {
       setCardPreview(null)
       setCardUploadedUrl('')
       setLookupResult(null)
+
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to register guarantee'
       setRegistrationResult({
@@ -334,6 +334,7 @@ export function PublicRegisterPage() {
                 </span>
               </div>
             </div>
+
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
@@ -341,6 +342,7 @@ export function PublicRegisterPage() {
                 You can check the status using your guarantee code.
               </AlertDescription>
             </Alert>
+
             <div className="flex gap-4">
               <Button
                 variant="outline"
@@ -372,6 +374,7 @@ export function PublicRegisterPage() {
         <div className="flex justify-end mb-4">
           <LanguageSwitcher />
         </div>
+
         <Card className="shadow-lg">
           <CardHeader className="text-center border-b">
             <div className="flex justify-center mb-4">
@@ -384,6 +387,7 @@ export function PublicRegisterPage() {
               {t('public.register.subtitle')}
             </CardDescription>
           </CardHeader>
+
           <CardContent className="p-6">
             {registrationResult?.success === false && (
               <Alert variant="destructive" className="mb-6">
@@ -492,6 +496,7 @@ export function PublicRegisterPage() {
                     <span className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold">2</span>
                     {t('public.register.guaranteeInfo')}
                   </h3>
+
                   <div className="space-y-4">
                     {/* Guarantee Code with Product Lookup */}
                     <FormField
@@ -502,9 +507,9 @@ export function PublicRegisterPage() {
                           <FormLabel>{t('public.register.guaranteeCode')} *</FormLabel>
                           <FormControl>
                             <div className="space-y-2">
-                              <Input 
-                                placeholder="Enter the code from your product" 
-                                {...field} 
+                              <Input
+                                placeholder="Enter the code from your product"
+                                {...field}
                                 onChange={(e) => {
                                   field.onChange(e.target.value.toUpperCase())
                                 }}
@@ -556,6 +561,7 @@ export function PublicRegisterPage() {
                           </FormItem>
                         )}
                       />
+
                       <FormField
                         control={form.control}
                         name="guarantee_period"
@@ -566,7 +572,7 @@ export function PublicRegisterPage() {
                               items={periods.map((period) => ({ value: String(period.value), label: period.label }))}
                               value={field.value ? String(field.value) : ''}
                               onValueChange={(value) => field.onChange(Number(value))}
-                              disabled={periodsLoading}
+                              disabled={periodsLoading || !!lookupResult}
                             >
                               <FormControl>
                                 <SelectTrigger className="w-full">
@@ -587,173 +593,174 @@ export function PublicRegisterPage() {
                       />
                     </div>
                   </div>
-                  
-                  {/* File Upload Section */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    {/* Invoice Upload */}
-                    <div>
-                      <FormLabel>{t('public.register.invoiceImage')}</FormLabel>
-                      <div className="mt-1">
-                        {invoicePreview ? (
-                          <div className="relative">
-                            <div className="border rounded-lg p-2 bg-muted/30">
-                              {invoiceFile?.type.startsWith('image/') ? (
-                                <img 
-                                  src={invoicePreview} 
-                                  alt="Invoice preview" 
-                                  className="w-full h-32 object-contain rounded"
-                                />
-                              ) : (
-                                <div className="flex items-center justify-center h-32">
-                                  <FileText className="h-12 w-12 text-muted-foreground" />
-                                </div>
-                              )}
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-1 end-1 h-6 w-6 p-0"
-                                onClick={removeInvoiceFile}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            {isUploading && (
-                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                                <Loader2 className="h-8 w-8 text-white animate-spin" />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div
-                            className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
-                            onClick={() => invoiceInputRef.current?.click()}
-                          >
-                            <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                            <p className="text-sm text-muted-foreground">Click to upload invoice</p>
-                            <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
-                          </div>
-                        )}
-                        <input
-                          ref={invoiceInputRef}
-                          type="file"
-                          accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
-                          className="hidden"
-                          onChange={handleInvoiceFileChange}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Guarantee Card Upload */}
-                    <div>
-                      <FormLabel>{t('public.register.guaranteeCardImage')}</FormLabel>
-                      <div className="mt-1">
-                        {cardPreview ? (
-                          <div className="relative">
-                            <div className="border rounded-lg p-2 bg-muted/30">
-                              {cardFile?.type.startsWith('image/') ? (
-                                <img 
-                                  src={cardPreview} 
-                                  alt="Card preview" 
-                                  className="w-full h-32 object-contain rounded"
-                                />
-                              ) : (
-                                <div className="flex items-center justify-center h-32">
-                                  <Image className="h-12 w-12 text-muted-foreground" />
-                                </div>
-                              )}
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-1 end-1 h-6 w-6 p-0"
-                                onClick={removeCardFile}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            {isUploading && (
-                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                                <Loader2 className="h-8 w-8 text-white animate-spin" />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div
-                            className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
-                            onClick={() => cardInputRef.current?.click()}
-                          >
-                            <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                            <p className="text-sm text-muted-foreground">Click to upload card</p>
-                            <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
-                          </div>
-                        )}
-                        <input
-                          ref={cardInputRef}
-                          type="file"
-                          accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
-                          className="hidden"
-                          onChange={handleCardFileChange}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem className="mt-4">
-                        <FormLabel>{t('public.register.notes')}</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Any additional information about your product or guarantee..."
-                            className="resize-none min-h-[80px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
-                <div className="pt-4 border-t">
-                  <Alert className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Your guarantee will be pending admin approval. You will receive a confirmation once approved.
-                      Make sure all information is accurate.
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <div className="flex gap-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => navigate('/')}
-                    >
-                      {t('public.register.cancel')}
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1"
-                      disabled={isSubmitting || isUploading || !lookupResult}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                          {t('public.register.submitting')}
-                        </>
+                {/* File Upload Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  {/* Invoice Upload */}
+                  <div>
+                    <FormLabel>{t('public.register.invoiceImage')}</FormLabel>
+                    <div className="mt-1">
+                      {invoicePreview ? (
+                        <div className="relative">
+                          <div className="border rounded-lg p-2 bg-muted/30">
+                            {invoiceFile?.type.startsWith('image/') ? (
+                              <img
+                                src={invoicePreview}
+                                alt="Invoice preview"
+                                className="w-full h-32 object-contain rounded"
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center h-32">
+                                <FileText className="h-12 w-12 text-muted-foreground" />
+                              </div>
+                            )}
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 end-1 h-6 w-6 p-0"
+                              onClick={removeInvoiceFile}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          {isUploading && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                              <Loader2 className="h-8 w-8 text-white animate-spin" />
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        t('public.register.submit')
+                        <div
+                          className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                          onClick={() => invoiceInputRef.current?.click()}
+                        >
+                          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">Click to upload invoice</p>
+                          <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
+                        </div>
                       )}
-                    </Button>
+                      <input
+                        ref={invoiceInputRef}
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
+                        className="hidden"
+                        onChange={handleInvoiceFileChange}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Guarantee Card Upload */}
+                  <div>
+                    <FormLabel>{t('public.register.guaranteeCardImage')}</FormLabel>
+                    <div className="mt-1">
+                      {cardPreview ? (
+                        <div className="relative">
+                          <div className="border rounded-lg p-2 bg-muted/30">
+                            {cardFile?.type.startsWith('image/') ? (
+                              <img
+                                src={cardPreview}
+                                alt="Card preview"
+                                className="w-full h-32 object-contain rounded"
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center h-32">
+                                <Image className="h-12 w-12 text-muted-foreground" />
+                              </div>
+                            )}
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 end-1 h-6 w-6 p-0"
+                              onClick={removeCardFile}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          {isUploading && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                              <Loader2 className="h-8 w-8 text-white animate-spin" />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                          onClick={() => cardInputRef.current?.click()}
+                        >
+                          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">Click to upload card</p>
+                          <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
+                        </div>
+                      )}
+                      <input
+                        ref={cardInputRef}
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
+                        className="hidden"
+                        onChange={handleCardFileChange}
+                      />
+                    </div>
                   </div>
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem className="mt-4">
+                      <FormLabel>{t('public.register.notes')}</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Any additional information about your product or guarantee..."
+                          className="resize-none min-h-[80px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </form>
             </Form>
+
+            <div className="pt-4 border-t">
+              <Alert className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Your guarantee will be pending admin approval. You will receive a confirmation once approved.
+                  Make sure all information is accurate.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => navigate('/')}
+                >
+                  {t('public.register.cancel')}
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={isSubmitting || isUploading || !lookupResult}
+                  onClick={form.handleSubmit(onSubmit)}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                      {t('public.register.submitting')}
+                    </>
+                  ) : (
+                    t('public.register.submit')
+                  )}
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
