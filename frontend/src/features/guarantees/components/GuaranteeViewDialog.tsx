@@ -101,11 +101,11 @@ export function GuaranteeViewDialog({ open, onOpenChange, guarantee }: Guarantee
                   <div className="space-y-1">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{t('guarantees.goldenStart')}</span>
-                      <FormattedDate date={guarantee.golden_start_date!} format="MMM DD, YYYY" className="font-medium text-amber-700" />
+                      <FormattedDate date={guarantee.golden_start_date!} format="YYYY/MM/DD" className="font-medium text-amber-700" />
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{t('guarantees.goldenEnd')}</span>
-                      <FormattedDate date={guarantee.golden_expiry_date!} format="MMM DD, YYYY" className="font-medium text-amber-700" />
+                      <FormattedDate date={guarantee.golden_expiry_date!} format="YYYY/MM/DD" className="font-medium text-amber-700" />
                     </div>
                   </div>
                 </div>
@@ -121,11 +121,11 @@ export function GuaranteeViewDialog({ open, onOpenChange, guarantee }: Guarantee
                 <div className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t('guarantees.normalStart')}</span>
-                    <FormattedDate date={normalStart} format="MMM DD, YYYY" className="font-medium text-slate-700" />
+                    <FormattedDate date={normalStart} format="YYYY/MM/DD" className="font-medium text-slate-700" />
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t('guarantees.normalEnd')}</span>
-                    <FormattedDate date={guarantee.expiry_date} format="MMM DD, YYYY" className="font-medium text-slate-700" />
+                    <FormattedDate date={guarantee.expiry_date} format="YYYY/MM/DD" className="font-medium text-slate-700" />
                   </div>
                 </div>
               </div>

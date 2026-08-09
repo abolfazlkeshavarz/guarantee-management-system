@@ -139,18 +139,18 @@ export function GuaranteeTable({
               <TableCell>{guarantee.customer_name}</TableCell>
               <TableCell>{guarantee.product_name}</TableCell>
               <TableCell>
-                <FormattedDate date={guarantee.purchase_date} format="MMM DD, YYYY" />
+                <FormattedDate date={guarantee.purchase_date} format="YYYY/MM/DD" />
               </TableCell>
               <TableCell>
                 {guarantee.golden_expiry_date ? (
-                  <FormattedDate date={guarantee.golden_expiry_date} format="MMM DD, YYYY" />
+                  <FormattedDate date={guarantee.golden_expiry_date} format="YYYY/MM/DD" />
                 ) : (
                   '-'
                 )}
               </TableCell>
               <TableCell>
                 <span className={isExpired(guarantee) ? 'text-red-600 font-medium' : ''}>
-                  <FormattedDate date={guarantee.expiry_date} format="MMM DD, YYYY" />
+                  <FormattedDate date={guarantee.expiry_date} format="YYYY/MM/DD" />
                   {isExpired(guarantee) && ` ${t('guarantees.expired')}`}
                 </span>
               </TableCell>

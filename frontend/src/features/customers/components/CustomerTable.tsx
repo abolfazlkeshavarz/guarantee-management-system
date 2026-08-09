@@ -79,7 +79,7 @@ export function CustomerTable({
               <TableCell>{customer.province || '-'}</TableCell>
               <TableCell>{customer.city || '-'}</TableCell>
               <TableCell>
-                <FormattedDate date={customer.created_at} format="MMM DD, YYYY" />
+                <FormattedDate date={customer.created_at} format="YYYY/MM/DD" />
               </TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>

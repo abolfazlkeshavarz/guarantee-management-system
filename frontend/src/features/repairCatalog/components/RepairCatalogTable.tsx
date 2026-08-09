@@ -58,7 +58,7 @@ export function RepairCatalogTable({ entries, onEdit, onDelete, isLoading }: Rep
                 </Badge>
               </TableCell>
               <TableCell>
-                <FormattedDate date={entry.created_at} format="MMM DD, YYYY" />
+                <FormattedDate date={entry.created_at} format="YYYY/MM/DD" />
               </TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>

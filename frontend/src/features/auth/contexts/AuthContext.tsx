@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { api } from '@/api/axios'
-import { LoginCredentials, AuthResponse, Admin } from '@/types/auth'
+import { LoginCredentials, Admin } from '@/types/auth'
 import { authService } from '@/api/auth'
 
 interface AuthContextType {
@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean
   login: (credentials: LoginCredentials) => Promise<void>
   logout: () => void
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -20,18 +21,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadAdmin = async () => {
       const token = localStorage.getItem('token')
-      console.log('Loading admin, token exists:', !!token) // Debug log
-      
+
       if (token) {
         try {
-          // Set the token in axios headers for all requests
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-          
           const profile = await authService.getProfile()
-          console.log('Profile loaded:', profile) // Debug log
           setAdmin(profile)
-        } catch (error) {
-          console.error('Failed to load profile:', error)
+        } catch {
           localStorage.removeItem('token')
           delete api.defaults.headers.common['Authorization']
           setAdmin(null)
@@ -47,7 +43,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const response = await authService.login(credentials)
     const { token, admin } = response.data
     localStorage.setItem('token', token)
-    // Set the token in axios headers
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`
     setAdmin(admin)
   }
@@ -58,6 +53,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAdmin(null)
   }
 
+  // Lets the settings screen push a saved name straight into the header
+  // without a page reload.
+  const refreshProfile = async () => {
+    const profile = await authService.getProfile()
+    setAdmin(profile)
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         login,
         logout,
+        refreshProfile,
       }}
     >
       {children}

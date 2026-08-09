@@ -2,7 +2,7 @@ import { useCalendar } from '@/contexts/CalendarContext'
 
 interface FormattedDateProps {
   date: string | Date | null | undefined
-  format?: 'YYYY-MM-DD' | 'DD/MM/YYYY' | 'MMM DD, YYYY' | 'full'
+  format?: 'YYYY-MM-DD' | 'DD/MM/YYYY' | 'YYYY/MM/DD' | 'MMM DD, YYYY' | 'full'
   className?: string
   fallback?: string
 }

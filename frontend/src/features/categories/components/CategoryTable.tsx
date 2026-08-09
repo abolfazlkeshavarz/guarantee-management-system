@@ -58,7 +58,7 @@ export function CategoryTable({ categories, onEdit, onDelete, isLoading }: Categ
                 </Badge>
               </TableCell>
               <TableCell>
-                <FormattedDate date={category.created_at} format="MMM DD, YYYY" />
+                <FormattedDate date={category.created_at} format="YYYY/MM/DD" />
               </TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>

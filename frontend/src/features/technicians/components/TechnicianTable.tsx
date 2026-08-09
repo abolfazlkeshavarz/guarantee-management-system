@@ -80,7 +80,7 @@ export function TechnicianTable({
                 </Badge>
               </TableCell>
               <TableCell>
-                <FormattedDate date={tech.created_at} format="MMM DD, YYYY" />
+                <FormattedDate date={tech.created_at} format="YYYY/MM/DD" />
               </TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>

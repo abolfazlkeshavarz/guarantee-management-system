@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -16,6 +17,7 @@ import { User, Settings, LogOut } from 'lucide-react'
 export function Header() {
   const { admin, logout } = useAuth()
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
   const getInitials = (name: string) => {
     return name
@@ -25,6 +27,9 @@ export function Header() {
       .toUpperCase()
       .slice(0, 2)
   }
+
+  // full_name, not fullName -- the API returns snake_case.
+  const displayName = admin?.full_name || admin?.username || ''
 
   return (
     <header className="bg-white border-b px-6 py-4">
@@ -44,21 +49,22 @@ export function Header() {
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-white">
-                  {admin?.fullName ? getInitials(admin.fullName) : 'A'}
+                  {displayName ? getInitials(displayName) : 'A'}
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium text-gray-700">
-                {admin?.fullName || t('header.myAccount')}
+                {displayName || t('header.myAccount')}
               </span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>{t('header.myAccount')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              {/* These two were dead buttons before; both land on Settings now. */}
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
                 <User className="me-2 h-4 w-4" />
                 {t('header.profile')}
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
                 <Settings className="me-2 h-4 w-4" />
                 {t('header.settings')}
               </DropdownMenuItem>

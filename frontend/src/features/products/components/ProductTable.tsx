@@ -59,7 +59,7 @@ export function ProductTable({ products, onEdit, onDelete, isLoading }: ProductT
                   {product.is_active ? t('forms.active') : t('forms.inactive')}
                 </Badge>
               </TableCell>
-              <TableCell><FormattedDate date={product.created_at} format="MMM DD, YYYY" /></TableCell>
+              <TableCell><FormattedDate date={product.created_at} format="YYYY/MM/DD" /></TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>

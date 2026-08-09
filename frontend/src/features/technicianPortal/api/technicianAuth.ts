@@ -1,5 +1,12 @@
 import { api } from '@/api/axios'
-import { TechnicianLoginCredentials, TechnicianLoginResponse, Repair, RepairFormData, RepairListResponse } from '../types'
+import {
+  TechnicianLoginCredentials,
+  TechnicianLoginResponse,
+  Repair,
+  RepairFormData,
+  RepairListResponse,
+  Technician,
+} from '../types'
 
 const TECH_TOKEN_KEY = 'tech_token'
 
@@ -9,14 +16,21 @@ export const technicianAuthService = {
     return response.data.data
   },
 
-  async getProfile(): Promise<any> {
+  async getProfile(): Promise<Technician> {
     const response = await api.get('/technician/profile')
     return response.data.data
   },
 
+  async changePassword(oldPassword: string, newPassword: string): Promise<void> {
+    await api.post('/technician/change-password', {
+      old_password: oldPassword,
+      new_password: newPassword,
+    })
+  },
+
   async getMyRepairs(page: number = 1, limit: number = 10, status: string = ''): Promise<RepairListResponse> {
     const response = await api.get('/technician/repairs', {
-      params: { page, limit, status: status || undefined }
+      params: { page, limit, status: status || undefined },
     })
     return {
       repairs: response.data.data,
@@ -53,5 +67,5 @@ export const technicianAuthService = {
 
   isAuthenticated(): boolean {
     return !!this.getToken()
-  }
+  },
 }

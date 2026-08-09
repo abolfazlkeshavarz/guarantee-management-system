@@ -1,6 +1,4 @@
-// frontend/src/routes/index.tsx
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/common/ProtectedRoute'
 import { PublicRoute } from '@/components/common/PublicRoute'
 import { CategoriesPage } from '@/features/categories/pages/CategoriesPage'
@@ -11,9 +9,11 @@ import { CheckGuaranteePage } from '@/features/guarantees/pages/CheckGuaranteePa
 import { TechniciansPage } from '@/features/technicians/pages/TechniciansPage'
 import { RepairsPage } from '@/features/repairs/pages/RepairsPage'
 import { RepairCatalogPage } from '@/features/repairCatalog/pages/RepairCatalogPage'
+
 // Pages
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
+import { SettingsPage } from '@/pages/SettingsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { CustomersPage } from '@/features/customers/pages/CustomersPage'
 
@@ -25,17 +25,16 @@ import { TechnicianProtectedRoute } from '@/features/technicianPortal/components
 import { TechnicianLayout } from '@/features/technicianPortal/components/TechnicianLayout'
 import { TechnicianLoginPage } from '@/features/technicianPortal/pages/TechnicianLoginPage'
 import { TechnicianDashboardPage } from '@/features/technicianPortal/pages/TechnicianDashboardPage'
+import { TechnicianProfilePage } from '@/features/technicianPortal/pages/TechnicianProfilePage'
 
 export function AppRoutes() {
-  const { isAuthenticated } = useAuth()
-
   return (
     <Routes>
       {/* Public routes */}
       <Route path="/register-guarantee" element={<PublicRegisterPage />} />
       <Route path="/check-guarantee" element={<CheckGuaranteePage />} />
-      
-      {/* Admin Login */}
+
+      {/* Staff login (admin + technician) */}
       <Route
         path="/login"
         element={
@@ -44,14 +43,10 @@ export function AppRoutes() {
           </PublicRoute>
         }
       />
-      
-      {/* Technician Login - no provider wrapper needed anymore */}
-      <Route
-        path="/technician/login"
-        element={<TechnicianLoginPage />}
-      />
-      
-      {/* Admin Routes */}
+
+      <Route path="/technician/login" element={<TechnicianLoginPage />} />
+
+      {/* Admin routes */}
       <Route
         path="/"
         element={
@@ -69,9 +64,11 @@ export function AppRoutes() {
         <Route path="guarantees" element={<GuaranteesPage />} />
         <Route path="technicians" element={<TechniciansPage />} />
         <Route path="repairs" element={<RepairsPage />} />
+        {/* The sidebar linked here but no route existed, so it fell through to 404. */}
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
 
-      {/* Technician Routes - no provider wrapper needed anymore */}
+      {/* Technician routes */}
       <Route
         path="/technician"
         element={
@@ -82,6 +79,8 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/technician/dashboard" replace />} />
         <Route path="dashboard" element={<TechnicianDashboardPage />} />
+        {/* Same story: the portal nav pointed at a route that was never defined. */}
+        <Route path="profile" element={<TechnicianProfilePage />} />
       </Route>
 
       {/* 404 */}

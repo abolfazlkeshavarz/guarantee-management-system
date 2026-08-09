@@ -1,0 +1,27 @@
+{
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account details and how the system is displayed.",
+    "account": "Account",
+    "accountDesc": "Your name and email as they appear across the system.",
+    "technicianAccountDesc": "Contact your administrator to change these details.",
+    "username": "Username",
+    "memberSince": "Member since",
+    "fullName": "Full name",
+    "email": "Email",
+    "saveProfile": "Save changes",
+    "profileSaved": "Profile updated",
+    "profileSaveFailed": "Could not update the profile",
+    "password": "Password",
+    "passwordDesc": "Confirm your current password, then choose a new one of at least 6 characters.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Repeat new password",
+    "changePassword": "Change password",
+    "passwordChanged": "Password changed",
+    "passwordChangeFailed": "Could not change the password",
+    "currentPasswordWrong": "That is not your current password",
+    "display": "Display",
+    "displayDesc": "Language and calendar are stored in this browser and apply to every screen."
+  }
+}

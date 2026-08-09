@@ -1,5 +1,5 @@
 import { api } from './axios'
-import { LoginCredentials, AuthResponse, Admin } from '@/types/auth'
+import { LoginCredentials, AuthResponse, Admin, UpdateProfileData } from '@/types/auth'
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
@@ -12,7 +12,17 @@ export const authService = {
     return response.data.data
   },
 
+  // The body used to be sent as { oldPassword, newPassword }; the handler binds
+  // old_password / new_password, so every attempt failed validation.
   async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-    await api.post('/auth/change-password', { oldPassword, newPassword })
+    await api.post('/auth/change-password', {
+      old_password: oldPassword,
+      new_password: newPassword,
+    })
+  },
+
+  async updateProfile(id: number, data: UpdateProfileData): Promise<Admin> {
+    const response = await api.put<{ data: Admin }>(`/admins/${id}`, data)
+    return response.data.data
   },
 }

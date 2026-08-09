@@ -412,7 +412,7 @@ export function PublicRegisterPage() {
                         <FormItem>
                           <FormLabel>{t('public.register.fullName')} *</FormLabel>
                           <FormControl>
-                            <Input placeholder="John Doe" {...field} />
+                            <Input placeholder={t('public.register.fullName')} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -425,7 +425,7 @@ export function PublicRegisterPage() {
                         <FormItem>
                           <FormLabel>{t('public.register.phoneNumber')} *</FormLabel>
                           <FormControl>
-                            <Input placeholder="+1234567890" {...field} />
+                            <Input placeholder="09123456789" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -479,8 +479,7 @@ export function PublicRegisterPage() {
                         <FormLabel>{t('public.register.address')} *</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Street, Building, Apartment..."
-                            className="resize-none min-h-[80px]"
+                            placeholder={t('public.register.address')}
                             {...field}
                           />
                         </FormControl>

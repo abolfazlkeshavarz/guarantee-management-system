@@ -84,7 +84,7 @@ export function RepairTable({
                 <RepairStatusBadge status={repair.status} />
               </TableCell>
               <TableCell>
-                <FormattedDate date={repair.created_at} format="MMM DD, YYYY" />
+                <FormattedDate date={repair.created_at} format="YYYY/MM/DD" />
               </TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>

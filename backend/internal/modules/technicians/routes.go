@@ -36,10 +36,11 @@ func (m *TechnicianModule) RegisterRoutes(router *gin.RouterGroup) {
 		technicians.DELETE("/:id", m.handler.Delete)
 	}
 
-	// Technician profile (authenticated technicians only)
+	// Technician self-service (authenticated technicians only)
 	profile := router.Group("/technician")
 	profile.Use(middleware.AuthMiddleware(), middleware.TechnicianOnly())
 	{
 		profile.GET("/profile", m.handler.GetProfile)
+		profile.POST("/change-password", m.handler.ChangePassword)
 	}
 }

@@ -1,0 +1,27 @@
+{
+  "settings": {
+    "title": "تنظیمات",
+    "subtitle": "اطلاعات حساب و نحوه نمایش سامانه را مدیریت کنید.",
+    "account": "حساب کاربری",
+    "accountDesc": "نام و ایمیل شما که در سراسر سامانه نمایش داده می‌شود.",
+    "technicianAccountDesc": "برای تغییر این اطلاعات با مدیر سامانه تماس بگیرید.",
+    "username": "نام کاربری",
+    "memberSince": "تاریخ عضویت",
+    "fullName": "نام کامل",
+    "email": "ایمیل",
+    "saveProfile": "ذخیره تغییرات",
+    "profileSaved": "پروفایل به‌روزرسانی شد",
+    "profileSaveFailed": "به‌روزرسانی پروفایل انجام نشد",
+    "password": "رمز عبور",
+    "passwordDesc": "رمز عبور فعلی را تایید کنید، سپس رمز جدیدی با حداقل ۶ کاراکتر انتخاب کنید.",
+    "currentPassword": "رمز عبور فعلی",
+    "newPassword": "رمز عبور جدید",
+    "confirmPassword": "تکرار رمز عبور جدید",
+    "changePassword": "تغییر رمز عبور",
+    "passwordChanged": "رمز عبور تغییر کرد",
+    "passwordChangeFailed": "تغییر رمز عبور انجام نشد",
+    "currentPasswordWrong": "رمز عبور فعلی صحیح نیست",
+    "display": "نمایش",
+    "displayDesc": "زبان و تقویم در همین مرورگر ذخیره می‌شوند و روی همه صفحه‌ها اعمال می‌شوند."
+  }
+}

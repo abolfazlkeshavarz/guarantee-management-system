@@ -1,36 +1,41 @@
-FROM golang:1.26.5-alpine AS builder
+# The previous image tag (golang:1.26.5-alpine) does not exist, so the build
+# failed before it started. Pinned to a real toolchain that satisfies go.mod.
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Install necessary packages
-RUN apk add --no-cache git
+RUN apk add --no-cache git ca-certificates
 
-# Copy go mod files from backend directory
+# Copy manifests first so dependency download is cached across code changes.
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
-# Copy source code from backend directory
 COPY backend/ .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api \
+ && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate
 
-# Final stage
-FROM alpine:latest
+# ── Runtime ──────────────────────────────────────────────────────────────────
+FROM alpine:3.20
 
-RUN apk --no-cache add ca-certificates
+RUN apk add --no-cache ca-certificates tzdata wget \
+ && adduser -D -u 10001 gms
 
 WORKDIR /app
 
-# Copy the binary from builder
-COPY --from=builder /app/main .
+COPY --from=builder /out/api /app/api
+COPY --from=builder /out/migrate /app/migrate
+COPY --from=builder /app/migrations /app/migrations
 
-# Copy migrations from builder
-COPY --from=builder /app/migrations ./migrations
+RUN mkdir -p /app/uploads/invoices /app/uploads/guarantee_cards \
+             /app/uploads/reports /app/uploads/repair_images /app/uploads/guarantees \
+ && chown -R gms:gms /app
 
-# Create uploads directory
-RUN mkdir -p uploads/invoices uploads/guarantee_cards uploads/reports uploads/repair_images
+USER gms
 
 EXPOSE 8080
 
-CMD ["./main"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:8080/health || exit 1
+
+CMD ["/app/api"]

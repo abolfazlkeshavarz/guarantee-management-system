@@ -1,10 +1,12 @@
+// These were camelCase while the API returns snake_case, so admin.fullName was
+// always undefined and the header fell back to the "My Account" placeholder.
 export interface Admin {
   id: number
   username: string
-  fullName: string
+  full_name: string
   email: string
-  isActive: boolean
-  createdAt: string
+  is_active: boolean
+  created_at: string
 }
 
 export interface LoginCredentials {
@@ -14,9 +16,14 @@ export interface LoginCredentials {
 
 export interface LoginResponse {
   token: string
-  tokenType: string
-  expiresIn: number
+  token_type: string
+  expires_in: number
   admin: Admin
+}
+
+export interface UpdateProfileData {
+  full_name?: string
+  email?: string
 }
 
 export type AuthResponse = {

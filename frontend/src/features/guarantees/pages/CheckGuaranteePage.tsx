@@ -14,11 +14,26 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { GuaranteeStatusBadge } from '../components/GuaranteeStatusBadge'
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
+import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
+import { FormattedDate } from '@/components/common/FormattedDate'
+import { useCalendar } from '@/contexts/CalendarContext'
 import { Search, ShieldCheck, AlertCircle } from 'lucide-react'
-import { format } from 'date-fns'
+
+// Compares date-only values in UTC. The old check ran `new Date(expiry) < new
+// Date()`, which parsed the expiry as UTC midnight and so flagged a guarantee
+// as expired throughout its final valid day.
+function isPastDate(value?: string): boolean {
+  if (!value) return false
+  const [y, m, d] = value.split('-').map(Number)
+  if (!y || !m || !d) return false
+  const now = new Date()
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  return Date.UTC(y, m - 1, d) < today
+}
 
 export function CheckGuaranteePage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { formatDate } = useCalendar()
   const [code, setCode] = useState('')
   const [searchCode, setSearchCode] = useState('')
 
@@ -36,11 +51,28 @@ export function CheckGuaranteePage() {
     }
   }
 
+  // Approval carries a time of day, which FormattedDate deliberately drops.
+  // The date half still goes through the calendar context; only the clock
+  // reading is added on top.
+  const formatDateTime = (value: string) => {
+    const datePart = formatDate(value, 'full')
+    const timePart = new Date(value).toLocaleTimeString(
+      i18n.language === 'fa' ? 'fa-IR' : 'en-US',
+      { hour: '2-digit', minute: '2-digit' }
+    )
+    return `${datePart} — ${timePart}`
+  }
+
+  const expired = isPastDate(data?.expiry_date)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end gap-2 mb-4">
           <LanguageSwitcher />
+          {/* Customers can now switch to the Jalali calendar here too, instead
+              of being stuck with whatever the staff pages set. */}
+          <CalendarSwitcher />
         </div>
         <Card className="shadow-lg">
           <CardHeader className="text-center border-b">
@@ -98,13 +130,15 @@ export function CheckGuaranteePage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">{t('public.checkStatus.purchaseDate')}</p>
-                      <p>{format(new Date(data.purchase_date), 'MMMM d, yyyy')}</p>
+                      <p>
+                        <FormattedDate date={data.purchase_date} format="full" />
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">{t('public.checkStatus.expiryDate')}</p>
-                      <p className={new Date(data.expiry_date) < new Date() ? 'text-red-600 font-medium' : ''}>
-                        {format(new Date(data.expiry_date), 'MMMM d, yyyy')}
-                        {new Date(data.expiry_date) < new Date() && t('public.checkStatus.expired')}
+                      <p className={expired ? 'text-red-600 font-medium' : ''}>
+                        <FormattedDate date={data.expiry_date} format="full" />
+                        {expired && t('public.checkStatus.expired')}
                       </p>
                     </div>
                   </div>
@@ -119,7 +153,7 @@ export function CheckGuaranteePage() {
 
                 {data.approved_at && (
                   <p className="text-xs text-muted-foreground">
-                    {t('public.checkStatus.approvedOn', { date: format(new Date(data.approved_at), 'MMMM d, yyyy h:mm a') })}
+                    {t('public.checkStatus.approvedOn', { date: formatDateTime(data.approved_at) })}
                   </p>
                 )}
               </div>
