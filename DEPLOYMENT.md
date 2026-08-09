@@ -84,13 +84,12 @@ rm backend/migrations/011_add_product_code_pattern.sql   # replaced by the .up.s
 rm backend/Dockerfile                                    # unused; docker/Dockerfile.backend is the real one
 ```
 
-**d. Merge the translations**
+**d. Translations — nothing to merge**
 
-Paste the `"settings"` object from `_settings.en.json` into
-`frontend/src/i18n/locales/en.json`, and from `_settings.fa.json` into
-`fa.json` (top level, alongside `"common"`). Then delete the two `_settings.*`
-files. The pages render in English without this step — every string has a
-fallback — but Farsi users will see English until you merge.
+Drop in `frontend/src/i18n/index.ts` plus `locales/extra.en.json` and
+`locales/extra.fa.json`. The new `index.ts` deep-merges the extra bundles into
+`en.json` / `fa.json` at load time, so `en.json` and `fa.json` stay exactly as
+they are. Add future strings to the `extra.*` files.
 
 ---
 
@@ -239,3 +238,109 @@ These are working as designed but are the next things I would address:
   hardcoded credentials.
 - **Admin user management has API endpoints but no UI.** `/admins` supports full
   CRUD; only the CLI reaches it today.
+
+---
+
+## 7. Follow-up: Farsi guarantee-period labels
+
+The period dropdown stayed English because the labels come from the **server**:
+`GuaranteeService.GetGuaranteePeriods()` returns hardcoded strings like
+`"12 Months (1 Year)"`. No frontend translation could reach them. The same
+payload carries a numeric `months`, so the label is now built client-side.
+
+**Files:** `frontend/src/features/guarantees/hooks/useGuaranteePeriodLabel.ts` (new)
+and `frontend/src/features/guarantees/components/GuaranteeStatusBadge.tsx`.
+
+**Edit `frontend/src/features/guarantees/pages/PublicRegisterPage.tsx`:**
+
+```diff
++import { useGuaranteePeriodLabel } from '../hooks/useGuaranteePeriodLabel'
+```
+
+Inside the component, next to the other hooks:
+
+```diff
++  const periodLabel = useGuaranteePeriodLabel()
+```
+
+Then both places that render `period.label`:
+
+```diff
+-  items={periods.map((period) => ({ value: String(period.value), label: period.label }))}
++  items={periods.map((period) => ({ value: String(period.value), label: periodLabel(period.months) }))}
+```
+
+```diff
+   <SelectItem key={period.value} value={String(period.value)}>
+-    {period.label}
++    {periodLabel(period.months)}
+   </SelectItem>
+```
+
+The keys live in `locales/extra.en.json` / `extra.fa.json` and are merged
+automatically by the new `i18n/index.ts`.
+
+### Also fixed here
+`GuaranteeStatusBadge` printed the raw API value, so every guarantee read
+"Approved" / "Pending" in Farsi too — while `status.Pending`, `status.Approved`
+and the rest sat unused in both locale files. It now translates, with the raw
+value as fallback.
+
+### Still hardcoded English (not fixed)
+Worth a pass before launch:
+- `PublicRegisterPage` and `AdminGuaranteeForm`: `"✓ Product Matched:"`,
+  `"Checking code..."`, `"No product matches this guarantee code"`, and the
+  file-upload hints (`"Click to upload invoice"`, `"JPEG, PNG, PDF (max 10MB)"`).
+- `PublicRegisterPage` success screen: `"Registration Successful!"` and the
+  labels beneath it.
+- `CustomerForm` and every toast message in the admin pages
+  (`"Customer created successfully"` and friends) — the `*.createSuccess` keys
+  exist in both locale files but the pages pass literals to `toast.success`.
+- Backend validation messages returned to the UI are English only. Those need
+  either a translation layer keyed on `errors.AppError`, or error codes the
+  frontend maps to strings.
+
+
+---
+
+## 8. Translation architecture (why the dropdown stayed English)
+
+Two separate causes, one after the other:
+
+1. **The label came from the server.** `GetGuaranteePeriods()` returns
+   `"12 Months (1 Year)"` as a literal. Fixed by building the label from the
+   numeric `months` field in `useGuaranteePeriodLabel`.
+2. **The Farsi keys were never merged into `fa.json`.** Every new string has a
+   `defaultValue`, so the UI kept working — in English. The digits localised
+   (`months ۳`) because that happens inside the hook, while the word came from
+   the untranslated fallback. That mismatch is the tell: localised numbers next
+   to an English word means the key is missing, not that the code is wrong.
+
+`i18n/index.ts` now deep-merges `extra.en.json` / `extra.fa.json` over the base
+locale files, so adding a string is a one-file edit and `en.json` / `fa.json`
+are never touched.
+
+**Adding a translated string from here on:**
+
+```jsonc
+// locales/extra.fa.json
+{ "public": { "register": { "myNewKey": "متن فارسی" } } }
+```
+
+```tsx
+t('public.register.myNewKey', { defaultValue: 'English text' })
+```
+
+Keep the `defaultValue` — it is what stops a missing key from rendering as a
+raw dotted path in front of a customer.
+
+### Files for this change
+```
+frontend/src/i18n/index.ts                                  (replaces existing)
+frontend/src/i18n/locales/extra.en.json                     (new)
+frontend/src/i18n/locales/extra.fa.json                     (new)
+frontend/src/features/guarantees/pages/PublicRegisterPage.tsx
+frontend/src/features/guarantees/pages/CheckGuaranteePage.tsx
+frontend/src/features/guarantees/components/GuaranteeStatusBadge.tsx
+frontend/src/features/guarantees/hooks/useGuaranteePeriodLabel.ts   (new)
+```
