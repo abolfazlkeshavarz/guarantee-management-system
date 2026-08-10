@@ -12,6 +12,7 @@ import {
   LogOut,
   ShieldCheck,
   ListChecks,
+  PackagePlus,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 
@@ -30,6 +31,7 @@ const catalogNav = [
 const bottomNav = [
   { key: 'technicians', href: '/technicians', icon: Wrench },
   { key: 'repairs', href: '/repairs', icon: ClipboardList },
+  { key: 'partRequests', href: '/part-requests', icon: PackagePlus },
   { key: 'settings', href: '/settings', icon: Settings },
 ]
 

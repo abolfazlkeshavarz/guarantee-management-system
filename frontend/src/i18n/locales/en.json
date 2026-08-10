@@ -66,7 +66,8 @@
     "technicians": "Technicians",
     "repairs": "Repairs",
     "settings": "Settings",
-    "logout": "Logout"
+    "logout": "Logout",
+    "partRequests": "Part Requests"
   },
   "header": {
     "title": "Guarantee Management System",
@@ -141,8 +142,17 @@
     "removeGolden": "Remove Golden",
     "setGoldenSuccess": "Guarantee set to golden successfully",
     "removeGoldenSuccess": "Golden status removed successfully",
-    "tabs": { "all": "All", "golden": "Golden", "normal": "Normal" },
-    "tier": { "_": "Tier", "Golden": "Golden", "Normal": "Normal", "Expired": "Expired" },
+    "tabs": {
+      "all": "All",
+      "golden": "Golden",
+      "normal": "Normal"
+    },
+    "tier": {
+      "_": "Tier",
+      "Golden": "Golden",
+      "Normal": "Normal",
+      "Expired": "Expired"
+    },
     "setGoldenDialog": {
       "title": "Set Golden Guarantee",
       "description": "Configure the golden guarantee period for this guarantee.",
@@ -419,6 +429,94 @@
       "notes": "Notes",
       "approvedOn": "Approved on: {{date}}",
       "registerNew": "Register a new guarantee"
+    }
+  },
+  "partRequests": {
+    "title": "Part Requests",
+    "subtitle": "Review the parts and services technicians have asked for, and follow them through to delivery",
+    "navLabel": "Part Requests",
+    "entity": "request",
+    "searchPlaceholder": "Search by item or guarantee code...",
+    "allTechnicians": "All technicians",
+    "allStatuses": "All statuses",
+    "filterByStatus": "Filter by status",
+    "emptyTitle": "No part requests here",
+    "emptyDesc": "Requests filed by technicians show up in this list.",
+    "customBadge": "Not in catalog",
+    "noGuarantee": "None",
+    "noGuaranteeLong": "This request is not tied to a guarantee",
+    "linkedGuarantee": "Linked guarantee",
+    "customer": "Customer",
+    "product": "Product",
+    "viewTitle": "Request Details",
+    "deliveredOn": "Delivered on",
+    "reviewedBy": "{{status}} by {{name}}",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Anything that helps whoever fulfils this request...",
+    "reviewNotesPlaceholder": "Add a note for the technician...",
+    "deleteDesc": "This will permanently delete the request for \"{{item}}\" filed by {{technician}}. This action cannot be undone.",
+    "statusDialogDesc": "{{quantity}} × {{item}}, requested by {{technician}}.",
+    "cancelConfirm": "Cancel your request for \"{{item}}\"?",
+    "statusUpdateSuccess": "Request updated",
+    "statusUpdateError": "Could not update the request",
+    "deleteSuccess": "Request deleted",
+    "cancelSuccess": "Request cancelled",
+    "status": {
+      "Pending": "Pending",
+      "Approved": "Approved",
+      "NotDelivered": "Not delivered yet",
+      "Delivered": "Delivered",
+      "Cancelled": "Cancelled"
+    },
+    "action": {
+      "Approved": "Approve request",
+      "NotDelivered": "Mark as not delivered yet",
+      "Delivered": "Mark as delivered",
+      "Cancelled": "Cancel request"
+    },
+    "itemType": {
+      "component": "Component",
+      "service": "Service",
+      "custom": "Other"
+    },
+    "table": {
+      "item": "Item",
+      "quantity": "Qty",
+      "guarantee": "Guarantee",
+      "technician": "Technician",
+      "requested": "Requested"
+    },
+    "myTitle": "My Part Requests",
+    "mySubtitle": "Ask for the parts and services you need, and follow their delivery status.",
+    "myTableTitle": "My requests",
+    "newRequest": "Request a Part",
+    "newRequestTitle": "Request a part or service",
+    "guaranteeQuestion": "Is this request for a specific guarantee?",
+    "withGuarantee": "Yes, I have a guarantee code",
+    "withoutGuarantee": "No guarantee code",
+    "guaranteeCodeLabel": "Guarantee code",
+    "guaranteeCodePlaceholder": "Enter the guarantee code",
+    "check": "Check",
+    "change": "Change",
+    "guaranteeFound": "Guarantee found",
+    "guaranteeNotFound": "No guarantee matches this code.",
+    "itemSource": "What do you need?",
+    "fromCatalog": "Pick from our list",
+    "notInList": "Not in the list",
+    "itemTypeLabel": "Type",
+    "selectItem": "Select an item",
+    "customItemName": "Item name",
+    "customItemPlaceholder": "e.g. Dust bag seal, 40mm",
+    "customItemHint": "Describe the part as precisely as you can. An admin will add it to the catalog if it becomes a regular request.",
+    "submitRequest": "Submit request",
+    "submitting": "Submitting...",
+    "submitSuccess": "Part request submitted",
+    "submitError": "Could not submit the part request",
+    "stats": {
+      "total": "Total requests",
+      "pending": "Awaiting review",
+      "awaiting": "Awaiting delivery",
+      "delivered": "Delivered"
     }
   }
 }

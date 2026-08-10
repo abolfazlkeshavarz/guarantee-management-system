@@ -1,0 +1,108 @@
+{
+  "nav": {
+    "partRequests": "درخواست قطعات"
+  },
+  "partRequests": {
+    "title": "درخواست قطعات",
+    "subtitle": "بررسی قطعات و خدماتی که تکنسین‌ها درخواست کرده‌اند و پیگیری آن‌ها تا زمان تحویل",
+    "navLabel": "درخواست قطعات",
+    "entity": "درخواست",
+
+    "searchPlaceholder": "جستجو بر اساس نام قطعه یا کد گارانتی...",
+    "allTechnicians": "همه تکنسین‌ها",
+    "allStatuses": "همه وضعیت‌ها",
+    "filterByStatus": "فیلتر بر اساس وضعیت",
+
+    "emptyTitle": "درخواستی وجود ندارد",
+    "emptyDesc": "درخواست‌هایی که تکنسین‌ها ثبت می‌کنند در این فهرست نمایش داده می‌شوند.",
+
+    "customBadge": "خارج از فهرست",
+    "noGuarantee": "ندارد",
+    "noGuaranteeLong": "این درخواست به گارانتی خاصی مربوط نیست",
+    "linkedGuarantee": "گارانتی مرتبط",
+    "customer": "مشتری",
+    "product": "محصول",
+
+    "viewTitle": "جزئیات درخواست",
+    "deliveredOn": "تاریخ تحویل",
+    "reviewedBy": "{{status}} توسط {{name}}",
+    "notesLabel": "یادداشت‌ها",
+    "notesPlaceholder": "هر توضیحی که به تأمین این درخواست کمک می‌کند...",
+    "reviewNotesPlaceholder": "یادداشتی برای تکنسین بنویسید...",
+
+    "deleteDesc": "این عملیات درخواست «{{item}}» ثبت‌شده توسط {{technician}} را برای همیشه حذف می‌کند. این عمل قابل بازگشت نیست.",
+    "statusDialogDesc": "{{quantity}} عدد {{item}}، درخواست‌شده توسط {{technician}}.",
+    "cancelConfirm": "درخواست شما برای «{{item}}» لغو شود؟",
+
+    "statusUpdateSuccess": "درخواست به‌روزرسانی شد",
+    "statusUpdateError": "به‌روزرسانی درخواست انجام نشد",
+    "deleteSuccess": "درخواست حذف شد",
+    "cancelSuccess": "درخواست لغو شد",
+
+    "status": {
+      "Pending": "در انتظار بررسی",
+      "Approved": "تأیید شده",
+      "NotDelivered": "هنوز تحویل نشده",
+      "Delivered": "تحویل شده",
+      "Cancelled": "لغو شده"
+    },
+
+    "action": {
+      "Approved": "تأیید درخواست",
+      "NotDelivered": "ثبت به‌عنوان تحویل‌نشده",
+      "Delivered": "ثبت به‌عنوان تحویل‌شده",
+      "Cancelled": "لغو درخواست"
+    },
+
+    "itemType": {
+      "component": "قطعه",
+      "service": "خدمت",
+      "custom": "سایر"
+    },
+
+    "table": {
+      "item": "قطعه / خدمت",
+      "quantity": "تعداد",
+      "guarantee": "گارانتی",
+      "technician": "تکنسین",
+      "requested": "تاریخ درخواست"
+    },
+
+    "myTitle": "درخواست‌های من",
+    "mySubtitle": "قطعات و خدمات مورد نیاز خود را درخواست کنید و وضعیت تحویل آن‌ها را دنبال کنید.",
+    "myTableTitle": "درخواست‌های من",
+
+    "newRequest": "درخواست قطعه",
+    "newRequestTitle": "درخواست قطعه یا خدمت",
+    "guaranteeQuestion": "آیا این درخواست مربوط به یک گارانتی مشخص است؟",
+    "withGuarantee": "بله، کد گارانتی دارم",
+    "withoutGuarantee": "بدون کد گارانتی",
+    "guaranteeCodeLabel": "کد گارانتی",
+    "guaranteeCodePlaceholder": "کد گارانتی را وارد کنید",
+    "check": "بررسی",
+    "change": "تغییر",
+    "guaranteeFound": "گارانتی پیدا شد",
+    "guaranteeNotFound": "هیچ گارانتی‌ای با این کد یافت نشد.",
+
+    "itemSource": "به چه چیزی نیاز دارید؟",
+    "fromCatalog": "انتخاب از فهرست",
+    "notInList": "در فهرست نیست",
+    "itemTypeLabel": "نوع",
+    "selectItem": "یک مورد انتخاب کنید",
+    "customItemName": "نام قطعه",
+    "customItemPlaceholder": "مثال: واشر مخزن ۴۰ میلی‌متری",
+    "customItemHint": "قطعه را تا حد ممکن دقیق توصیف کنید. اگر این درخواست تکرار شود، مدیر آن را به فهرست قطعات اضافه می‌کند.",
+
+    "submitRequest": "ثبت درخواست",
+    "submitting": "در حال ثبت...",
+    "submitSuccess": "درخواست قطعه ثبت شد",
+    "submitError": "ثبت درخواست قطعه انجام نشد",
+
+    "stats": {
+      "total": "کل درخواست‌ها",
+      "pending": "در انتظار بررسی",
+      "awaiting": "در انتظار تحویل",
+      "delivered": "تحویل شده"
+    }
+  }
+}

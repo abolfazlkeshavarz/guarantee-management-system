@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
-import { LogOut, Wrench, Home, User } from 'lucide-react'
+import { LogOut, Wrench, Home, User, PackagePlus } from 'lucide-react'
 
 export function TechnicianLayout() {
   const { technician, logout } = useTechnicianAuth()
@@ -60,6 +60,12 @@ export function TechnicianLayout() {
             <Button variant="ghost" size="sm" className={`gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <Home className="h-4 w-4" />
               {t('technicianPortal.dashboardNav')}
+            </Button>
+          </Link>
+          <Link to="/technician/part-requests">
+            <Button variant="ghost" size="sm" className={`gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <PackagePlus className="h-4 w-4" />
+              {t('partRequests.navLabel')}
             </Button>
           </Link>
           <Link to="/technician/profile">

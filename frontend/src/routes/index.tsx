@@ -1,3 +1,4 @@
+// frontend/src/routes/index.tsx
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/common/ProtectedRoute'
 import { PublicRoute } from '@/components/common/PublicRoute'
@@ -9,11 +10,10 @@ import { CheckGuaranteePage } from '@/features/guarantees/pages/CheckGuaranteePa
 import { TechniciansPage } from '@/features/technicians/pages/TechniciansPage'
 import { RepairsPage } from '@/features/repairs/pages/RepairsPage'
 import { RepairCatalogPage } from '@/features/repairCatalog/pages/RepairCatalogPage'
-
+import { PartRequestsPage } from '@/features/partRequests/pages/PartRequestsPage'
 // Pages
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
-import { SettingsPage } from '@/pages/SettingsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { CustomersPage } from '@/features/customers/pages/CustomersPage'
 
@@ -25,7 +25,7 @@ import { TechnicianProtectedRoute } from '@/features/technicianPortal/components
 import { TechnicianLayout } from '@/features/technicianPortal/components/TechnicianLayout'
 import { TechnicianLoginPage } from '@/features/technicianPortal/pages/TechnicianLoginPage'
 import { TechnicianDashboardPage } from '@/features/technicianPortal/pages/TechnicianDashboardPage'
-import { TechnicianProfilePage } from '@/features/technicianPortal/pages/TechnicianProfilePage'
+import { TechnicianPartRequestsPage } from '@/features/technicianPortal/pages/TechnicianPartRequestsPage'
 
 export function AppRoutes() {
   return (
@@ -34,7 +34,7 @@ export function AppRoutes() {
       <Route path="/register-guarantee" element={<PublicRegisterPage />} />
       <Route path="/check-guarantee" element={<CheckGuaranteePage />} />
 
-      {/* Staff login (admin + technician) */}
+      {/* Admin Login */}
       <Route
         path="/login"
         element={
@@ -44,9 +44,10 @@ export function AppRoutes() {
         }
       />
 
+      {/* Technician Login */}
       <Route path="/technician/login" element={<TechnicianLoginPage />} />
 
-      {/* Admin routes */}
+      {/* Admin Routes */}
       <Route
         path="/"
         element={
@@ -64,11 +65,10 @@ export function AppRoutes() {
         <Route path="guarantees" element={<GuaranteesPage />} />
         <Route path="technicians" element={<TechniciansPage />} />
         <Route path="repairs" element={<RepairsPage />} />
-        {/* The sidebar linked here but no route existed, so it fell through to 404. */}
-        <Route path="settings" element={<SettingsPage />} />
+        <Route path="part-requests" element={<PartRequestsPage />} />
       </Route>
 
-      {/* Technician routes */}
+      {/* Technician Routes */}
       <Route
         path="/technician"
         element={
@@ -79,8 +79,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/technician/dashboard" replace />} />
         <Route path="dashboard" element={<TechnicianDashboardPage />} />
-        {/* Same story: the portal nav pointed at a route that was never defined. */}
-        <Route path="profile" element={<TechnicianProfilePage />} />
+        <Route path="part-requests" element={<TechnicianPartRequestsPage />} />
       </Route>
 
       {/* 404 */}
