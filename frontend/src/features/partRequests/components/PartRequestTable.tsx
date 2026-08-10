@@ -143,7 +143,7 @@ export function PartRequestTable({
                   <PartRequestStatusBadge status={request.status} />
                 </TableCell>
                 <TableCell>
-                  <FormattedDate date={request.created_at} format="MMM DD, YYYY" />
+                  <FormattedDate date={request.created_at} format="YYYY/MM/DD" />
                 </TableCell>
                 <TableCell className="text-end">
                   <DropdownMenu>
