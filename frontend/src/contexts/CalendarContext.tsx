@@ -86,13 +86,6 @@ function isJalaliLeap(year: number): boolean {
   return remainders.includes(((year % 33) + 33) % 33)
 }
 
-// Build month data with correct day counts
-const JALALI_MONTHS_DATA = Array.from({ length: 12 }, (_, i) => ({
-  number: i + 1,
-  name: JALALI_MONTHS[i],
-  days: getJalaliMonthLength(1404, i + 1), // days field here is just for reference
-}))
-
 export function CalendarProvider({ children }: { children: React.ReactNode }) {
   const [calendarType, setCalendarType] = useState<CalendarType>(() => {
     const saved = localStorage.getItem('calendarType')

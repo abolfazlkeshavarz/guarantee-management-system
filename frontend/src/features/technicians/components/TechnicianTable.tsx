@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Edit, Trash2, Power } from 'lucide-react'
 import { Technician } from '../types'
-import { format } from 'date-fns'
 import { FormattedDate } from '@/components/common/FormattedDate'
 
 interface TechnicianTableProps {

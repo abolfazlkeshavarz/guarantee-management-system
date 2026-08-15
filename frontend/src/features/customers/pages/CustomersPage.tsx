@@ -17,7 +17,7 @@ import { CustomerForm } from '../components/CustomerForm'
 import { CustomerDeleteDialog } from '../components/CustomerDeleteDialog'
 import { customerService } from '../api/customers'
 import { Customer } from '../types'
-import { queryClient, invalidateDashboard } from '@/lib/query-client'
+import { invalidateDashboard } from '@/lib/query-client'
 
 export function CustomersPage() {
   const { t } = useTranslation()

@@ -14,7 +14,7 @@ import { ProductDeleteDialog } from '../components/ProductDeleteDialog'
 import { productService } from '../api/products'
 import { Product } from '../types'
 import { categoryService } from '@/features/categories/api/categories'
-import { queryClient, invalidateDashboard } from '@/lib/query-client'
+import { invalidateDashboard } from '@/lib/query-client'
 
 export function ProductsPage() {
   const { t } = useTranslation()

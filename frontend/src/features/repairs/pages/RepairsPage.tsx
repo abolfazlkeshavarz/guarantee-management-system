@@ -20,7 +20,7 @@ import { RepairReviewDialog } from '../components/RepairReviewDialog'
 import { RepairCancelDialog } from '../components/RepairCancelDialog'
 import { repairService } from '../api/repairs'
 import { Repair, REPAIR_STATUSES } from '../types'
-import { queryClient, invalidateDashboard } from '@/lib/query-client'
+import { invalidateDashboard } from '@/lib/query-client'
 
 
 export function RepairsPage() {

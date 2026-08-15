@@ -44,12 +44,19 @@ four small manual edits in section 2, then follow the runbook in section 4.
 - **`.dockerignore`**: keeps `node_modules`, local `.env` files and uploaded customer documents out of the build context.
 
 ### ⚠️ Rotate these credentials before going live
-The repository contains real secrets in its history:
-- `Whoknowwho` appears in `docker-compose.yml`, `backend/.env.example`, `backend/Makefile`, `backend/health-check.ps1`.
-- `.claude/settings.local.json` contains a **valid signed JWT** and a `PGPASSWORD` export.
+`Whoknowwho` is the local-dev default password, still present in
+`backend/Makefile` and `backend/health-check.ps1` (fine for `docker compose`
+on localhost, never for anything internet-facing). Before deploying
+`gms.evinki.com` for real, generate fresh values and put them in the root
+`.env`:
 
-Change the database password, generate a fresh `JWT_SECRET` (which invalidates
-that token), and remove `.claude/settings.local.json` from version control.
+```bash
+openssl rand -hex 24        # -> DB_PASSWORD
+openssl rand -base64 48     # -> JWT_SECRET (must be 32+ chars)
+```
+
+(`.claude/settings.local.json` is not tracked by git in this repo - checked
+directly, nothing to rotate there.)
 
 ---
 
@@ -137,21 +144,29 @@ frontend/src/features/technicianPortal/pages/TechnicianProfilePage.tsx   (new)
 pointing at the host.
 
 ```bash
-# 1. Configure
+# 1. Configure (first time only)
 cp .env.example .env
-openssl rand -base64 48          # paste into JWT_SECRET
-$EDITOR .env                     # set DB_PASSWORD, DB_USER, CORS_ALLOWED_ORIGINS
+$EDITOR .env   # DB_PASSWORD, JWT_SECRET (see credential rotation above),
+               # HTTP_PORT=8081, CORS_ALLOWED_ORIGINS=https://gms.evinki.com,
+               # TRUSTED_PROXIES=172.16.0.0/12,127.0.0.1, APP_ENV=production
 
-# 2. Build and start
-docker compose build
-docker compose up -d
+# 2. Build, start, health-check - every deploy, first one included
+./scripts/deploy.sh
 
-# 3. Verify
+# 3. Spot-check
 docker compose ps                # migrate should show "exited (0)"
-docker compose logs -f backend
-curl -f http://localhost/health
-curl -f http://localhost/api/v1/guarantees/public/periods
+curl -f https://gms.evinki.com/health
+curl -f https://gms.evinki.com/api/v1/guarantees/public/periods
 ```
+
+`scripts/deploy.sh` is the whole redeploy workflow: build (Docker layer
+caching keeps this fast when only app code changed), `docker compose up -d`
+(recreates only the containers whose image actually changed; migrations
+re-apply safely and are a no-op once caught up), health-check, then prune
+dangling image layers. It never runs `down -v` or touches a named volume, so
+`postgres_data` and `uploads_data` survive every redeploy untouched. Nginx
+isn't part of this loop at all - it's a one-time bootstrap step (see TLS
+below) that routine deploys never need to repeat.
 
 **Create the first admin** (there is no self-signup, by design):
 
@@ -183,10 +198,25 @@ docker compose run --rm migrate /app/migrate -cmd=status
 
 ### TLS
 
-The bundled nginx serves plain HTTP on port 80. Put Caddy, Traefik, or an
-external load balancer in front to terminate TLS, set `HTTP_PORT=8081` so the
-frontend container is not exposed publicly, and point the proxy at it. Once TLS
-is in place, make sure `CORS_ALLOWED_ORIGINS` uses the `https://` origin.
+The bundled `docker/nginx.conf` (inside the frontend container) serves plain
+HTTP only, on purpose - TLS is terminated one layer up, by the native Windows
+nginx already running on this host for `services.evinki.com`. That same
+nginx got a second server block for `gms.evinki.com`
+(`C:\nginx\conf\nginx.conf`): it terminates TLS on 443 and reverse-proxies to
+`127.0.0.1:8081`, which is where `HTTP_PORT=8081` in `.env` tells the Docker
+frontend container to publish. This is a one-time setup, not something
+redeploys touch - `scripts/deploy.sh` never goes near nginx.
+
+Certs are issued by `scripts/get-ssl-cert.sh <domain>` (Let's Encrypt via
+ArvanCloud DNS-01, or webroot/HTTP-01 as a fallback - see the script's own
+comments) and kept renewed by a daily Scheduled Task
+(`scripts/register-ssl-renewal-task.ps1`, run once from an elevated shell to
+set up).
+
+Reloading the native nginx after any config change requires an elevated
+shell (`Restart-Service Nginx` or `nginx -s reload` run as Administrator) -
+it runs as the `LocalSystem` Windows service, so a non-elevated session can't
+signal it.
 
 ### Backups
 

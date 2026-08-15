@@ -20,6 +20,13 @@ services:
     restart: unless-stopped
     networks:
       - gms-network
+    # Loopback-only - lets `go run cmd/admin/main.go ...` reach the DB from
+    # this host (DB_HOST=localhost, DB_PORT=15432) for admin/technician
+    # management. Never reachable from outside this machine; not the app's
+    # traffic path. Not 5432 - a separate native Postgres already owns that
+    # port on this host.
+    ports:
+      - "127.0.0.1:${DB_HOST_PORT:-15432}:5432"
 
   # One-shot job: applies pending migrations, then exits. The API waits for it
   # so the schema is always current before the first request lands.

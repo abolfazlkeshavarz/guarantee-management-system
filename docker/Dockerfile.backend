@@ -1,10 +1,24 @@
-# The previous image tag (golang:1.26.5-alpine) does not exist, so the build
-# failed before it started. Pinned to a real toolchain that satisfies go.mod.
-FROM golang:1.24-alpine AS builder
+# Must be >= the "go 1.26.5" directive in backend/go.mod.
+FROM golang:1.26.5-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache git ca-certificates
+# dl-cdn.alpinelinux.org is unreachable from some networks (observed failing
+# consistently, not just a one-off timeout); ArvanCloud's mirror serves the
+# same repo contents and is reachable where the upstream CDN isn't.
+RUN sed -i 's#dl-cdn.alpinelinux.org#mirror.arvancloud.ir#g' /etc/apk/repositories \
+ && apk add --no-cache git ca-certificates
+
+# proxy.golang.org returns 403 from some networks (Google blocks the source
+# IP outright, not just slow/unreachable), and a "direct" fallback can't
+# reach golang.org either (same network restrictions), so "direct" is
+# dropped entirely — it would only ever time out. goproxy.io mirrors nearly
+# everything; goproxy.cn is the fallback for the rare module it's missing.
+# sum.golang.org is Google infra too and likely blocked the same way, so
+# verification falls back to the pinned hashes already in go.sum instead of
+# the public transparency log.
+ENV GOPROXY=https://goproxy.io,https://goproxy.cn
+ENV GOSUMDB=off
 
 # Copy manifests first so dependency download is cached across code changes.
 COPY backend/go.mod backend/go.sum ./
@@ -18,7 +32,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/api ./c
 # ── Runtime ──────────────────────────────────────────────────────────────────
 FROM alpine:3.20
 
-RUN apk add --no-cache ca-certificates tzdata wget \
+RUN sed -i 's#dl-cdn.alpinelinux.org#mirror.arvancloud.ir#g' /etc/apk/repositories \
+ && apk add --no-cache ca-certificates tzdata wget \
  && adduser -D -u 10001 gms
 
 WORKDIR /app

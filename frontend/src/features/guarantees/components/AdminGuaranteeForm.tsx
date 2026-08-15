@@ -75,7 +75,7 @@ interface AdminGuaranteeFormProps {
 
 export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: AdminGuaranteeFormProps) {
   const [activeTab, setActiveTab] = useState<'existing' | 'new'>('existing')
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [, setSelectedCustomer] = useState<Customer | null>(null)
   const [lookupResult, setLookupResult] = useState<ProductLookupResult | null>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [isLookupLoading, setIsLookupLoading] = useState(false)

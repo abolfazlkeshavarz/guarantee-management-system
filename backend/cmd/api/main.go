@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"guarantee-management-system/internal/config"
 	"guarantee-management-system/internal/database"
@@ -28,6 +31,12 @@ func main() {
 	// Load configuration
 	cfg := config.Load()
 
+	// Refuse to boot a production server with development defaults (example
+	// JWT secret, empty DB password, wildcard CORS, etc.)
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
+
 	// Set Gin mode
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -50,16 +59,40 @@ func main() {
 	router.Use(middleware.CORS(cfg))
 	router.Use(middleware.Logger())
 
+	// Only trust X-Forwarded-For from these proxies (empty = trust none,
+	// i.e. use the direct connection's address). Without this call Gin
+	// trusts every proxy by default, which lets a client spoof its IP.
+	if err := router.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		log.Fatal("Invalid TRUSTED_PROXIES:", err)
+	}
+
 	// Serve uploaded files (invoice/guarantee-card images, etc.)
 	router.Static("/uploads", cfg.UploadPath)
 
-	// Health check
+	// Liveness: process is up, nothing more.
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status": "ok",
 			"app":    cfg.AppName,
 			"env":    cfg.AppEnv,
 		})
+	})
+
+	// Readiness: process is up AND can reach the database. Used by
+	// docker-compose/orchestrators to gate traffic, not just process liveness.
+	router.GET("/ready", func(c *gin.Context) {
+		sqlDB, err := database.GetDB().DB()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready", "error": "database handle unavailable"})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
+		if err := sqlDB.PingContext(ctx); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "not ready", "error": "database unreachable"})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ready"})
 	})
 
 	// API v1
@@ -119,16 +152,30 @@ func main() {
 	log.Printf("🚀 Server starting on port %s", port)
 	log.Printf("🌍 Environment: %s", cfg.AppEnv)
 
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: router,
+	}
+
 	go func() {
-		if err := router.Run(":" + port); err != nil {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("Failed to start server:", err)
 		}
 	}()
 
-	// Graceful shutdown
+	// Graceful shutdown: stop accepting new connections and give in-flight
+	// requests up to 15s to finish before the process exits.
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	log.Println("🛑 Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Println("⚠️  Forced shutdown:", err)
+	} else {
+		log.Println("✅ Server exited cleanly")
+	}
 }

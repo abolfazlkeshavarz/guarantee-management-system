@@ -18,7 +18,7 @@ import { TechnicianDeleteDialog } from '../components/TechnicianDeleteDialog'
 import { technicianService } from '../api/technicians'
 import { Technician } from '../types'
 import { TechnicianFormValues } from '../schemas/technicianSchema'
-import { queryClient, invalidateDashboard } from '@/lib/query-client'
+import { invalidateDashboard } from '@/lib/query-client'
 
 export function TechniciansPage() {
   const { t } = useTranslation()

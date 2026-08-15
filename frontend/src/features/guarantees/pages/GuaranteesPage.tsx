@@ -21,7 +21,7 @@ import { guaranteeService } from '../api/guarantees'
 import { Guarantee, GUARANTEE_STATUSES, SetGoldenData } from '../types'
 import { customerService } from '@/features/customers/api/customers'
 import { productService } from '@/features/products/api/products'
-import { queryClient, invalidateDashboard } from '@/lib/query-client'
+import { invalidateDashboard } from '@/lib/query-client'
 
 export function GuaranteesPage() {
   const { t } = useTranslation()
@@ -84,12 +84,6 @@ export function GuaranteesPage() {
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to create guarantee'),
   })
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => guaranteeService.update(id, data),
-    onSuccess: () => { invalidateAll(); toast.success('Guarantee updated successfully'); setIsFormOpen(false); setSelectedGuarantee(null) },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to update guarantee'),
-  })
-
   const approveMutation = useMutation({
     mutationFn: ({ id, status, notes }: { id: number; status: 'Approved' | 'Rejected'; notes?: string }) =>
       guaranteeService.approve(id, status, notes),
@@ -134,7 +128,6 @@ export function GuaranteesPage() {
   })
 
   const handleCreate = async (data: any) => { await adminCreateMutation.mutateAsync(data) }
-  const handleUpdate = async (data: any) => { if (selectedGuarantee) await updateMutation.mutateAsync({ id: selectedGuarantee.id, data }) }
   const handleApprove = async (data: any) => { if (selectedGuarantee) await approveMutation.mutateAsync({ id: selectedGuarantee.id, status: data.status, notes: data.notes }) }
   const handleRenew = async (data: any) => { if (selectedGuarantee) await renewMutation.mutateAsync({ id: selectedGuarantee.id, newExpiryDate: data.new_expiry_date, notes: data.notes }) }
   const handleCancel = async () => { if (selectedGuarantee) await cancelMutation.mutateAsync(selectedGuarantee.id) }
