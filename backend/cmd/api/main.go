@@ -22,6 +22,7 @@ import (
 	"guarantee-management-system/internal/modules/repaircatalog"
 	"guarantee-management-system/internal/modules/repairs"
 	"guarantee-management-system/internal/modules/technicians"
+	"guarantee-management-system/internal/shared/sms"
 	"guarantee-management-system/internal/shared/storage"
 
 	"github.com/gin-gonic/gin"
@@ -52,6 +53,9 @@ func main() {
 	if err := storage.Initialize(cfg.UploadPath); err != nil {
 		log.Fatal("Failed to initialize storage:", err)
 	}
+
+	// Initialize SMS client (Melli Payamak)
+	sms.Initialize(cfg)
 
 	// Setup router
 	router := gin.New()
@@ -137,6 +141,29 @@ func main() {
 		// Initialize part requests module (technician -> admin part/service requests)
 		partRequestsModule := partrequests.NewPartRequestModule(database.GetDB())
 		partRequestsModule.RegisterRoutes(v1)
+
+		// Admin-only: send an arbitrary test SMS, to confirm the Melli
+		// Payamak integration is working without waiting for a real
+		// guarantee approval / part request / repair report.
+		smsTest := v1.Group("/sms")
+		smsTest.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
+		{
+			smsTest.POST("/test", func(c *gin.Context) {
+				var req struct {
+					To   string `json:"to" binding:"required"`
+					Text string `json:"text" binding:"required"`
+				}
+				if err := c.ShouldBindJSON(&req); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": err.Error()})
+					return
+				}
+				if err := sms.SendTest(req.To, req.Text); err != nil {
+					c.JSON(http.StatusBadGateway, gin.H{"success": false, "message": err.Error()})
+					return
+				}
+				c.JSON(http.StatusOK, gin.H{"success": true, "message": "SMS sent"})
+			})
+		}
 
 		log.Println("✅ All modules registered successfully")
 	}

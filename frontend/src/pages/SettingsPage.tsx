@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
 import { authService } from '@/api/auth'
+import { api } from '@/api/axios'
 import {
   Card,
   CardContent,
@@ -21,7 +22,17 @@ import { Badge } from '@/components/ui/badge'
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
 import { FormattedDate } from '@/components/common/FormattedDate'
-import { KeyRound, Loader2, UserCog, SlidersHorizontal } from 'lucide-react'
+import { KeyRound, Loader2, UserCog, SlidersHorizontal, MessageSquare } from 'lucide-react'
+
+const smsTestSchema = z.object({
+  to: z
+    .string()
+    .min(10, 'Enter a valid phone number')
+    .max(20),
+  text: z.string().min(1, 'Enter the message text'),
+})
+
+type SmsTestValues = z.infer<typeof smsTestSchema>
 
 const profileSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -51,6 +62,7 @@ export function SettingsPage() {
   const { admin, refreshProfile } = useAuth()
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
+  const [sendingSms, setSendingSms] = useState(false)
 
   const profileForm = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -60,6 +72,11 @@ export function SettingsPage() {
   const passwordForm = useForm<PasswordValues>({
     resolver: zodResolver(passwordSchema),
     defaultValues: { old_password: '', new_password: '', confirm_password: '' },
+  })
+
+  const smsForm = useForm<SmsTestValues>({
+    resolver: zodResolver(smsTestSchema),
+    defaultValues: { to: '', text: '' },
   })
 
   useEffect(() => {
@@ -113,6 +130,22 @@ export function SettingsPage() {
       }
     } finally {
       setSavingPassword(false)
+    }
+  }
+
+  const onSendTestSms = async (values: SmsTestValues) => {
+    setSendingSms(true)
+    try {
+      await api.post('/sms/test', values)
+      toast.success(t('settings.smsTestSent', { defaultValue: 'Test SMS sent' }))
+      smsForm.reset({ to: values.to, text: '' })
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.message ||
+          t('settings.smsTestFailed', { defaultValue: 'Could not send the test SMS' })
+      )
+    } finally {
+      setSendingSms(false)
     }
   }
 
@@ -304,6 +337,57 @@ export function SettingsPage() {
           <CardContent className="flex flex-wrap items-center gap-4">
             <LanguageSwitcher />
             <CalendarSwitcher />
+          </CardContent>
+        </Card>
+
+        {/* ── SMS test ──────────────────────────────────────────────── */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-muted-foreground" />
+              {t('settings.smsTest', { defaultValue: 'Test SMS' })}
+            </CardTitle>
+            <CardDescription>
+              {t('settings.smsTestDesc', {
+                defaultValue:
+                  'Send an arbitrary SMS through the configured Melli Payamak test template, to confirm the integration works without waiting for a real guarantee approval, part request, or repair report.',
+              })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              onSubmit={smsForm.handleSubmit(onSendTestSms)}
+              className="grid gap-4 sm:grid-cols-[minmax(0,220px)_1fr_auto] sm:items-end"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="sms_to">
+                  {t('settings.smsTo', { defaultValue: 'Phone number' })}
+                </Label>
+                <Input id="sms_to" placeholder="09123456789" {...smsForm.register('to')} />
+                {smsForm.formState.errors.to && (
+                  <p className="text-sm text-destructive">
+                    {smsForm.formState.errors.to.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sms_text">
+                  {t('settings.smsText', { defaultValue: 'Message text' })}
+                </Label>
+                <Input id="sms_text" {...smsForm.register('text')} />
+                {smsForm.formState.errors.text && (
+                  <p className="text-sm text-destructive">
+                    {smsForm.formState.errors.text.message}
+                  </p>
+                )}
+              </div>
+
+              <Button type="submit" disabled={sendingSms}>
+                {sendingSms && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                {t('settings.smsSend', { defaultValue: 'Send' })}
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>

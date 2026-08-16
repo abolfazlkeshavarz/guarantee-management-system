@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/sms"
 
 	"gorm.io/gorm"
 )
@@ -119,7 +120,14 @@ func (s *PartRequestService) CreateByTechnician(techID uint, req *CreatePartRequ
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create part request", 500)
 	}
 
-	return s.mapToDTO(request), nil
+	dto := s.mapToDTO(request)
+	item := dto.ItemName
+	if item == "" {
+		item = request.CustomItemName
+	}
+	sms.NotifyPartRequestToAdmin(dto.TechnicianName, item, dto.GuaranteeCode)
+
+	return dto, nil
 }
 
 // ─── Reads ───────────────────────────────────────────────────────────────────

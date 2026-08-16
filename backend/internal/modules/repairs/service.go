@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/sms"
 
 	"gorm.io/gorm"
 )
@@ -83,7 +84,10 @@ func (s *RepairService) CreateByTechnician(techID uint, req *CreateMyRepairReque
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create repair", 500)
 	}
 
-	return s.mapToDTO(repair), nil
+	dto := s.mapToDTO(repair)
+	sms.NotifyRepairReportToAdmin(dto.TechnicianName, dto.GuaranteeCode)
+
+	return dto, nil
 }
 
 func (s *RepairService) GetByID(id uint) (*RepairDTO, error) {

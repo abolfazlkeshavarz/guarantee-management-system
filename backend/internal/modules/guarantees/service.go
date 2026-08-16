@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/sms"
 
 	"gorm.io/gorm"
 )
@@ -247,6 +248,9 @@ func (s *GuaranteeService) Approve(id uint, req *ApproveGuaranteeRequest, adminI
 	updated, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
+	}
+	if updated.Status == StatusApproved {
+		sms.NotifyGuaranteeApproved(updated.Customer.Phone, updated.Customer.FullName, updated.Code, updated.ExpiryDate)
 	}
 	return s.mapToDTO(updated), nil
 }

@@ -44,6 +44,18 @@ type Config struct {
 	// X-Forwarded-For. Empty means "trust nothing", which is the correct
 	// default when the API is reached directly.
 	TrustedProxies []string
+
+	// SMS (Melli Payamak SendByBaseNumber2 — pre-approved body templates,
+	// not free text). SMSEnabled defaults false so a fresh/dev checkout
+	// never tries to send real SMS without explicit opt-in.
+	SMSEnabled            bool
+	SMSUsername           string
+	SMSPassword           string
+	SMSAdminPhone         string
+	SMSBodyIDApproved     int // guarantee approved -> customer
+	SMSBodyIDPartRequest  int // technician part/component request -> admin
+	SMSBodyIDRepairReport int // technician repair report filed -> admin
+	SMSBodyIDTest         int // used only by the admin "send test SMS" endpoint
 }
 
 func Load() *Config {
@@ -53,6 +65,12 @@ func Load() *Config {
 
 	jwtExpiration, _ := strconv.Atoi(getEnv("JWT_EXPIRATION", "24"))
 	maxUploadSize, _ := strconv.ParseInt(getEnv("MAX_UPLOAD_SIZE", "10485760"), 10, 64)
+
+	// All four SMS body IDs default to the one template that's actually been
+	// registered so far (474023). That template almost certainly isn't
+	// shaped right for all four message kinds — register separate bodies in
+	// the Melli Payamak panel for each and point these at them individually.
+	smsDefaultBodyID := getEnvAsInt("SMS_BODY_ID", 474023)
 
 	return &Config{
 		AppEnv:  getEnv("APP_ENV", "development"),
@@ -75,6 +93,15 @@ func Load() *Config {
 
 		CORSAllowedOrigins: getEnvAsSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173"}),
 		TrustedProxies:     getEnvAsSlice("TRUSTED_PROXIES", nil),
+
+		SMSEnabled:            getEnv("SMS_ENABLED", "false") == "true",
+		SMSUsername:           getEnv("SMS_USERNAME", ""),
+		SMSPassword:           getEnv("SMS_PASSWORD", ""),
+		SMSAdminPhone:         getEnv("SMS_ADMIN_PHONE", ""),
+		SMSBodyIDApproved:     getEnvAsInt("SMS_BODY_ID_APPROVED", smsDefaultBodyID),
+		SMSBodyIDPartRequest:  getEnvAsInt("SMS_BODY_ID_PART_REQUEST", smsDefaultBodyID),
+		SMSBodyIDRepairReport: getEnvAsInt("SMS_BODY_ID_REPAIR_REPORT", smsDefaultBodyID),
+		SMSBodyIDTest:         getEnvAsInt("SMS_BODY_ID_TEST", smsDefaultBodyID),
 	}
 }
 
@@ -139,6 +166,18 @@ func getEnvAsSlice(key string, defaultValue []string) []string {
 		return defaultValue
 	}
 	return result
+}
+
+func getEnvAsInt(key string, defaultValue int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return defaultValue
+	}
+	return parsed
 }
 
 func (c *Config) DBDSN() string {
