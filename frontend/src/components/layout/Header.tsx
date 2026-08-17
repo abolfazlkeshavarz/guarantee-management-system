@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -57,7 +58,9 @@ export function Header() {
               </span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>{t('header.myAccount')}</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>{t('header.myAccount')}</DropdownMenuLabel>
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
               {/* These two were dead buttons before; both land on Settings now. */}
               <DropdownMenuItem onClick={() => navigate('/settings')}>

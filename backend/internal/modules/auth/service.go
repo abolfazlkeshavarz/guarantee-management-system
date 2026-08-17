@@ -151,6 +151,16 @@ func (s *AuthService) UpdateAdmin(adminID uint, req *AdminUpdateRequest) (*Admin
 		return nil, errors.NewAppError(errors.ErrNotFound, "Admin not found", 404)
 	}
 
+	if req.Username != "" && req.Username != admin.Username {
+		existing, err := s.repo.FindAdminByUsername(req.Username)
+		if err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check existing admin", 500)
+		}
+		if existing != nil {
+			return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Username already exists", 409)
+		}
+		admin.Username = req.Username
+	}
 	if req.FullName != "" {
 		admin.FullName = req.FullName
 	}

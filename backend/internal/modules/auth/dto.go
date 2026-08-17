@@ -34,6 +34,7 @@ type AdminCreateRequest struct {
 }
 
 type AdminUpdateRequest struct {
+	Username string `json:"username" binding:"omitempty,min=3,max=50"`
 	FullName string `json:"full_name" binding:"omitempty,max=100"`
 	Email    string `json:"email" binding:"omitempty,email"`
 	IsActive *bool  `json:"is_active"`

@@ -15,6 +15,7 @@ import { PartRequestsPage } from '@/features/partRequests/pages/PartRequestsPage
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { SettingsPage } from '@/pages/SettingsPage'
 import { CustomersPage } from '@/features/customers/pages/CustomersPage'
 
 // Layouts
@@ -66,6 +67,7 @@ export function AppRoutes() {
         <Route path="technicians" element={<TechniciansPage />} />
         <Route path="repairs" element={<RepairsPage />} />
         <Route path="part-requests" element={<PartRequestsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
 
       {/* Technician Routes */}

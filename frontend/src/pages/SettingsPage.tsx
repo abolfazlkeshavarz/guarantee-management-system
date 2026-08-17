@@ -35,6 +35,7 @@ const smsTestSchema = z.object({
 type SmsTestValues = z.infer<typeof smsTestSchema>
 
 const profileSchema = z.object({
+  username: z.string().min(3, 'Username must be at least 3 characters').max(50),
   full_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   email: z.string().email('Enter a valid email address'),
 })
@@ -66,7 +67,7 @@ export function SettingsPage() {
 
   const profileForm = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { full_name: '', email: '' },
+    defaultValues: { username: '', full_name: '', email: '' },
   })
 
   const passwordForm = useForm<PasswordValues>({
@@ -82,6 +83,7 @@ export function SettingsPage() {
   useEffect(() => {
     if (admin) {
       profileForm.reset({
+        username: admin.username || '',
         full_name: admin.full_name || '',
         email: admin.email || '',
       })
@@ -172,19 +174,12 @@ export function SettingsPage() {
             </CardTitle>
             <CardDescription>
               {t('settings.accountDesc', {
-                defaultValue: 'Your name and email as they appear across the system.',
+                defaultValue: 'Your username, name, and email as they appear across the system.',
               })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap items-center gap-3 text-sm">
-              <div>
-                <p className="text-muted-foreground">
-                  {t('settings.username', { defaultValue: 'Username' })}
-                </p>
-                <p className="font-medium">{admin?.username || '-'}</p>
-              </div>
-              <Separator orientation="vertical" className="h-8" />
               <div>
                 <p className="text-muted-foreground">
                   {t('common.status', { defaultValue: 'Status' })}
@@ -213,6 +208,18 @@ export function SettingsPage() {
             <Separator />
 
             <form onSubmit={profileForm.handleSubmit(onSaveProfile)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">
+                  {t('settings.username', { defaultValue: 'Username' })}
+                </Label>
+                <Input id="username" {...profileForm.register('username')} />
+                {profileForm.formState.errors.username && (
+                  <p className="text-sm text-destructive">
+                    {profileForm.formState.errors.username.message}
+                  </p>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="full_name">
                   {t('settings.fullName', { defaultValue: 'Full name' })}
