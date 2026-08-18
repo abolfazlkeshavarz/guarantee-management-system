@@ -54,6 +54,16 @@ func classify(method, fullPath string) (entityType string, entityID *uint64, act
 		return "unknown", nil, strings.ToLower(method)
 	}
 
+	// Account verbs are named by their trailing segment regardless of which
+	// portal they live under. Without this /technician/login reduces to the
+	// single segment "login", which the generic logic below would read as the
+	// entity rather than the action.
+	for _, verb := range []string{"login", "change-password", "reset-password"} {
+		if strings.HasSuffix(trimmed, "/"+verb) || trimmed == verb {
+			return "auth", nil, verb
+		}
+	}
+
 	// "technician/part-requests/..." is the same entity as "part-requests/...".
 	if parts[0] == "technician" && len(parts) > 1 {
 		parts = parts[1:]

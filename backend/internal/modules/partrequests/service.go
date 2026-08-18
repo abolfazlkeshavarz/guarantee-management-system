@@ -125,9 +125,20 @@ func (s *PartRequestService) CreateByTechnician(techID uint, req *CreatePartRequ
 	if item == "" {
 		item = request.CustomItemName
 	}
-	sms.NotifyPartRequestToAdmin(dto.TechnicianName, item, dto.GuaranteeCode)
+	sms.NotifyPartRequest(s.reviewerPhones(), dto.TechnicianName, item, request.CreatedAt)
 
 	return dto, nil
+}
+
+// reviewerPhones is everyone who reviews part requests: the configured admin
+// number plus every active "technical" technician.
+func (s *PartRequestService) reviewerPhones() []string {
+	phones := []string{sms.AdminPhone()}
+	var techPhones []string
+	s.db.Table("technicians").
+		Where("is_technical = ? AND is_active = ? AND deleted_at IS NULL AND phone <> ''", true, true).
+		Pluck("phone", &techPhones)
+	return append(phones, techPhones...)
 }
 
 // ─── Reads ───────────────────────────────────────────────────────────────────

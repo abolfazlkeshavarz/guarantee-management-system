@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"guarantee-management-system/internal/config"
+
+	ptime "github.com/yaa110/go-persian-calendar"
 )
 
 const sendURL = "http://api.payamak-panel.com/post/Send.asmx/SendByBaseNumber2"
@@ -28,6 +30,7 @@ var (
 	adminPhone string
 
 	bodyIDApproved     int
+	bodyIDRenewed      int
 	bodyIDPartRequest  int
 	bodyIDRepairReport int
 	bodyIDTest         int
@@ -41,6 +44,7 @@ func Initialize(cfg *config.Config) {
 	password = cfg.SMSPassword
 	adminPhone = cfg.SMSAdminPhone
 	bodyIDApproved = cfg.SMSBodyIDApproved
+	bodyIDRenewed = cfg.SMSBodyIDRenewed
 	bodyIDPartRequest = cfg.SMSBodyIDPartRequest
 	bodyIDRepairReport = cfg.SMSBodyIDRepairReport
 	bodyIDTest = cfg.SMSBodyIDTest
@@ -168,56 +172,84 @@ func sendAsync(kind string, bodyID int, text, to string) {
 	}()
 }
 
-// NotifyGuaranteeApproved tells the customer their guarantee was approved
-// and how long it's valid for.
+// ─── Notifications ───────────────────────────────────────────────────────────
 //
-// Variable order sent as `text` (semicolon-separated, filled into whatever
-// placeholders body ID SMS_BODY_ID_APPROVED was registered with in the Melli
-// Payamak panel): customer name; guarantee code; remaining days; expiry date
-// (Jalali-free ISO form — reformat here if the template expects Jalali).
-// Verify this matches the actual registered template and adjust if not.
+// Every message follows the same shape: exactly THREE semicolon-separated
+// variables, with the date always last.
+//
+//	repair filed   -> technician name ; guarantee code ; date
+//	part requested -> technician name ; item name      ; date
+//	guarantee ok   -> guarantee code  ; customer name  ; expiry date
+//	guarantee renew-> guarantee code  ; customer name  ; new expiry date
+//
+// Dates are Jalali (۱۴۰۵/۰۵/۲۷ style), matching what the UI shows, because
+// these messages are read by Persian speakers.
+//
+// The wording itself is NOT set here. SendByBaseNumber2 sends a template that
+// was pre-approved in the Melli Payamak panel; `text` only fills that
+// template's placeholders in order. Each of the four needs its own registered
+// body ID with three placeholders, wired through SMS_BODY_ID_*.
+
+// jalaliDate renders a Gregorian time as a Jalali date string.
+func jalaliDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	p := ptime.New(t)
+	return fmt.Sprintf("%04d/%02d/%02d", p.Year(), int(p.Month()), p.Day())
+}
+
+// AdminPhone exposes the configured admin recipient so callers can build a
+// recipient list (admin + technical users) without duplicating config.
+func AdminPhone() string { return adminPhone }
+
+// NotifyRepairReport tells reviewers a technician filed a repair report.
+// Variables: technician name ; guarantee code ; date filed.
+func NotifyRepairReport(recipients []string, technicianName, guaranteeCode string, filedAt time.Time) {
+	text := strings.Join([]string{technicianName, guaranteeCode, jalaliDate(filedAt)}, ";")
+	broadcast("repair-report", bodyIDRepairReport, text, recipients)
+}
+
+// NotifyPartRequest tells reviewers a technician requested a part or service.
+// Variables: technician name ; item name ; date requested.
+func NotifyPartRequest(recipients []string, technicianName, itemName string, requestedAt time.Time) {
+	text := strings.Join([]string{technicianName, itemName, jalaliDate(requestedAt)}, ";")
+	broadcast("part-request", bodyIDPartRequest, text, recipients)
+}
+
+// NotifyGuaranteeApproved tells the customer their guarantee was approved.
+// Variables: guarantee code ; customer name ; expiry date.
 func NotifyGuaranteeApproved(customerPhone, customerName, guaranteeCode string, expiryDate time.Time) {
 	if customerPhone == "" {
 		return
 	}
-	remainingDays := int(time.Until(expiryDate).Hours() / 24)
-	if remainingDays < 0 {
-		remainingDays = 0
-	}
-	text := strings.Join([]string{
-		customerName,
-		guaranteeCode,
-		strconv.Itoa(remainingDays),
-		expiryDate.Format("2006-01-02"),
-	}, ";")
+	text := strings.Join([]string{guaranteeCode, customerName, jalaliDate(expiryDate)}, ";")
 	sendAsync("guarantee-approved", bodyIDApproved, text, customerPhone)
 }
 
-// NotifyPartRequestToAdmin tells the admin phone a technician requested a
-// part/component/service.
-//
-// Variable order: technician name; item description; guarantee code
-// (empty string if the request wasn't tied to a guarantee). Verify against
-// the SMS_BODY_ID_PART_REQUEST template and adjust if not.
-func NotifyPartRequestToAdmin(technicianName, itemDescription, guaranteeCode string) {
-	if adminPhone == "" {
+// NotifyGuaranteeRenewed tells the customer their guarantee was extended.
+// Variables: guarantee code ; customer name ; new expiry date -- deliberately
+// the same shape as the approval message.
+func NotifyGuaranteeRenewed(customerPhone, customerName, guaranteeCode string, newExpiryDate time.Time) {
+	if customerPhone == "" {
 		return
 	}
-	text := strings.Join([]string{technicianName, itemDescription, guaranteeCode}, ";")
-	sendAsync("part-request", bodyIDPartRequest, text, adminPhone)
+	text := strings.Join([]string{guaranteeCode, customerName, jalaliDate(newExpiryDate)}, ";")
+	sendAsync("guarantee-renewed", bodyIDRenewed, text, customerPhone)
 }
 
-// NotifyRepairReportToAdmin tells the admin phone a technician filed a
-// repair report.
-//
-// Variable order: technician name; guarantee code. Verify against the
-// SMS_BODY_ID_REPAIR_REPORT template and adjust if not.
-func NotifyRepairReportToAdmin(technicianName, guaranteeCode string) {
-	if adminPhone == "" {
-		return
+// broadcast fans one message out to several recipients, skipping blanks and
+// duplicates so an admin who is also a technical user is not texted twice.
+func broadcast(kind string, bodyID int, text string, recipients []string) {
+	seen := make(map[string]bool, len(recipients))
+	for _, phone := range recipients {
+		normalized := normalizePhone(phone)
+		if normalized == "" || seen[normalized] {
+			continue
+		}
+		seen[normalized] = true
+		sendAsync(kind, bodyID, text, normalized)
 	}
-	text := strings.Join([]string{technicianName, guaranteeCode}, ";")
-	sendAsync("repair-report", bodyIDRepairReport, text, adminPhone)
 }
 
 // SendTest sends synchronously (unlike the Notify* functions) so the caller

@@ -85,9 +85,21 @@ func (s *RepairService) CreateByTechnician(techID uint, req *CreateMyRepairReque
 	}
 
 	dto := s.mapToDTO(repair)
-	sms.NotifyRepairReportToAdmin(dto.TechnicianName, dto.GuaranteeCode)
+	sms.NotifyRepairReport(s.reviewerPhones(), dto.TechnicianName, dto.GuaranteeCode, repair.CreatedAt)
 
 	return dto, nil
+}
+
+// reviewerPhones is everyone who should hear about new technician work: the
+// configured admin number plus every active "technical" technician, who can
+// now review these themselves.
+func (s *RepairService) reviewerPhones() []string {
+	phones := []string{sms.AdminPhone()}
+	var techPhones []string
+	s.db.Table("technicians").
+		Where("is_technical = ? AND is_active = ? AND deleted_at IS NULL AND phone <> ''", true, true).
+		Pluck("phone", &techPhones)
+	return append(phones, techPhones...)
 }
 
 func (s *RepairService) GetByID(id uint) (*RepairDTO, error) {

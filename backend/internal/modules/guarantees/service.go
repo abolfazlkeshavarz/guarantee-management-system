@@ -285,6 +285,12 @@ func (s *GuaranteeService) Renew(id uint, req *RenewGuaranteeRequest, adminID ui
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
 	}
+	sms.NotifyGuaranteeRenewed(
+		updated.Customer.Phone,
+		updated.Customer.FullName,
+		updated.Code,
+		updated.ExpiryDate,
+	)
 	return s.mapToDTO(updated), nil
 }
 

@@ -53,6 +53,7 @@ type Config struct {
 	SMSPassword           string
 	SMSAdminPhone         string
 	SMSBodyIDApproved     int // guarantee approved -> customer
+	SMSBodyIDRenewed      int // guarantee renewed  -> customer
 	SMSBodyIDPartRequest  int // technician part/component request -> admin
 	SMSBodyIDRepairReport int // technician repair report filed -> admin
 	SMSBodyIDTest         int // used only by the admin "send test SMS" endpoint
@@ -99,6 +100,7 @@ func Load() *Config {
 		SMSPassword:           getEnv("SMS_PASSWORD", ""),
 		SMSAdminPhone:         getEnv("SMS_ADMIN_PHONE", ""),
 		SMSBodyIDApproved:     getEnvAsInt("SMS_BODY_ID_APPROVED", smsDefaultBodyID),
+		SMSBodyIDRenewed:      getEnvAsInt("SMS_BODY_ID_RENEWED", smsDefaultBodyID),
 		SMSBodyIDPartRequest:  getEnvAsInt("SMS_BODY_ID_PART_REQUEST", smsDefaultBodyID),
 		SMSBodyIDRepairReport: getEnvAsInt("SMS_BODY_ID_REPAIR_REPORT", smsDefaultBodyID),
 		SMSBodyIDTest:         getEnvAsInt("SMS_BODY_ID_TEST", smsDefaultBodyID),
