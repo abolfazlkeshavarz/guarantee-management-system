@@ -174,21 +174,36 @@ func sendAsync(kind string, bodyID int, text, to string) {
 
 // ─── Notifications ───────────────────────────────────────────────────────────
 //
-// Every message follows the same shape: exactly THREE semicolon-separated
-// variables, with the date always last.
+// Every notification sends ONE value: a complete Persian sentence.
 //
-//	repair filed   -> technician name ; guarantee code ; date
-//	part requested -> technician name ; item name      ; date
-//	guarantee ok   -> guarantee code  ; customer name  ; expiry date
-//	guarantee renew-> guarantee code  ; customer name  ; new expiry date
+// SendByBaseNumber2 fills a template that was pre-approved in the Melli
+// Payamak panel; `text` only supplies the values. The template in use
+// (474023) is
 //
-// Dates are Jalali (۱۴۰۵/۰۵/۲۷ style), matching what the UI shows, because
-// these messages are read by Persian speakers.
+//	تایید گارانتی
+//	%1
+//	با تشکر
+//	اوینکی
 //
-// The wording itself is NOT set here. SendByBaseNumber2 sends a template that
-// was pre-approved in the Melli Payamak panel; `text` only fills that
-// template's placeholders in order. Each of the four needs its own registered
-// body ID with three placeholders, wired through SMS_BODY_ID_*.
+// -- a single placeholder. Sending several semicolon-separated values against
+// it silently drops everything after the first, which is why an earlier
+// version delivered a bare technician name. Composing the whole sentence here
+// keeps all the detail inside that one slot.
+//
+// If separate multi-placeholder templates are registered later, switch these
+// back to strings.Join(values, ";") in the registered order.
+//
+// Dates are Jalali, matching what the UI shows, because these are read by
+// Persian speakers.
+
+// sanitize keeps a value from breaking out of its slot: ";" separates
+// variables for this provider, and newlines confuse the template renderer.
+func sanitize(v string) string {
+	v = strings.ReplaceAll(v, ";", "،")
+	v = strings.ReplaceAll(v, "\n", " ")
+	v = strings.ReplaceAll(v, "\r", " ")
+	return strings.TrimSpace(v)
+}
 
 // jalaliDate renders a Gregorian time as a Jalali date string.
 func jalaliDate(t time.Time) string {
@@ -204,37 +219,41 @@ func jalaliDate(t time.Time) string {
 func AdminPhone() string { return adminPhone }
 
 // NotifyRepairReport tells reviewers a technician filed a repair report.
-// Variables: technician name ; guarantee code ; date filed.
+// One sentence: technician, guarantee code, date filed.
 func NotifyRepairReport(recipients []string, technicianName, guaranteeCode string, filedAt time.Time) {
-	text := strings.Join([]string{technicianName, guaranteeCode, jalaliDate(filedAt)}, ";")
+	text := fmt.Sprintf("گزارش تعمیر جدید از تعمیرکار %s برای گارانتی %s در تاریخ %s ثبت شد.",
+		sanitize(technicianName), sanitize(guaranteeCode), jalaliDate(filedAt))
 	broadcast("repair-report", bodyIDRepairReport, text, recipients)
 }
 
 // NotifyPartRequest tells reviewers a technician requested a part or service.
-// Variables: technician name ; item name ; date requested.
+// One sentence: item, technician, date requested.
 func NotifyPartRequest(recipients []string, technicianName, itemName string, requestedAt time.Time) {
-	text := strings.Join([]string{technicianName, itemName, jalaliDate(requestedAt)}, ";")
+	text := fmt.Sprintf("درخواست قطعه %s از تعمیرکار %s در تاریخ %s ثبت شد.",
+		sanitize(itemName), sanitize(technicianName), jalaliDate(requestedAt))
 	broadcast("part-request", bodyIDPartRequest, text, recipients)
 }
 
 // NotifyGuaranteeApproved tells the customer their guarantee was approved.
-// Variables: guarantee code ; customer name ; expiry date.
+// One sentence: customer, guarantee code, expiry date.
 func NotifyGuaranteeApproved(customerPhone, customerName, guaranteeCode string, expiryDate time.Time) {
 	if customerPhone == "" {
 		return
 	}
-	text := strings.Join([]string{guaranteeCode, customerName, jalaliDate(expiryDate)}, ";")
+	text := fmt.Sprintf("%s عزیز، گارانتی %s تایید شد. تاریخ انقضا %s",
+		sanitize(customerName), sanitize(guaranteeCode), jalaliDate(expiryDate))
 	sendAsync("guarantee-approved", bodyIDApproved, text, customerPhone)
 }
 
 // NotifyGuaranteeRenewed tells the customer their guarantee was extended.
-// Variables: guarantee code ; customer name ; new expiry date -- deliberately
+// One sentence: customer, guarantee code, new expiry date -- deliberately
 // the same shape as the approval message.
 func NotifyGuaranteeRenewed(customerPhone, customerName, guaranteeCode string, newExpiryDate time.Time) {
 	if customerPhone == "" {
 		return
 	}
-	text := strings.Join([]string{guaranteeCode, customerName, jalaliDate(newExpiryDate)}, ";")
+	text := fmt.Sprintf("%s عزیز، گارانتی %s تمدید شد. تاریخ انقضای جدید %s",
+		sanitize(customerName), sanitize(guaranteeCode), jalaliDate(newExpiryDate))
 	sendAsync("guarantee-renewed", bodyIDRenewed, text, customerPhone)
 }
 
