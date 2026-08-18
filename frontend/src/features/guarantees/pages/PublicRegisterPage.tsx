@@ -7,8 +7,6 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { publicGuaranteeService } from '../api/publicGuarantee'
 import { useGuaranteePeriodLabel } from '../hooks/useGuaranteePeriodLabel'
-import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
-import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
 import { FormattedDate } from '@/components/common/FormattedDate'
 import { api } from '@/api/axios'
 import { Button } from '@/components/ui/button'
@@ -433,10 +431,7 @@ export function PublicRegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4">
       <div className="max-w-3xl mx-auto">
-        <div className="flex justify-end gap-2 mb-4">
-          <LanguageSwitcher />
-          <CalendarSwitcher />
-        </div>
+        {/* Language/calendar come from the admin-controlled global setting. */}
 
         <Card className="shadow-lg">
           <CardHeader className="text-center border-b">

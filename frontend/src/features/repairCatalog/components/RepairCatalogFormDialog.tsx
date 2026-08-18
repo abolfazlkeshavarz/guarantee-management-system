@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
@@ -30,6 +31,8 @@ interface RepairCatalogFormDialogProps {
 export function RepairCatalogFormDialog({
   open, onOpenChange, entry, title, editTitle, namePlaceholder, onSubmit, isLoading,
 }: RepairCatalogFormDialogProps) {
+  const { t, i18n } = useTranslation()
+  const isRTL = i18n.language === 'fa'
   const form = useForm<RepairCatalogFormValues>({
     resolver: zodResolver(repairCatalogSchema),
     defaultValues: { name: '', description: '', is_active: true },
@@ -57,11 +60,11 @@ export function RepairCatalogFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px]">
+      <DialogContent className="sm:max-w-[450px]" dir={isRTL ? 'rtl' : 'ltr'}>
         <DialogHeader>
-          <DialogTitle>{entry ? editTitle : title}</DialogTitle>
-          <DialogDescription>
-            Fill in the details below.
+          <DialogTitle className={isRTL ? 'text-right' : ''}>{entry ? editTitle : title}</DialogTitle>
+          <DialogDescription className={isRTL ? 'text-right' : ''}>
+            {t('repairCatalog.formDesc')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -71,7 +74,7 @@ export function RepairCatalogFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name *</FormLabel>
+                  <FormLabel>{t('forms.name')} *</FormLabel>
                   <FormControl>
                     <Input placeholder={namePlaceholder} {...field} />
                   </FormControl>
@@ -84,9 +87,13 @@ export function RepairCatalogFormDialog({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('forms.description')}</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Optional description" className="resize-none" {...field} />
+                    <Textarea
+                      placeholder={t('repairCatalog.descriptionPlaceholder')}
+                      className="resize-none"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -97,9 +104,12 @@ export function RepairCatalogFormDialog({
               name="is_active"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>{t('forms.status')}</FormLabel>
                   <Select
-                    items={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
+                    items={[
+                      { value: 'true', label: t('forms.active') },
+                      { value: 'false', label: t('forms.inactive') },
+                    ]}
                     value={field.value ? 'true' : 'false'}
                     onValueChange={(value) => field.onChange(value === 'true')}
                   >
@@ -109,8 +119,8 @@ export function RepairCatalogFormDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="true">Active</SelectItem>
-                      <SelectItem value="false">Inactive</SelectItem>
+                      <SelectItem value="true">{t('forms.active')}</SelectItem>
+                      <SelectItem value="false">{t('forms.inactive')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -119,10 +129,10 @@ export function RepairCatalogFormDialog({
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Saving...' : entry ? 'Update' : 'Create'}
+                {isLoading ? t('common.saving') : entry ? t('forms.update') : t('forms.create')}
               </Button>
             </DialogFooter>
           </form>

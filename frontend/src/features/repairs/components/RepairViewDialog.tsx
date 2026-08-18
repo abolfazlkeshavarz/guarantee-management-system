@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Repair } from '../types'
 import { RepairStatusBadge } from './RepairStatusBadge'
 import { FormattedDate } from '@/components/common/FormattedDate'
+import { useCalendar } from '@/contexts/CalendarContext'
 import { Calendar, Package, FileText, Wrench, User, Wrench as ComponentIcon } from 'lucide-react'
 
 interface RepairViewDialogProps {
@@ -24,6 +25,7 @@ export function RepairViewDialog({
   repair,
 }: RepairViewDialogProps) {
   const { t, i18n } = useTranslation()
+  const { formatDate } = useCalendar()
   const isRTL = i18n.language === 'fa'
   if (!repair) return null
 
@@ -112,16 +114,21 @@ export function RepairViewDialog({
             <>
               <Separator />
               <div className={`bg-muted p-3 rounded-md text-sm ${isRTL ? 'text-right' : ''}`}>
+                {/* reviewedBy/reviewedOn carry {{status}}/{{name}}/{{date}}
+                    placeholders -- every one has to be supplied here or the
+                    raw "{{status}}" text renders. The status key is the
+                    top-level status.<Value> (capitalised); repairs.status.*
+                    does not exist, so the old lookup always fell back to the
+                    untranslated English value. */}
                 <p className="font-medium">
-                  {t(`repairs.status.${repair.status.toLowerCase()}`, { defaultValue: repair.status })}
-                  {' '}
-                  {t('repairView.reviewedBy', { name: repair.reviewed_by_name })}
-                  {repair.reviewed_at && (
-                    <>
-                      {' '}{t('repairView.reviewedOn')}
-                      <FormattedDate date={repair.reviewed_at} format="full" />
-                    </>
-                  )}
+                  {t('repairView.reviewedBy', {
+                    status: t(`status.${repair.status}`, { defaultValue: repair.status }),
+                    name: repair.reviewed_by_name,
+                  })}
+                  {repair.reviewed_at &&
+                    t('repairView.reviewedOn', {
+                      date: formatDate(repair.reviewed_at, 'full'),
+                    })}
                 </p>
                 {repair.review_notes && <p className="text-muted-foreground mt-1">{repair.review_notes}</p>}
               </div>

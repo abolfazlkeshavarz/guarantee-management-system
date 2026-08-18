@@ -3,8 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
-import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { LogOut, Wrench, Home, User, PackagePlus } from 'lucide-react'
 
 export function TechnicianLayout() {
@@ -33,8 +31,7 @@ export function TechnicianLayout() {
             </h1>
           </div>
           <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <LanguageSwitcher />
-            <CalendarSwitcher />
+            {/* Language/calendar are admin-controlled globally. */}
             <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-white">

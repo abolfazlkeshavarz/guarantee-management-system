@@ -21,6 +21,7 @@ import (
 	"guarantee-management-system/internal/modules/products"
 	"guarantee-management-system/internal/modules/repaircatalog"
 	"guarantee-management-system/internal/modules/repairs"
+	"guarantee-management-system/internal/modules/settings"
 	"guarantee-management-system/internal/modules/technicians"
 	"guarantee-management-system/internal/shared/sms"
 	"guarantee-management-system/internal/shared/storage"
@@ -141,6 +142,10 @@ func main() {
 		// Initialize part requests module (technician -> admin part/service requests)
 		partRequestsModule := partrequests.NewPartRequestModule(database.GetDB())
 		partRequestsModule.RegisterRoutes(v1)
+
+		// Global display settings (language/calendar) -- admin writes, everyone reads
+		settingsModule := settings.NewSettingsModule(database.GetDB())
+		settingsModule.RegisterRoutes(v1)
 
 		// Admin-only: send an arbitrary test SMS, to confirm the Melli
 		// Payamak integration is working without waiting for a real

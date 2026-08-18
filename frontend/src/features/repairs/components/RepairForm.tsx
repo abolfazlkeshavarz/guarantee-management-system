@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -46,6 +47,9 @@ export function RepairForm({
   onSubmit,
   isLoading,
 }: RepairFormProps) {
+  const { t, i18n } = useTranslation()
+  const isRTL = i18n.language === 'fa'
+
   const { data: guarantees = [], isLoading: guaranteesLoading } = useQuery({
     queryKey: ['guarantees-list-for-repair-form'],
     queryFn: () => guaranteeService.list(1, 100).then(r => r.guarantees),
@@ -104,11 +108,14 @@ export function RepairForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
         <DialogHeader>
-          <DialogTitle>Create New Repair</DialogTitle>
-          <DialogDescription>
-            Fill in the details to file a repair report.
+          <DialogTitle className={isRTL ? 'text-right' : ''}>{t('repairs.createTitle')}</DialogTitle>
+          <DialogDescription className={isRTL ? 'text-right' : ''}>
+            {t('repairs.createDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -124,14 +131,14 @@ export function RepairForm({
                 name="guarantee_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Guarantee *</FormLabel>
+                    <FormLabel>{t('repairs.guaranteeLabel')} *</FormLabel>
                     <Select
                       items={guarantees.map((g) => ({ value: String(g.id), label: `${g.code} - ${g.customer_name}` }))}
                       value={field.value ? String(field.value) : ''}
                       onValueChange={(value) => field.onChange(Number(value))}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a guarantee" />
+                        <SelectValue placeholder={t('repairs.selectGuarantee')} />
                       </SelectTrigger>
                       <SelectContent>
                         {guarantees.map((g) => (
@@ -150,14 +157,14 @@ export function RepairForm({
                 name="technician_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Technician (Optional)</FormLabel>
+                    <FormLabel>{t('repairs.technicianOptional')}</FormLabel>
                     <Select
                       items={technicians.map((t) => ({ value: String(t.id), label: `${t.full_name} (${t.username})` }))}
                       value={field.value ? String(field.value) : ''}
                       onValueChange={(value) => field.onChange(value ? Number(value) : undefined)}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Assign a technician" />
+                        <SelectValue placeholder={t('repairs.assignTechnician')} />
                       </SelectTrigger>
                       <SelectContent>
                         {technicians.map((t) => (
@@ -182,10 +189,10 @@ export function RepairForm({
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notes</FormLabel>
+                    <FormLabel>{t('common.notes')}</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Additional notes about this repair..."
+                        placeholder={t('repairs.notesPlaceholder')}
                         className="resize-none min-h-[80px]"
                         {...field}
                       />
@@ -200,10 +207,10 @@ export function RepairForm({
                   variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button type="submit" disabled={isLoading}>
-                  {isLoading ? 'Creating...' : 'Create'}
+                  {isLoading ? t('repairs.creating') : t('forms.create')}
                 </Button>
               </DialogFooter>
             </form>

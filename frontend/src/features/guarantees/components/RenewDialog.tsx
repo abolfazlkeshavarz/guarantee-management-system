@@ -1,5 +1,6 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -17,11 +18,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { DatePicker } from '@/components/ui/date-picker'
+import { FormattedDate } from '@/components/common/FormattedDate'
 import { renewSchema, RenewFormValues } from '../schemas/guaranteeSchema'
 import { Guarantee } from '../types'
-import { format } from 'date-fns'
 
 interface RenewDialogProps {
   open: boolean
@@ -38,6 +39,8 @@ export function RenewDialog({
   onConfirm,
   isLoading,
 }: RenewDialogProps) {
+  const { t, i18n } = useTranslation()
+  const isRTL = i18n.language === 'fa'
   const form = useForm<RenewFormValues>({
     resolver: zodResolver(renewSchema),
     defaultValues: {
@@ -56,20 +59,30 @@ export function RenewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px]">
+      <DialogContent className="sm:max-w-[450px]" dir={isRTL ? 'rtl' : 'ltr'}>
         <DialogHeader>
-          <DialogTitle>Renew Guarantee</DialogTitle>
-          <DialogDescription>
-            Extend the expiry date for this guarantee.
+          <DialogTitle className={isRTL ? 'text-right' : ''}>{t('guarantees.renewTitle')}</DialogTitle>
+          <DialogDescription className={isRTL ? 'text-right' : ''}>
+            {t('guarantees.renewDesc')}
             <br />
-            <span className="font-semibold">Guarantee: {guarantee?.code}</span>
+            <span className="font-semibold">
+              {t('guarantees.renewGuaranteeLabel')}: {guarantee?.code}
+            </span>
             {' - '}
             <span className="text-muted-foreground">{guarantee?.customer_name}</span>
           </DialogDescription>
         </DialogHeader>
-        <div className="bg-muted p-3 rounded-md text-sm">
-          <p><span className="font-medium">Current expiry date:</span> {guarantee?.expiry_date && format(new Date(guarantee.expiry_date), 'MMMM d, yyyy')}</p>
-          <p><span className="font-medium">Status:</span> {guarantee?.status}</p>
+        <div className={`bg-muted p-3 rounded-md text-sm ${isRTL ? 'text-right' : ''}`}>
+          <p>
+            <span className="font-medium">{t('guarantees.currentExpiry')}:</span>{' '}
+            {/* was date-fns format(), which is Gregorian-only and ignored the
+                active Jalali calendar */}
+            <FormattedDate date={guarantee?.expiry_date} format="MMM DD, YYYY" />
+          </p>
+          <p>
+            <span className="font-medium">{t('common.status')}:</span>{' '}
+            {guarantee?.status && t(`status.${guarantee.status}`, { defaultValue: guarantee.status })}
+          </p>
         </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -78,9 +91,11 @@ export function RenewDialog({
               name="new_expiry_date"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New Expiry Date *</FormLabel>
+                  <FormLabel>{t('guarantees.newExpiryDate')} *</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    {/* native <input type="date"> always renders a Gregorian
+                        picker; DatePicker follows the active calendar */}
+                    <DatePicker value={field.value} onChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -91,10 +106,12 @@ export function RenewDialog({
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
+                  <FormLabel>
+                    {t('common.notes')} ({t('forms.optional')})
+                  </FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Add notes about this renewal..."
+                      placeholder={t('guarantees.renewNotesPlaceholder')}
                       className="resize-none min-h-[80px]"
                       {...field}
                     />
@@ -105,10 +122,10 @@ export function RenewDialog({
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-                {isLoading ? 'Processing...' : 'Renew Guarantee'}
+                {isLoading ? t('guarantees.processing') : t('guarantees.renewTitle')}
               </Button>
             </DialogFooter>
           </form>

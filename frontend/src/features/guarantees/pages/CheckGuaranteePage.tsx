@@ -13,8 +13,6 @@ import {
 } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { GuaranteeStatusBadge } from '../components/GuaranteeStatusBadge'
-import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
-import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
 import { FormattedDate } from '@/components/common/FormattedDate'
 import { useCalendar } from '@/contexts/CalendarContext'
 import { Search, ShieldCheck, AlertCircle } from 'lucide-react'
@@ -68,12 +66,8 @@ export function CheckGuaranteePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        <div className="flex justify-end gap-2 mb-4">
-          <LanguageSwitcher />
-          {/* Customers can now switch to the Jalali calendar here too, instead
-              of being stuck with whatever the staff pages set. */}
-          <CalendarSwitcher />
-        </div>
+        {/* Language/calendar are a single global setting an admin controls;
+            customers inherit it via GlobalSettingsSync rather than choosing. */}
         <Card className="shadow-lg">
           <CardHeader className="text-center border-b">
             <div className="flex justify-center mb-4">

@@ -190,7 +190,16 @@
     "approveSuccess": "گارانتی با موفقیت تایید شد",
     "rejectSuccess": "گارانتی با موفقیت رد شد",
     "renewSuccess": "گارانتی با موفقیت تمدید شد",
-    "cancelSuccess": "گارانتی با موفقیت لغو شد"
+    "cancelSuccess": "گارانتی با موفقیت لغو شد",
+    "renewTitle": "تمدید گارانتی",
+    "renewDesc": "تاریخ انقضای این گارانتی را تمدید کنید.",
+    "renewGuaranteeLabel": "گارانتی",
+    "currentExpiry": "تاریخ انقضای فعلی",
+    "newExpiryDate": "تاریخ انقضای جدید",
+    "renewNotesPlaceholder": "یادداشتی درباره این تمدید بنویسید...",
+    "processing": "در حال پردازش...",
+    "approvedByColumn": "بررسی‌شده توسط",
+    "notReviewed": "-"
   },
   "customers": {
     "title": "مشتریان",
@@ -254,7 +263,9 @@
     "addComponent": "افزودن قطعه",
     "editComponent": "ویرایش قطعه",
     "addService": "افزودن خدمت",
-    "editService": "ویرایش خدمت"
+    "editService": "ویرایش خدمت",
+    "formDesc": "جزئیات را در زیر وارد کنید.",
+    "descriptionPlaceholder": "توضیحات (اختیاری)"
   },
   "technicians": {
     "title": "تکنسین‌ها",
@@ -311,7 +322,15 @@
     "cancelDesc": "این عملیات تعمیر برای {{code}} ({{customer}}) را به عنوان لغو شده علامت‌گذاری می‌کند.",
     "reviewTitle": "بررسی تعمیر",
     "approveAction": "تایید تعمیر",
-    "rejectAction": "رد تعمیر"
+    "rejectAction": "رد تعمیر",
+    "createTitle": "ثبت تعمیر جدید",
+    "createDesc": "برای ثبت گزارش تعمیر، جزئیات را وارد کنید.",
+    "guaranteeLabel": "گارانتی",
+    "selectGuarantee": "یک گارانتی انتخاب کنید",
+    "technicianOptional": "تکنسین (اختیاری)",
+    "assignTechnician": "تخصیص تکنسین",
+    "notesPlaceholder": "یادداشت‌های بیشتر درباره این تعمیر...",
+    "creating": "در حال ثبت..."
   },
   "status": {
     "Pending": "در انتظار",

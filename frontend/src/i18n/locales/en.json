@@ -190,7 +190,16 @@
     "approveSuccess": "Guarantee approved successfully",
     "rejectSuccess": "Guarantee rejected successfully",
     "renewSuccess": "Guarantee renewed successfully",
-    "cancelSuccess": "Guarantee cancelled successfully"
+    "cancelSuccess": "Guarantee cancelled successfully",
+    "renewTitle": "Renew Guarantee",
+    "renewDesc": "Extend the expiry date for this guarantee.",
+    "renewGuaranteeLabel": "Guarantee",
+    "currentExpiry": "Current expiry date",
+    "newExpiryDate": "New expiry date",
+    "renewNotesPlaceholder": "Add notes about this renewal...",
+    "processing": "Processing...",
+    "approvedByColumn": "Reviewed by",
+    "notReviewed": "-"
   },
   "customers": {
     "title": "Customers",
@@ -254,7 +263,9 @@
     "addComponent": "Add Component",
     "editComponent": "Edit Component",
     "addService": "Add Service",
-    "editService": "Edit Service"
+    "editService": "Edit Service",
+    "formDesc": "Fill in the details below.",
+    "descriptionPlaceholder": "Optional description"
   },
   "technicians": {
     "title": "Technicians",
@@ -311,7 +322,15 @@
     "cancelDesc": "This will mark the repair for {{code}} ({{customer}}) as cancelled.",
     "reviewTitle": "Repair Review",
     "approveAction": "Approve Repair",
-    "rejectAction": "Reject Repair"
+    "rejectAction": "Reject Repair",
+    "createTitle": "Create New Repair",
+    "createDesc": "Fill in the details to file a repair report.",
+    "guaranteeLabel": "Guarantee",
+    "selectGuarantee": "Select a guarantee",
+    "technicianOptional": "Technician (Optional)",
+    "assignTechnician": "Assign a technician",
+    "notesPlaceholder": "Additional notes about this repair...",
+    "creating": "Creating..."
   },
   "status": {
     "Pending": "Pending",

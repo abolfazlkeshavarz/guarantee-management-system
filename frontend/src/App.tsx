@@ -9,6 +9,7 @@ import { AppRoutes } from '@/routes'
 import { queryClient } from '@/lib/query-client'
 import { CalendarProvider } from '@/contexts/CalendarContext'
 import { LanguageProvider } from '@/contexts/LanguageContext'
+import { GlobalSettingsSync } from '@/components/common/GlobalSettingsSync'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
       <BrowserRouter>
         <LanguageProvider>
           <CalendarProvider>
+            <GlobalSettingsSync />
             <AuthProvider>
               <TechnicianAuthProvider>
                 <AppRoutes />

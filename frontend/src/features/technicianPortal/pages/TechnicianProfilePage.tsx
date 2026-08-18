@@ -18,9 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
-import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
-import { KeyRound, Loader2, UserCircle, SlidersHorizontal } from 'lucide-react'
+import { KeyRound, Loader2, UserCircle } from 'lucide-react'
 
 const passwordSchema = z
   .object({
@@ -221,24 +219,8 @@ export function TechnicianProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-              <SlidersHorizontal className="h-5 w-5 text-muted-foreground" />
-              {t('settings.display', { defaultValue: 'Display' })}
-            </CardTitle>
-            <CardDescription className={isRTL ? 'text-right' : ''}>
-              {t('settings.displayDesc', {
-                defaultValue:
-                  'Language and calendar are stored in this browser and apply to every screen.',
-              })}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className={`flex flex-wrap items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <LanguageSwitcher />
-            <CalendarSwitcher />
-          </CardContent>
-        </Card>
+        {/* The Display card was removed: language and calendar are now one
+            global setting an admin owns, not a per-technician preference. */}
       </div>
     </div>
   )

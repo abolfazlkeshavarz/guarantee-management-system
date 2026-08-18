@@ -129,6 +129,7 @@ export function GuaranteeTable({
             <TableHead>{t('guarantees.table.expiryDate')}</TableHead>
             <TableHead>{t('guarantees.tier._')}</TableHead>
             <TableHead>{t('common.status')}</TableHead>
+            <TableHead>{t('guarantees.approvedByColumn')}</TableHead>
             <TableHead className="text-end">{t('common.actions')}</TableHead>
           </TableRow>
         </TableHeader>
@@ -159,6 +160,9 @@ export function GuaranteeTable({
               </TableCell>
               <TableCell>
                 <GuaranteeStatusBadge status={guarantee.status} />
+              </TableCell>
+              <TableCell>
+                {guarantee.approved_by_username || t('guarantees.notReviewed')}
               </TableCell>
               <TableCell className="text-end">
                 <DropdownMenu>
