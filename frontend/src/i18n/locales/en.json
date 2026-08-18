@@ -382,7 +382,9 @@
     "submitReport": "Submit Repair Report",
     "submitting": "Submitting...",
     "submitSuccess": "Repair report submitted",
-    "submitError": "Failed to submit repair report"
+    "submitError": "Failed to submit repair report",
+    "reviewPartRequestsNav": "Review part requests",
+    "reviewRepairsNav": "Review repairs"
   },
   "repairItems": {
     "componentsReplaced": "Components Replaced",

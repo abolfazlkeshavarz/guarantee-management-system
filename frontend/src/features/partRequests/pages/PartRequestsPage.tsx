@@ -22,7 +22,12 @@ import { partRequestService } from '../api/partRequests'
 import { PartRequest, PartRequestStatus, PART_REQUEST_STATUSES } from '../types'
 import { technicianService } from '@/features/technicians/api/technicians'
 
-export function PartRequestsPage() {
+interface PartRequestsPageProps {
+  /** Admin-level verbs (delete). False for the technician portal's review screen. */
+  canManage?: boolean
+}
+
+export function PartRequestsPage({ canManage = true }: PartRequestsPageProps = {}) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
 
@@ -225,10 +230,14 @@ export function PartRequestsPage() {
           setSelectedRequest(request)
           setTargetStatus(status)
         }}
-        onDelete={(request) => {
-          setSelectedRequest(request)
-          setIsDeleteOpen(true)
-        }}
+        onDelete={
+          canManage
+            ? (request) => {
+                setSelectedRequest(request)
+                setIsDeleteOpen(true)
+              }
+            : undefined
+        }
         isLoading={isLoading}
       />
 

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { LogOut, Wrench, Home, User, PackagePlus } from 'lucide-react'
+import { LogOut, Wrench, Home, User, PackagePlus, ClipboardCheck } from 'lucide-react'
 
 export function TechnicianLayout() {
   const { technician, logout } = useTechnicianAuth()
@@ -65,6 +65,24 @@ export function TechnicianLayout() {
               {t('partRequests.navLabel')}
             </Button>
           </Link>
+          {/* Review screens are only meaningful for a "technical" technician;
+              the API rejects everyone else with 403 anyway. */}
+          {technician?.is_technical && (
+            <>
+              <Link to="/technician/review/part-requests">
+                <Button variant="ghost" size="sm" className={`gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <ClipboardCheck className="h-4 w-4" />
+                  {t('technicianPortal.reviewPartRequestsNav')}
+                </Button>
+              </Link>
+              <Link to="/technician/review/repairs">
+                <Button variant="ghost" size="sm" className={`gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <ClipboardCheck className="h-4 w-4" />
+                  {t('technicianPortal.reviewRepairsNav')}
+                </Button>
+              </Link>
+            </>
+          )}
           <Link to="/technician/profile">
             <Button variant="ghost" size="sm" className={`gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <User className="h-4 w-4" />

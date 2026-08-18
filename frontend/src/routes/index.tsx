@@ -27,6 +27,7 @@ import { TechnicianLayout } from '@/features/technicianPortal/components/Technic
 import { TechnicianLoginPage } from '@/features/technicianPortal/pages/TechnicianLoginPage'
 import { TechnicianDashboardPage } from '@/features/technicianPortal/pages/TechnicianDashboardPage'
 import { TechnicianPartRequestsPage } from '@/features/technicianPortal/pages/TechnicianPartRequestsPage'
+import { TechnicianProfilePage } from '@/features/technicianPortal/pages/TechnicianProfilePage'
 
 export function AppRoutes() {
   return (
@@ -82,6 +83,16 @@ export function AppRoutes() {
         <Route index element={<Navigate to="/technician/dashboard" replace />} />
         <Route path="dashboard" element={<TechnicianDashboardPage />} />
         <Route path="part-requests" element={<TechnicianPartRequestsPage />} />
+        <Route path="profile" element={<TechnicianProfilePage />} />
+        {/* Review screens for "technical" technicians. They reuse the admin
+            pages with canManage=false, since the reviewer API is shared but
+            create/delete stay admin-only. The nav only links here for a
+            technical user, and the API 403s anyone else regardless. */}
+        <Route
+          path="review/part-requests"
+          element={<PartRequestsPage canManage={false} />}
+        />
+        <Route path="review/repairs" element={<RepairsPage canManage={false} />} />
       </Route>
 
       {/* 404 */}

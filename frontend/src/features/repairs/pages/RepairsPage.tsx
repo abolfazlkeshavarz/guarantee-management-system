@@ -23,7 +23,15 @@ import { Repair, REPAIR_STATUSES } from '../types'
 import { invalidateDashboard } from '@/lib/query-client'
 
 
-export function RepairsPage() {
+interface RepairsPageProps {
+  /**
+   * Admin-level verbs (create-on-behalf, delete). False for the technician
+   * portal's review screen, where the API would 403 anyway.
+   */
+  canManage?: boolean
+}
+
+export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
@@ -164,10 +172,12 @@ export function RepairsPage() {
             {t('repairs.subtitle')}
           </p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="me-2 h-4 w-4" />
-          {t('repairs.new')}
-        </Button>
+        {canManage && (
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="me-2 h-4 w-4" />
+            {t('repairs.new')}
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -236,7 +246,7 @@ export function RepairsPage() {
         onApprove={handleApprove}
         onReject={handleReject}
         onCancel={handleCancelClick}
-        onDelete={handleDeleteClick}
+        onDelete={canManage ? handleDeleteClick : undefined}
         isLoading={isLoading}
       />
 

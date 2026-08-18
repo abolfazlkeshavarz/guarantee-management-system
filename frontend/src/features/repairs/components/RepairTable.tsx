@@ -26,7 +26,7 @@ interface RepairTableProps {
   onApprove: (repair: Repair) => void
   onReject: (repair: Repair) => void
   onCancel: (repair: Repair) => void
-  onDelete: (repair: Repair) => void
+  onDelete?: (repair: Repair) => void
   isLoading?: boolean
 }
 
@@ -117,14 +117,20 @@ export function RepairTable({
                         {t('common.cancel')}
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => onDelete(repair)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="me-2 h-4 w-4" />
-                      {t('common.delete')}
-                    </DropdownMenuItem>
+                    {/* Delete is admin-only; technical technicians review but
+                        never destroy, so the item is simply absent for them. */}
+                    {onDelete && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => onDelete(repair)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="me-2 h-4 w-4" />
+                          {t('common.delete')}
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

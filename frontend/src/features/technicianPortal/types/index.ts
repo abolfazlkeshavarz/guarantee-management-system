@@ -6,6 +6,8 @@ export interface Technician {
   national_id: string
   address: string
   is_active: boolean
+  // Grants review rights over other technicians' part requests and repairs.
+  is_technical: boolean
   created_at: string
   updated_at: string
 }

@@ -382,7 +382,9 @@
     "submitReport": "ثبت گزارش تعمیر",
     "submitting": "در حال ثبت...",
     "submitSuccess": "گزارش تعمیر ثبت شد",
-    "submitError": "ثبت گزارش تعمیر ناموفق بود"
+    "submitError": "ثبت گزارش تعمیر ناموفق بود",
+    "reviewPartRequestsNav": "بررسی درخواست قطعات",
+    "reviewRepairsNav": "بررسی تعمیرات"
   },
   "repairItems": {
     "componentsReplaced": "قطعات تعویض‌شده",
