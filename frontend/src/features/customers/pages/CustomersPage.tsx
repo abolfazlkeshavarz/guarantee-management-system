@@ -10,11 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Search, RefreshCw } from 'lucide-react'
+import { Plus, Search, RefreshCw, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { CustomerTable } from '../components/CustomerTable'
 import { CustomerForm } from '../components/CustomerForm'
 import { CustomerDeleteDialog } from '../components/CustomerDeleteDialog'
+import { CustomerExportDialog } from '../components/CustomerExportDialog'
 import { customerService } from '../api/customers'
 import { Customer } from '../types'
 import { invalidateDashboard } from '@/lib/query-client'
@@ -29,6 +30,7 @@ export function CustomersPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isExportOpen, setIsExportOpen] = useState(false)
 
   // Debounce search
   useEffect(() => {
@@ -126,11 +128,19 @@ export function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">{t('customers.title')}</h1>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="me-2 h-4 w-4" />
-          {t('customers.add')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setIsExportOpen(true)}>
+            <Download className="me-2 h-4 w-4" />
+            {t('exports.export')}
+          </Button>
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="me-2 h-4 w-4" />
+            {t('customers.add')}
+          </Button>
+        </div>
       </div>
+
+      <CustomerExportDialog open={isExportOpen} onOpenChange={setIsExportOpen} />
 
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">

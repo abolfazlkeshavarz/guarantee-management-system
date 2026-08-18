@@ -545,5 +545,33 @@
       "awaiting": "در انتظار تحویل",
       "delivered": "تحویل شده"
     }
+  },
+  "exports": {
+    "export": "خروجی",
+    "exporting": "در حال آماده‌سازی...",
+    "format": "قالب",
+    "excel": "اکسل (.xlsx)",
+    "csv": "سی‌اس‌وی (.csv)",
+    "failed": "تهیه خروجی ناموفق بود",
+    "done": "خروجی آماده شد ({{count}} ردیف)",
+    "noRows": "هیچ ردیفی با این فیلترها یافت نشد",
+    "description": "قالب را انتخاب کنید و ردیف‌ها را محدود کنید. فایل به زبانی که هم‌اکنون نمایش داده می‌شود ساخته می‌شود.",
+    "guaranteesTitle": "خروجی گارانتی‌ها",
+    "customersTitle": "خروجی مشتریان",
+    "partRequestsTitle": "خروجی درخواست قطعات",
+    "repairsTitle": "خروجی تعمیرات",
+    "codeFrom": "از کد",
+    "codeTo": "تا کد",
+    "city": "شهر",
+    "region": "استان / منطقه",
+    "familyName": "نام خانوادگی",
+    "technician": "تکنسین",
+    "guaranteeCode": "کد گارانتی",
+    "customerName": "نام مشتری",
+    "address": "آدرس",
+    "item": "قلم",
+    "quantity": "تعداد",
+    "reviewedBy": "بررسی‌شده توسط",
+    "product": "محصول"
   }
 }

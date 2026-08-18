@@ -7,7 +7,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Search, RefreshCw, Filter } from 'lucide-react'
+import { Plus, Search, RefreshCw, Filter, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { GuaranteeTable } from '../components/GuaranteeTable'
 import { GuaranteeDeleteDialog } from '../components/GuaranteeDeleteDialog'
@@ -17,6 +17,7 @@ import { GuaranteeViewDialog } from '../components/GuaranteeViewDialog'
 import { AdminGuaranteeForm } from '../components/AdminGuaranteeForm'
 import { SetGoldenDialog } from '../components/SetGoldenDialog'
 import { RemoveGoldenDialog } from '../components/RemoveGoldenDialog'
+import { GuaranteeExportDialog } from '../components/GuaranteeExportDialog'
 import { guaranteeService } from '../api/guarantees'
 import { Guarantee, GUARANTEE_STATUSES, SetGoldenData } from '../types'
 import { customerService } from '@/features/customers/api/customers'
@@ -45,6 +46,7 @@ export function GuaranteesPage() {
   const [approveAction, setApproveAction] = useState<'approve' | 'reject'>('approve')
   const [isSetGoldenOpen, setIsSetGoldenOpen] = useState(false)
   const [isRemoveGoldenOpen, setIsRemoveGoldenOpen] = useState(false)
+  const [isExportOpen, setIsExportOpen] = useState(false)
 
   const { data: customers = [] } = useQuery({
     queryKey: ['customers-list-for-filter'],
@@ -148,10 +150,17 @@ export function GuaranteesPage() {
           <h1 className="text-3xl font-bold text-gray-900">{t('guarantees.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">{t('guarantees.subtitle')}</p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="me-2 h-4 w-4" /> {t('guarantees.create')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setIsExportOpen(true)}>
+            <Download className="me-2 h-4 w-4" /> {t('exports.export', { defaultValue: 'Export' })}
+          </Button>
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="me-2 h-4 w-4" /> {t('guarantees.create')}
+          </Button>
+        </div>
       </div>
+
+      <GuaranteeExportDialog open={isExportOpen} onOpenChange={setIsExportOpen} />
 
       <Tabs value={tierFilter} onValueChange={(v) => { setTierFilter(v); setPage(1) }}>
         <TabsList>

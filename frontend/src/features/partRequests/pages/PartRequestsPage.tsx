@@ -12,12 +12,13 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Search, RefreshCw, Filter } from 'lucide-react'
+import { Search, RefreshCw, Filter, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { PartRequestTable } from '../components/PartRequestTable'
 import { PartRequestViewDialog } from '../components/PartRequestViewDialog'
 import { PartRequestStatusDialog } from '../components/PartRequestStatusDialog'
 import { PartRequestDeleteDialog } from '../components/PartRequestDeleteDialog'
+import { PartRequestExportDialog } from '../components/PartRequestExportDialog'
 import { partRequestService } from '../api/partRequests'
 import { PartRequest, PartRequestStatus, PART_REQUEST_STATUSES } from '../types'
 import { technicianService } from '@/features/technicians/api/technicians'
@@ -41,6 +42,7 @@ export function PartRequestsPage({ canManage = true }: PartRequestsPageProps = {
   const [selectedRequest, setSelectedRequest] = useState<PartRequest | null>(null)
   const [isViewOpen, setIsViewOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isExportOpen, setIsExportOpen] = useState(false)
   const [targetStatus, setTargetStatus] = useState<PartRequestStatus | null>(null)
 
   useEffect(() => {
@@ -132,10 +134,18 @@ export function PartRequestsPage({ canManage = true }: PartRequestsPageProps = {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">{t('partRequests.title')}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{t('partRequests.subtitle')}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">{t('partRequests.title')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t('partRequests.subtitle')}</p>
+        </div>
+        <Button variant="outline" onClick={() => setIsExportOpen(true)}>
+          <Download className="me-2 h-4 w-4" />
+          {t('exports.export')}
+        </Button>
       </div>
+
+      <PartRequestExportDialog open={isExportOpen} onOpenChange={setIsExportOpen} />
 
       <Tabs
         value={statusFilter}

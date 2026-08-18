@@ -545,5 +545,33 @@
       "awaiting": "Awaiting delivery",
       "delivered": "Delivered"
     }
+  },
+  "exports": {
+    "export": "Export",
+    "exporting": "Exporting...",
+    "format": "Format",
+    "excel": "Excel (.xlsx)",
+    "csv": "CSV (.csv)",
+    "failed": "Export failed",
+    "done": "Export ready ({{count}} rows)",
+    "noRows": "No rows match those filters",
+    "description": "Choose a format and narrow the rows. The file uses the language currently shown.",
+    "guaranteesTitle": "Export guarantees",
+    "customersTitle": "Export customers",
+    "partRequestsTitle": "Export part requests",
+    "repairsTitle": "Export repairs",
+    "codeFrom": "Code from",
+    "codeTo": "Code to",
+    "city": "City",
+    "region": "Province / region",
+    "familyName": "Family name",
+    "technician": "Technician",
+    "guaranteeCode": "Guarantee code",
+    "customerName": "Customer name",
+    "address": "Address",
+    "item": "Item",
+    "quantity": "Quantity",
+    "reviewedBy": "Reviewed by",
+    "product": "Product"
   }
 }

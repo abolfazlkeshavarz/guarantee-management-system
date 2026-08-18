@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Search, RefreshCw } from 'lucide-react'
+import { Plus, Search, RefreshCw, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { RepairTable } from '../components/RepairTable'
 import { RepairForm } from '../components/RepairForm'
@@ -18,6 +18,7 @@ import { RepairDeleteDialog } from '../components/RepairDeleteDialog'
 import { RepairViewDialog } from '../components/RepairViewDialog'
 import { RepairReviewDialog } from '../components/RepairReviewDialog'
 import { RepairCancelDialog } from '../components/RepairCancelDialog'
+import { RepairExportDialog } from '../components/RepairExportDialog'
 import { repairService } from '../api/repairs'
 import { Repair, REPAIR_STATUSES } from '../types'
 import { invalidateDashboard } from '@/lib/query-client'
@@ -45,6 +46,7 @@ export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
   const [isViewOpen, setIsViewOpen] = useState(false)
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null)
   const [isCancelOpen, setIsCancelOpen] = useState(false)
+  const [isExportOpen, setIsExportOpen] = useState(false)
 
   // Debounce search
   useEffect(() => {
@@ -172,13 +174,21 @@ export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
             {t('repairs.subtitle')}
           </p>
         </div>
-        {canManage && (
-          <Button onClick={() => setIsFormOpen(true)}>
-            <Plus className="me-2 h-4 w-4" />
-            {t('repairs.new')}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setIsExportOpen(true)}>
+            <Download className="me-2 h-4 w-4" />
+            {t('exports.export')}
           </Button>
-        )}
+          {canManage && (
+            <Button onClick={() => setIsFormOpen(true)}>
+              <Plus className="me-2 h-4 w-4" />
+              {t('repairs.new')}
+            </Button>
+          )}
+        </div>
       </div>
+
+      <RepairExportDialog open={isExportOpen} onOpenChange={setIsExportOpen} />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
