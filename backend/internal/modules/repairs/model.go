@@ -13,6 +13,9 @@ type Repair struct {
 	Status       string         `gorm:"size:20;default:'Pending'" json:"status"`
 	Description  string         `gorm:"type:text" json:"description"`
 	ReviewedBy   *uint          `json:"reviewed_by,omitempty"`
+	// Set instead of ReviewedBy when a "technical" technician did the review;
+	// reviewed_by is a FK to admins, so it cannot hold a technician id.
+	ReviewedByTechnicianID *uint `json:"reviewed_by_technician_id,omitempty"`
 	ReviewedAt   *time.Time     `json:"reviewed_at,omitempty"`
 	ReviewNotes  string         `gorm:"type:text" json:"review_notes,omitempty"`
 	StartedAt    *time.Time     `json:"started_at,omitempty"`

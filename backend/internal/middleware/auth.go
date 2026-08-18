@@ -44,6 +44,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Set("admin_id", claims.AdminID)
 		} else if claims.Role == "technician" {
 			c.Set("technician_id", claims.TechnicianID)
+			c.Set("is_technical", claims.IsTechnical)
 		}
 
 		c.Next()
@@ -71,5 +72,26 @@ func AdminOnly() gin.HandlerFunc {
 			return
 		}
 		c.Next()
+	}
+}
+
+// ReviewerOnly admits admins and "technical" technicians -- the two who may
+// review part requests and repair reports. A plain technician can still file
+// their own work, but not sit in judgement of anyone else's.
+func ReviewerOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, _ := c.Get("role")
+		if role == "admin" {
+			c.Next()
+			return
+		}
+		if role == "technician" {
+			if isTechnical, ok := c.Get("is_technical"); ok && isTechnical == true {
+				c.Next()
+				return
+			}
+		}
+		responses.Forbidden(c, "Reviewer access only")
+		c.Abort()
 	}
 }

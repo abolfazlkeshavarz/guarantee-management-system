@@ -295,13 +295,19 @@
       "passwordPlaceholder": "Leave blank to keep current",
       "phonePlaceholder": "+1234567890",
       "nationalIdPlaceholder": "ID123456",
-      "addressPlaceholder": "123 Tech Street, City"
+      "addressPlaceholder": "123 Tech Street, City",
+      "role": "Role"
     },
     "deleteDesc": "This will permanently delete the technician \"{{name}}\". This action cannot be undone.",
     "deleteSuccess": "Technician deleted successfully",
     "createSuccess": "Technician created successfully",
     "updateSuccess": "Technician updated successfully",
-    "toggleSuccess": "Technician status updated"
+    "toggleSuccess": "Technician status updated",
+    "role": {
+      "technician": "Technician",
+      "technical": "Technical user",
+      "technicalHint": "A technical user can also approve and change the status of other technicians' part requests and repair reports."
+    }
   },
   "repairs": {
     "title": "Repairs",

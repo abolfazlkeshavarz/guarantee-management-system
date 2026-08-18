@@ -214,7 +214,19 @@ func (s *PartRequestService) StatusCounts(technicianID *uint) (map[string]int64,
 
 // ─── Status changes ──────────────────────────────────────────────────────────
 
-func (s *PartRequestService) UpdateStatus(id uint, req *UpdateStatusRequest, adminID uint) (*PartRequestDTO, error) {
+// setReviewer records who reviewed the request. Exactly one of the two
+// columns is ever populated -- a DB CHECK enforces the same rule.
+func setReviewer(request *PartRequest, adminID, technicianID uint) {
+	if adminID != 0 {
+		request.ReviewedBy = &adminID
+		return
+	}
+	if technicianID != 0 {
+		request.ReviewedByTechnicianID = &technicianID
+	}
+}
+
+func (s *PartRequestService) UpdateStatus(id uint, req *UpdateStatusRequest, adminID, technicianID uint) (*PartRequestDTO, error) {
 	request, err := s.repo.FindByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -229,7 +241,7 @@ func (s *PartRequestService) UpdateStatus(id uint, req *UpdateStatusRequest, adm
 
 	now := time.Now()
 	request.Status = req.Status
-	request.ReviewedBy = &adminID
+	setReviewer(request, adminID, technicianID)
 	request.ReviewedAt = &now
 	if notes := strings.TrimSpace(req.Notes); notes != "" {
 		request.ReviewNotes = notes
@@ -316,10 +328,16 @@ func (s *PartRequestService) mapToDTO(request *PartRequest) *PartRequestDTO {
 	dto.TechnicianName = techName
 
 	// Reviewer
-	if request.ReviewedBy != nil {
+	if request.ReviewedByTechnicianID != nil {
+		var techReviewer string
+		s.db.Table("technicians").Where("id = ?", *request.ReviewedByTechnicianID).Select("full_name").Scan(&techReviewer)
+		dto.ReviewedByName = techReviewer
+		dto.ReviewedByRole = "technician"
+	} else if request.ReviewedBy != nil {
 		var adminName string
 		s.db.Table("admins").Where("id = ?", *request.ReviewedBy).Select("username").Scan(&adminName)
 		dto.ReviewedByName = adminName
+		dto.ReviewedByRole = "admin"
 	}
 
 	// Requested item

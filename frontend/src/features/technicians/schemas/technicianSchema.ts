@@ -8,6 +8,9 @@ export const technicianSchema = z.object({
   national_id: z.string().min(6, 'National ID must be at least 6 characters').max(20).optional(),
   address: z.string().optional(),
   is_active: z.boolean().default(true),
+  // Grants the technician the right to review other technicians' part
+  // requests and repair reports.
+  is_technical: z.boolean().default(false),
 })
 
 export type TechnicianFormValues = z.input<typeof technicianSchema>

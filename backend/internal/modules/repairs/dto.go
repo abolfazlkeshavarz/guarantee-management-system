@@ -39,6 +39,7 @@ type RepairDTO struct {
 	Services       []RepairServiceItemDTO   `json:"services"`
 	ReviewedBy     *uint                    `json:"reviewed_by,omitempty"`
 	ReviewedByName string                   `json:"reviewed_by_name,omitempty"`
+	ReviewedByRole string                   `json:"reviewed_by_role,omitempty"`
 	ReviewedAt     *string                  `json:"reviewed_at,omitempty"`
 	ReviewNotes    string                   `json:"review_notes,omitempty"`
 	CreatedAt      string                   `json:"created_at"`

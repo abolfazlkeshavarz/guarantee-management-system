@@ -180,8 +180,21 @@ func (s *RepairService) ListByTechnician(techID uint, page, limit int, status st
 	}, nil
 }
 
-// Review lets an admin Approve or Reject a Pending repair.
-func (s *RepairService) Review(id uint, req *ReviewRepairRequest, adminID uint) (*RepairDTO, error) {
+// setReviewer records who reviewed a repair. Exactly one of the two columns
+// is ever populated -- a DB CHECK enforces the same rule.
+func setReviewer(repair *Repair, adminID, technicianID uint) {
+	if adminID != 0 {
+		repair.ReviewedBy = &adminID
+		return
+	}
+	if technicianID != 0 {
+		repair.ReviewedByTechnicianID = &technicianID
+	}
+}
+
+// Review lets an admin or a "technical" technician Approve or Reject a
+// Pending repair.
+func (s *RepairService) Review(id uint, req *ReviewRepairRequest, adminID, technicianID uint) (*RepairDTO, error) {
 	repair, err := s.repo.FindByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -195,7 +208,7 @@ func (s *RepairService) Review(id uint, req *ReviewRepairRequest, adminID uint) 
 	}
 
 	repair.Status = req.Status
-	repair.ReviewedBy = &adminID
+	setReviewer(repair, adminID, technicianID)
 	now := time.Now()
 	repair.ReviewedAt = &now
 	if req.Notes != "" {
@@ -209,8 +222,8 @@ func (s *RepairService) Review(id uint, req *ReviewRepairRequest, adminID uint) 
 	return s.mapToDTO(repair), nil
 }
 
-// Cancel lets an admin cancel a repair that hasn't been rejected/cancelled yet.
-func (s *RepairService) Cancel(id uint, adminID uint) (*RepairDTO, error) {
+// Cancel lets a reviewer cancel a repair that hasn't been rejected/cancelled yet.
+func (s *RepairService) Cancel(id uint, adminID, technicianID uint) (*RepairDTO, error) {
 	repair, err := s.repo.FindByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -224,7 +237,7 @@ func (s *RepairService) Cancel(id uint, adminID uint) (*RepairDTO, error) {
 	}
 
 	repair.Status = StatusCancelled
-	repair.ReviewedBy = &adminID
+	setReviewer(repair, adminID, technicianID)
 	now := time.Now()
 	repair.ReviewedAt = &now
 
@@ -303,10 +316,16 @@ func (s *RepairService) mapToDTO(repair *Repair) *RepairDTO {
 		dto.TechnicianName = techName
 	}
 
-	if repair.ReviewedBy != nil {
+	if repair.ReviewedByTechnicianID != nil {
+		var techReviewer string
+		s.db.Table("technicians").Where("id = ?", *repair.ReviewedByTechnicianID).Select("full_name").Scan(&techReviewer)
+		dto.ReviewedByName = techReviewer
+		dto.ReviewedByRole = "technician"
+	} else if repair.ReviewedBy != nil {
 		var adminName string
 		s.db.Table("admins").Where("id = ?", *repair.ReviewedBy).Select("username").Scan(&adminName)
 		dto.ReviewedByName = adminName
+		dto.ReviewedByRole = "admin"
 	}
 
 	componentItems, _ := s.repo.FindComponentItemsByRepairID(repair.ID)

@@ -12,6 +12,10 @@ type Claims struct {
 	TechnicianID uint   `json:"technician_id,omitempty"`
 	Username     string `json:"username"`
 	Role         string `json:"role"` // "admin" or "technician"
+	// IsTechnical marks a technician who may also review other technicians'
+	// part requests and repair reports. Meaningless for admins, who can
+	// already do everything.
+	IsTechnical bool `json:"is_technical,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -19,8 +23,13 @@ func GenerateToken(adminID uint, username, secret string, expiration time.Durati
 	return generate(Claims{AdminID: adminID, Username: username, Role: "admin"}, secret, expiration)
 }
 
-func GenerateTechnicianToken(techID uint, username, secret string, expiration time.Duration) (string, int64, error) {
-	return generate(Claims{TechnicianID: techID, Username: username, Role: "technician"}, secret, expiration)
+func GenerateTechnicianToken(techID uint, username string, isTechnical bool, secret string, expiration time.Duration) (string, int64, error) {
+	return generate(Claims{
+		TechnicianID: techID,
+		Username:     username,
+		Role:         "technician",
+		IsTechnical:  isTechnical,
+	}, secret, expiration)
 }
 
 func generate(claims Claims, secret string, expiration time.Duration) (string, int64, error) {

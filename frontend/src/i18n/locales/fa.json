@@ -295,13 +295,19 @@
       "passwordPlaceholder": "اگر می‌خواهید قبلی بماند خالی بگذارید",
       "phonePlaceholder": "+989122222222",
       "nationalIdPlaceholder": "کد ملی",
-      "addressPlaceholder": "آدرس کامل"
+      "addressPlaceholder": "آدرس کامل",
+      "role": "نقش"
     },
     "deleteDesc": "این عملیات تکنسین \"{{name}}\" را به طور دائمی حذف می‌کند. این عمل قابل بازگشت نیست.",
     "deleteSuccess": "تکنسین با موفقیت حذف شد",
     "createSuccess": "تکنسین با موفقیت ایجاد شد",
     "updateSuccess": "تکنسین با موفقیت به‌روزرسانی شد",
-    "toggleSuccess": "وضعیت تکنسین به‌روزرسانی شد"
+    "toggleSuccess": "وضعیت تکنسین به‌روزرسانی شد",
+    "role": {
+      "technician": "تکنسین",
+      "technical": "کاربر فنی",
+      "technicalHint": "کاربر فنی می‌تواند درخواست قطعات و گزارش‌های تعمیر سایر تکنسین‌ها را نیز تایید کند و وضعیت آن‌ها را تغییر دهد."
+    }
   },
   "repairs": {
     "title": "تعمیرات",

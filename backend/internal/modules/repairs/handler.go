@@ -95,6 +95,7 @@ func (h *RepairHandler) List(c *gin.Context) {
 
 func (h *RepairHandler) Review(c *gin.Context) {
 	adminID := c.GetUint("admin_id")
+	technicianID := c.GetUint("technician_id")
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -108,7 +109,7 @@ func (h *RepairHandler) Review(c *gin.Context) {
 		return
 	}
 
-	repair, err := h.service.Review(uint(id), req, adminID)
+	repair, err := h.service.Review(uint(id), req, adminID, technicianID)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -119,6 +120,7 @@ func (h *RepairHandler) Review(c *gin.Context) {
 
 func (h *RepairHandler) Cancel(c *gin.Context) {
 	adminID := c.GetUint("admin_id")
+	technicianID := c.GetUint("technician_id")
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -126,7 +128,7 @@ func (h *RepairHandler) Cancel(c *gin.Context) {
 		return
 	}
 
-	repair, err := h.service.Cancel(uint(id), adminID)
+	repair, err := h.service.Cancel(uint(id), adminID, technicianID)
 	if err != nil {
 		handleError(c, err)
 		return

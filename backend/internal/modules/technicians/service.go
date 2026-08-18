@@ -48,6 +48,7 @@ func (s *TechnicianService) Create(req *CreateTechnicianRequest) (*TechnicianDTO
 		NationalID: req.NationalID,
 		Address:    req.Address,
 		IsActive:   isActive,
+		IsTechnical: req.IsTechnical != nil && *req.IsTechnical,
 	}
 
 	if err := s.repo.Create(tech); err != nil {
@@ -68,7 +69,7 @@ func (s *TechnicianService) Login(username, password string) (*TechnicianDTO, st
 	if err := bcrypt.CompareHashAndPassword([]byte(tech.Password), []byte(password)); err != nil {
 		return nil, "", 0, errors.NewAppError(errors.ErrInvalidCredentials, "Invalid credentials", 401)
 	}
-	token, expiresIn, err := utils.GenerateTechnicianToken(tech.ID, tech.Username, s.config.JWTSecret, s.config.JWTExpiration)
+	token, expiresIn, err := utils.GenerateTechnicianToken(tech.ID, tech.Username, tech.IsTechnical, s.config.JWTSecret, s.config.JWTExpiration)
 	if err != nil {
 		return nil, "", 0, errors.NewAppError(errors.ErrInternalServer, "Failed to generate token", 500)
 	}
@@ -146,6 +147,9 @@ func (s *TechnicianService) Update(id uint, req *UpdateTechnicianRequest) (*Tech
 	if req.Address != "" {
 		tech.Address = req.Address
 	}
+	if req.IsTechnical != nil {
+		tech.IsTechnical = *req.IsTechnical
+	}
 	if req.IsActive != nil {
 		tech.IsActive = *req.IsActive
 	}
@@ -176,6 +180,7 @@ func (s *TechnicianService) mapToDTO(tech *Technician) *TechnicianDTO {
 		NationalID: tech.NationalID,
 		Address:    tech.Address,
 		IsActive:   tech.IsActive,
+		IsTechnical: tech.IsTechnical,
 		CreatedAt:  tech.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:  tech.UpdatedAt.Format(time.RFC3339),
 	}

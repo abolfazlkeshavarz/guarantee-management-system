@@ -73,6 +73,7 @@ func (h *PartRequestHandler) StatusCounts(c *gin.Context) {
 
 func (h *PartRequestHandler) UpdateStatus(c *gin.Context) {
 	adminID := c.GetUint("admin_id")
+	technicianID := c.GetUint("technician_id")
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
@@ -86,7 +87,7 @@ func (h *PartRequestHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	request, err := h.service.UpdateStatus(uint(id), req, adminID)
+	request, err := h.service.UpdateStatus(uint(id), req, adminID, technicianID)
 	if err != nil {
 		handleError(c, err)
 		return

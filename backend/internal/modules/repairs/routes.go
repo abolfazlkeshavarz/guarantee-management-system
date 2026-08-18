@@ -22,16 +22,24 @@ func NewRepairModule(db *gorm.DB) *RepairModule {
 }
 
 func (m *RepairModule) RegisterRoutes(router *gin.RouterGroup) {
-	// Admin routes
-	repairs := router.Group("/repairs")
-	repairs.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
+	// Reviewer routes -- admins and "technical" technicians. Reading and
+	// reviewing other people's repairs is the whole point of the technical
+	// role, so those verbs are shared.
+	reviewer := router.Group("/repairs")
+	reviewer.Use(middleware.AuthMiddleware(), middleware.ReviewerOnly())
 	{
-		repairs.POST("", m.handler.Create)
-		repairs.GET("", m.handler.List)
-		repairs.GET("/:id", m.handler.Get)
-		repairs.POST("/:id/review", m.handler.Review)
-		repairs.POST("/:id/cancel", m.handler.Cancel)
-		repairs.DELETE("/:id", m.handler.Delete)
+		reviewer.GET("", m.handler.List)
+		reviewer.GET("/:id", m.handler.Get)
+		reviewer.POST("/:id/review", m.handler.Review)
+		reviewer.POST("/:id/cancel", m.handler.Cancel)
+	}
+
+	// Admin-only: creating a repair on someone else's behalf, and destroying one.
+	admin := router.Group("/repairs")
+	admin.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
+	{
+		admin.POST("", m.handler.Create)
+		admin.DELETE("/:id", m.handler.Delete)
 	}
 
 	// Technician routes
