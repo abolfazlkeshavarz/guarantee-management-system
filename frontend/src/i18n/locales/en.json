@@ -67,7 +67,8 @@
     "repairs": "Repairs",
     "settings": "Settings",
     "logout": "Logout",
-    "partRequests": "Part Requests"
+    "partRequests": "Part Requests",
+    "auditLog": "Activity log"
   },
   "header": {
     "title": "Guarantee Management System",
@@ -573,5 +574,40 @@
     "quantity": "Quantity",
     "reviewedBy": "Reviewed by",
     "product": "Product"
+  },
+  "audit": {
+    "title": "Activity log",
+    "subtitle": "Every change made in the system, and who made it.",
+    "searchActor": "Search by user...",
+    "allUsers": "All users",
+    "allActions": "All actions",
+    "allEntities": "All records",
+    "roleAdmin": "Admin",
+    "roleTechnician": "Technician",
+    "rolePublic": "Public",
+    "when": "When",
+    "who": "User",
+    "role": "Role",
+    "what": "Action",
+    "entity": "Record type",
+    "record": "Record #",
+    "ip": "IP",
+    "action": {
+      "create": "Created",
+      "update": "Updated",
+      "delete": "Deleted",
+      "approve": "Approved",
+      "reject": "Rejected",
+      "review": "Reviewed",
+      "cancel": "Cancelled",
+      "renew": "Renewed",
+      "status": "Status changed",
+      "login": "Signed in",
+      "upload": "Uploaded",
+      "set-golden": "Set golden",
+      "remove-golden": "Removed golden",
+      "change-password": "Changed password",
+      "reset-password": "Reset password"
+    }
   }
 }

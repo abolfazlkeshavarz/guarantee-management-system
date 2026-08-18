@@ -67,7 +67,8 @@
     "repairs": "تعمیرات",
     "settings": "تنظیمات",
     "logout": "خروج",
-    "partRequests": "درخواست قطعات"
+    "partRequests": "درخواست قطعات",
+    "auditLog": "گزارش فعالیت"
   },
   "header": {
     "title": "سامانه مدیریت گارانتی",
@@ -573,5 +574,40 @@
     "quantity": "تعداد",
     "reviewedBy": "بررسی‌شده توسط",
     "product": "محصول"
+  },
+  "audit": {
+    "title": "گزارش فعالیت",
+    "subtitle": "همه تغییرات ثبت‌شده در سامانه و کاربری که آن را انجام داده است.",
+    "searchActor": "جستجوی کاربر...",
+    "allUsers": "همه کاربران",
+    "allActions": "همه عملیات",
+    "allEntities": "همه رکوردها",
+    "roleAdmin": "مدیر",
+    "roleTechnician": "تکنسین",
+    "rolePublic": "عمومی",
+    "when": "زمان",
+    "who": "کاربر",
+    "role": "نقش",
+    "what": "عملیات",
+    "entity": "نوع رکورد",
+    "record": "شماره رکورد",
+    "ip": "آی‌پی",
+    "action": {
+      "create": "ایجاد",
+      "update": "ویرایش",
+      "delete": "حذف",
+      "approve": "تایید",
+      "reject": "رد",
+      "review": "بررسی",
+      "cancel": "لغو",
+      "renew": "تمدید",
+      "status": "تغییر وضعیت",
+      "login": "ورود",
+      "upload": "بارگذاری",
+      "set-golden": "تعیین طلایی",
+      "remove-golden": "حذف طلایی",
+      "change-password": "تغییر رمز عبور",
+      "reset-password": "بازنشانی رمز عبور"
+    }
   }
 }

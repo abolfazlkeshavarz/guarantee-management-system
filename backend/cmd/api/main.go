@@ -12,6 +12,7 @@ import (
 	"guarantee-management-system/internal/config"
 	"guarantee-management-system/internal/database"
 	"guarantee-management-system/internal/middleware"
+	"guarantee-management-system/internal/modules/audit"
 	"guarantee-management-system/internal/modules/auth"
 	"guarantee-management-system/internal/modules/categories"
 	"guarantee-management-system/internal/modules/customers"
@@ -70,6 +71,10 @@ func main() {
 	if err := router.SetTrustedProxies(cfg.TrustedProxies); err != nil {
 		log.Fatal("Invalid TRUSTED_PROXIES:", err)
 	}
+
+	// Record every successful mutation (who / what / when). Registered before
+	// the routes so it wraps all of them, including modules added later.
+	router.Use(audit.Middleware(database.GetDB()))
 
 	// Serve uploaded files (invoice/guarantee-card images, etc.)
 	router.Static("/uploads", cfg.UploadPath)
@@ -146,6 +151,10 @@ func main() {
 		// Global display settings (language/calendar) -- admin writes, everyone reads
 		settingsModule := settings.NewSettingsModule(database.GetDB())
 		settingsModule.RegisterRoutes(v1)
+
+		// Audit trail (admin-only reads; the middleware above does the writing)
+		auditModule := audit.NewAuditModule(database.GetDB())
+		auditModule.RegisterRoutes(v1)
 
 		// Admin-only: send an arbitrary test SMS, to confirm the Melli
 		// Payamak integration is working without waiting for a real

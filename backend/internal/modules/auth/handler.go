@@ -54,6 +54,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// AuthMiddleware never runs on the login route, so without this the audit
+	// trail would record every sign-in as an anonymous "public" action.
+	c.Set("username", admin.Username)
+	c.Set("role", "admin")
+	c.Set("admin_id", admin.ID)
+
 	responses.Success(c, LoginResponse{
 		Token:     token,
 		TokenType: "Bearer",
