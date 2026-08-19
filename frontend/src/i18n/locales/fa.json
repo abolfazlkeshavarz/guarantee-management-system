@@ -337,7 +337,12 @@
     "technicianOptional": "تکنسین (اختیاری)",
     "assignTechnician": "تخصیص تکنسین",
     "notesPlaceholder": "یادداشت‌های بیشتر درباره این تعمیر...",
-    "creating": "در حال ثبت..."
+    "creating": "در حال ثبت...",
+    "repairCount": "تعداد تعمیر",
+    "outOfWarranty": "خارج از گارانتی",
+    "linkedParts": "قطعات درخواست‌شده برای این تعمیر",
+    "noLinkedParts": "هنوز قطعه‌ای برای این تعمیر درخواست نشده است",
+    "forRepair": "برای تعمیر"
   },
   "status": {
     "Pending": "در انتظار",

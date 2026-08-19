@@ -33,7 +33,15 @@ func (h *PartRequestHandler) List(c *gin.Context) {
 		*technicianID = uint(id)
 	}
 
-	result, err := h.service.List(page, limit, status, technicianID, search)
+	// Narrows to the parts requested for one repair -- what the repair view
+	// uses to show which parts belong to it.
+	var repairID *uint
+	if id, err := strconv.ParseUint(c.DefaultQuery("repair_id", "0"), 10, 32); err == nil && id > 0 {
+		repairID = new(uint)
+		*repairID = uint(id)
+	}
+
+	result, err := h.service.List(page, limit, status, technicianID, search, repairID)
 	if err != nil {
 		handleError(c, err)
 		return

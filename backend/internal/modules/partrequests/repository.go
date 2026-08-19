@@ -22,7 +22,7 @@ func (r *PartRequestRepository) FindByID(id uint) (*PartRequest, error) {
 	return &request, nil
 }
 
-func (r *PartRequestRepository) FindAll(page, limit int, status string, technicianID *uint, search string) ([]PartRequest, int64, error) {
+func (r *PartRequestRepository) FindAll(page, limit int, status string, technicianID *uint, search string, repairID *uint) ([]PartRequest, int64, error) {
 	var requests []PartRequest
 	var total int64
 
@@ -33,6 +33,9 @@ func (r *PartRequestRepository) FindAll(page, limit int, status string, technici
 	}
 	if technicianID != nil && *technicianID > 0 {
 		query = query.Where("technician_id = ?", *technicianID)
+	}
+	if repairID != nil && *repairID > 0 {
+		query = query.Where("repair_id = ?", *repairID)
 	}
 	if search != "" {
 		like := "%" + search + "%"

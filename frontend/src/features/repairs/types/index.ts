@@ -21,6 +21,10 @@ export interface Repair {
   technician_id?: number
   technician_name: string
   status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'
+  /** Guarantee had already expired when this was filed -- billed differently. */
+  guarantee_was_expired: boolean
+  /** How many repairs this guarantee has had in total. */
+  repair_count_for_guarantee: number
   description: string
   components: RepairComponentItem[]
   services: RepairServiceItem[]

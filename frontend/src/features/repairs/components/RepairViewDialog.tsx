@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,8 @@ import { Repair } from '../types'
 import { RepairStatusBadge } from './RepairStatusBadge'
 import { FormattedDate } from '@/components/common/FormattedDate'
 import { useCalendar } from '@/contexts/CalendarContext'
+import { Badge } from '@/components/ui/badge'
+import { partRequestService } from '@/features/partRequests/api/partRequests'
 import { Calendar, Package, FileText, Wrench, User, Wrench as ComponentIcon } from 'lucide-react'
 
 interface RepairViewDialogProps {
@@ -27,6 +30,14 @@ export function RepairViewDialog({
   const { t, i18n } = useTranslation()
   const { formatDate } = useCalendar()
   const isRTL = i18n.language === 'fa'
+
+  const { data: partsData } = useQuery({
+    queryKey: ['part-requests-for-repair', repair?.id],
+    queryFn: () => partRequestService.list(1, 100, '', '', undefined, repair!.id),
+    enabled: open && !!repair?.id,
+  })
+  const linkedParts = partsData?.requests ?? []
+
   if (!repair) return null
 
   const DetailRow = ({ label, value, icon: Icon }: { label: string; value: string | React.ReactNode; icon?: React.ElementType }) => (
@@ -109,6 +120,39 @@ export function RepairViewDialog({
               </div>
             </>
           )}
+
+          {/* Which parts were requested for this repair. Fetched here rather
+              than embedded in the repair DTO, so listing repairs does not pay
+              for a per-row query nobody asked for. */}
+          <Separator />
+          <div>
+            <p className={`text-sm font-medium mb-2 ${isRTL ? 'text-right' : ''}`}>
+              {t('repairs.linkedParts')}
+            </p>
+            {linkedParts.length === 0 ? (
+              <p className={`text-sm text-muted-foreground ${isRTL ? 'text-right' : ''}`}>
+                {t('repairs.noLinkedParts')}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {linkedParts.map((part) => (
+                  <div
+                    key={part.id}
+                    className={`bg-muted p-2 rounded-md text-sm flex items-center justify-between gap-3 ${
+                      isRTL ? 'flex-row-reverse' : ''
+                    }`}
+                  >
+                    <span className="font-medium">
+                      {part.item_name} × {part.quantity}
+                    </span>
+                    <Badge variant="outline">
+                      {t(`partRequests.status.${part.status}`, { defaultValue: part.status })}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {repair.reviewed_by_name && (
             <>

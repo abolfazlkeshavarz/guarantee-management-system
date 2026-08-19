@@ -8,6 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +68,7 @@ export function RepairTable({
         <TableHeader>
           <TableRow>
             <TableHead>{t('repairs.table.guarantee')}</TableHead>
+            <TableHead className="text-center">{t('repairs.repairCount')}</TableHead>
             <TableHead>{t('guarantees.table.customer')}</TableHead>
             <TableHead>{t('repairs.table.technician')}</TableHead>
             <TableHead>{t('common.status')}</TableHead>
@@ -77,7 +79,32 @@ export function RepairTable({
         <TableBody>
           {repairs.map((repair) => (
             <TableRow key={repair.id}>
-              <TableCell className="font-medium">{repair.guarantee_code}</TableCell>
+              <TableCell className="font-medium">
+                <div className="flex items-center gap-2">
+                  {repair.guarantee_code}
+                  {/* Out-of-warranty work bills differently, so it has to be
+                      obvious at a glance in the listing. */}
+                  {repair.guarantee_was_expired && (
+                    <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+                      {t('repairs.outOfWarranty')}
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="text-center">
+                {/* How often this guarantee has come back. A high count is the
+                    signal worth spotting, so it is highlighted past 1. */}
+                <Badge
+                  variant="outline"
+                  className={
+                    repair.repair_count_for_guarantee > 1
+                      ? 'bg-amber-100 text-amber-800 border-amber-200'
+                      : ''
+                  }
+                >
+                  {repair.repair_count_for_guarantee ?? 1}
+                </Badge>
+              </TableCell>
               <TableCell>{repair.customer_name}</TableCell>
               <TableCell>{repair.technician_name || 'Unassigned'}</TableCell>
               <TableCell>

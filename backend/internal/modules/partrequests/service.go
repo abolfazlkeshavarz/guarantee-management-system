@@ -206,7 +206,7 @@ func (s *PartRequestService) GetByIDForTechnician(id, techID uint) (*PartRequest
 	return s.mapToDTO(request), nil
 }
 
-func (s *PartRequestService) list(page, limit int, status string, technicianID *uint, search string) (*ListPartRequestsResponse, error) {
+func (s *PartRequestService) list(page, limit int, status string, technicianID *uint, search string, repairID *uint) (*ListPartRequestsResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -214,7 +214,7 @@ func (s *PartRequestService) list(page, limit int, status string, technicianID *
 		limit = 10
 	}
 
-	requests, total, err := s.repo.FindAll(page, limit, status, technicianID, search)
+	requests, total, err := s.repo.FindAll(page, limit, status, technicianID, search, repairID)
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list part requests", 500)
 	}
@@ -238,12 +238,12 @@ func (s *PartRequestService) list(page, limit int, status string, technicianID *
 	}, nil
 }
 
-func (s *PartRequestService) List(page, limit int, status string, technicianID *uint, search string) (*ListPartRequestsResponse, error) {
-	return s.list(page, limit, status, technicianID, search)
+func (s *PartRequestService) List(page, limit int, status string, technicianID *uint, search string, repairID *uint) (*ListPartRequestsResponse, error) {
+	return s.list(page, limit, status, technicianID, search, repairID)
 }
 
 func (s *PartRequestService) ListByTechnician(techID uint, page, limit int, status, search string) (*ListPartRequestsResponse, error) {
-	return s.list(page, limit, status, &techID, search)
+	return s.list(page, limit, status, &techID, search, nil)
 }
 
 func (s *PartRequestService) StatusCounts(technicianID *uint) (map[string]int64, error) {

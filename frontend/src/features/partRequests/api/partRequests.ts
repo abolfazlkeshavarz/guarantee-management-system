@@ -22,7 +22,8 @@ export const partRequestService = {
     limit: number = 10,
     status: string = '',
     search: string = '',
-    technicianId?: number
+    technicianId?: number,
+    repairId?: number
   ): Promise<PartRequestListResponse> {
     const response = await api.get('/part-requests', {
       params: {
@@ -31,6 +32,7 @@ export const partRequestService = {
         status: status && status !== 'all' ? status : undefined,
         search: search || undefined,
         technician_id: technicianId || undefined,
+        repair_id: repairId || undefined,
       },
     })
     return toListResponse(response)

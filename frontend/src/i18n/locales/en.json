@@ -337,7 +337,12 @@
     "technicianOptional": "Technician (Optional)",
     "assignTechnician": "Assign a technician",
     "notesPlaceholder": "Additional notes about this repair...",
-    "creating": "Creating..."
+    "creating": "Creating...",
+    "repairCount": "Repairs",
+    "outOfWarranty": "Out of warranty",
+    "linkedParts": "Parts requested for this repair",
+    "noLinkedParts": "No parts requested for this repair yet",
+    "forRepair": "For repair"
   },
   "status": {
     "Pending": "Pending",
