@@ -59,54 +59,80 @@ func (s *PartRequestService) resolveGuarantee(code string) (*uint, string, error
 	return &id, g.Code, nil
 }
 
-// applyItem validates the requested item and writes it onto the request.
-func (s *PartRequestService) applyItem(request *PartRequest, req *CreatePartRequestRequest) error {
-	switch req.ItemType {
-	case ItemTypeComponent:
-		if req.ItemID == nil || *req.ItemID == 0 {
-			return ErrItemRequired
+// buildItems validates every requested line and turns it into a row. The
+// legacy single-item fields are accepted as a one-line request so an older
+// client keeps working.
+func (s *PartRequestService) buildItems(req *CreatePartRequestRequest) ([]PartRequestItem, error) {
+	inputs := req.Items
+	if len(inputs) == 0 {
+		if req.ItemType == "" {
+			return nil, ErrItemRequired
 		}
-		var exists bool
-		if err := s.db.Table("repair_components").
-			Where("id = ? AND is_active = ? AND deleted_at IS NULL", *req.ItemID, true).
-			Select("count(*) > 0").Find(&exists).Error; err != nil {
-			return errors.NewAppError(errors.ErrInternalServer, "Failed to verify component", 500)
+		qty := req.Quantity
+		if qty < 1 {
+			qty = 1
 		}
-		if !exists {
-			return ErrComponentNotFound
-		}
-		request.ItemType = ItemTypeComponent
-		request.RepairComponentID = req.ItemID
-
-	case ItemTypeService:
-		if req.ItemID == nil || *req.ItemID == 0 {
-			return ErrItemRequired
-		}
-		var exists bool
-		if err := s.db.Table("repair_services").
-			Where("id = ? AND is_active = ? AND deleted_at IS NULL", *req.ItemID, true).
-			Select("count(*) > 0").Find(&exists).Error; err != nil {
-			return errors.NewAppError(errors.ErrInternalServer, "Failed to verify service", 500)
-		}
-		if !exists {
-			return ErrServiceNotFound
-		}
-		request.ItemType = ItemTypeService
-		request.RepairServiceID = req.ItemID
-
-	case ItemTypeCustom:
-		name := strings.TrimSpace(req.CustomItemName)
-		if name == "" {
-			return ErrItemRequired
-		}
-		request.ItemType = ItemTypeCustom
-		request.CustomItemName = name
-
-	default:
-		return errors.NewAppError(errors.ErrValidation, "Unknown item type", 400)
+		inputs = []PartRequestItemInput{{
+			ItemType:       req.ItemType,
+			ItemID:         req.ItemID,
+			CustomItemName: req.CustomItemName,
+			Quantity:       qty,
+		}}
 	}
 
-	return nil
+	items := make([]PartRequestItem, 0, len(inputs))
+	for _, in := range inputs {
+		qty := in.Quantity
+		if qty < 1 {
+			qty = 1
+		}
+		item := PartRequestItem{ItemType: in.ItemType, Quantity: qty}
+
+		switch in.ItemType {
+		case ItemTypeComponent:
+			if in.ItemID == nil || *in.ItemID == 0 {
+				return nil, ErrItemRequired
+			}
+			var exists bool
+			if err := s.db.Table("repair_components").
+				Where("id = ? AND is_active = ? AND deleted_at IS NULL", *in.ItemID, true).
+				Select("count(*) > 0").Find(&exists).Error; err != nil {
+				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify component", 500)
+			}
+			if !exists {
+				return nil, ErrComponentNotFound
+			}
+			item.RepairComponentID = in.ItemID
+
+		case ItemTypeService:
+			if in.ItemID == nil || *in.ItemID == 0 {
+				return nil, ErrItemRequired
+			}
+			var exists bool
+			if err := s.db.Table("repair_services").
+				Where("id = ? AND is_active = ? AND deleted_at IS NULL", *in.ItemID, true).
+				Select("count(*) > 0").Find(&exists).Error; err != nil {
+				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify service", 500)
+			}
+			if !exists {
+				return nil, ErrServiceNotFound
+			}
+			item.RepairServiceID = in.ItemID
+
+		case ItemTypeCustom:
+			name := strings.TrimSpace(in.CustomItemName)
+			if name == "" {
+				return nil, ErrItemRequired
+			}
+			item.CustomItemName = name
+
+		default:
+			return nil, errors.NewAppError(errors.ErrValidation, "Unknown item type", 400)
+		}
+
+		items = append(items, item)
+	}
+	return items, nil
 }
 
 func (s *PartRequestService) CreateByTechnician(techID uint, req *CreatePartRequestRequest) (*PartRequestDTO, error) {
@@ -159,20 +185,36 @@ func (s *PartRequestService) CreateByTechnician(techID uint, req *CreatePartRequ
 		Status:              StatusPending,
 	}
 
-	if err := s.applyItem(request, req); err != nil {
+	items, err := s.buildItems(req)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := s.repo.Create(request); err != nil {
+	// component_requests still carries a single-item shape, and its CHECK
+	// constraint requires it, so the first line is mirrored onto those columns.
+	first := items[0]
+	request.ItemType = first.ItemType
+	request.RepairComponentID = first.RepairComponentID
+	request.RepairServiceID = first.RepairServiceID
+	request.CustomItemName = first.CustomItemName
+	request.Quantity = first.Quantity
+
+	if err := s.repo.CreateWithItems(request, items); err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create part request", 500)
 	}
 
 	dto := s.mapToDTO(request)
-	item := dto.ItemName
-	if item == "" {
-		item = request.CustomItemName
+
+	// Name every requested line in the SMS, not just the first.
+	names := make([]string, 0, len(dto.Items))
+	for _, it := range dto.Items {
+		names = append(names, it.ItemName)
 	}
-	sms.NotifyPartRequest(staffReviewerPhones(s.db), dto.TechnicianName, item, request.CreatedAt)
+	summary := strings.Join(names, "، ")
+	if summary == "" {
+		summary = dto.ItemName
+	}
+	sms.NotifyPartRequest(staffReviewerPhones(s.db), dto.TechnicianName, summary, request.CreatedAt)
 
 	return dto, nil
 }
@@ -409,6 +451,38 @@ func (s *PartRequestService) mapToDTO(request *PartRequest) *PartRequestDTO {
 	case ItemTypeCustom:
 		dto.ItemName = request.CustomItemName
 		dto.IsCustomItem = true
+	}
+
+	// Every requested line, with catalog names resolved.
+	if lines, err := s.repo.FindItemsByRequestID(request.ID); err == nil {
+		dto.Items = make([]PartRequestItemDTO, 0, len(lines))
+		for _, line := range lines {
+			out := PartRequestItemDTO{
+				ID:       line.ID,
+				ItemType: line.ItemType,
+				Quantity: line.Quantity,
+			}
+			switch line.ItemType {
+			case ItemTypeComponent:
+				if line.RepairComponentID != nil {
+					var name string
+					s.db.Table("repair_components").Where("id = ?", *line.RepairComponentID).Select("name").Scan(&name)
+					out.ItemID = line.RepairComponentID
+					out.ItemName = name
+				}
+			case ItemTypeService:
+				if line.RepairServiceID != nil {
+					var name string
+					s.db.Table("repair_services").Where("id = ?", *line.RepairServiceID).Select("name").Scan(&name)
+					out.ItemID = line.RepairServiceID
+					out.ItemName = name
+				}
+			case ItemTypeCustom:
+				out.ItemName = line.CustomItemName
+				out.IsCustomItem = true
+			}
+			dto.Items = append(dto.Items, out)
+		}
 	}
 
 	// Guarantee context, when the request is tied to one

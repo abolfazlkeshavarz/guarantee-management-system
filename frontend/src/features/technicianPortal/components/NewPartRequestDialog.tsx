@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PartRequestItemsFields } from '@/features/partRequests/components/PartRequestItemsFields'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -16,13 +17,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { technicianGuaranteeService, Guarantee } from '../api/technicianGuarantees'
 import { technicianPartRequestService } from '@/features/partRequests/api/partRequests'
@@ -49,10 +43,8 @@ type GuaranteeMode = 'unset' | 'with' | 'without'
 
 const DEFAULT_VALUES: PartRequestFormValues = {
   guarantee_code: '',
-  item_type: 'component',
-  item_id: undefined,
-  custom_item_name: '',
-  quantity: 1,
+  // Start with one blank line so the form is immediately usable.
+  items: [{ item_type: 'component', item_id: undefined, custom_item_name: '', quantity: 1 }],
   notes: '',
 }
 
@@ -67,7 +59,6 @@ export function NewPartRequestDialog() {
   const [checking, setChecking] = useState(false)
   const [guarantee, setGuarantee] = useState<Guarantee | null>(null)
   const [checkError, setCheckError] = useState<string | null>(null)
-  const [useCustomItem, setUseCustomItem] = useState(false)
 
   const { data: components = [] } = useQuery({
     queryKey: ['repair-components-active'],
@@ -85,17 +76,16 @@ export function NewPartRequestDialog() {
     defaultValues: DEFAULT_VALUES,
   })
 
-  const itemType = form.watch('item_type')
-  const catalog = itemType === 'service' ? services : components
-
   const createMutation = useMutation({
     mutationFn: (data: PartRequestFormValues) =>
       technicianPartRequestService.create({
         guarantee_code: guaranteeMode === 'with' ? code.trim().toUpperCase() : undefined,
-        item_type: data.item_type,
-        item_id: data.item_type === 'custom' ? undefined : data.item_id,
-        custom_item_name: data.item_type === 'custom' ? data.custom_item_name : undefined,
-        quantity: Number(data.quantity),
+        items: (data.items ?? []).map((item) => ({
+          item_type: item.item_type,
+          item_id: item.item_type === 'custom' ? undefined : item.item_id,
+          custom_item_name: item.item_type === 'custom' ? item.custom_item_name : undefined,
+          quantity: Number(item.quantity),
+        })),
         notes: data.notes || undefined,
       }),
     onSuccess: () => {
@@ -128,7 +118,6 @@ export function NewPartRequestDialog() {
       setCode('')
       setGuarantee(null)
       setCheckError(null)
-      setUseCustomItem(false)
       form.reset(DEFAULT_VALUES)
     }
     setOpen(newOpen)
@@ -267,160 +256,16 @@ export function NewPartRequestDialog() {
             <Separator />
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label className={isRTL ? 'text-right block' : ''}>
-                    {t('partRequests.itemSource')}
-                  </Label>
-                  <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                    <Button
-                      type="button"
-                      variant={!useCustomItem ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        setUseCustomItem(false)
-                        form.setValue('item_type', 'component')
-                        form.setValue('custom_item_name', '')
-                      }}
-                    >
-                      {t('partRequests.fromCatalog')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={useCustomItem ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        setUseCustomItem(true)
-                        form.setValue('item_type', 'custom')
-                        form.setValue('item_id', undefined)
-                      }}
-                    >
-                      {t('partRequests.notInList')}
-                    </Button>
-                  </div>
-                </div>
-
-                {!useCustomItem ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="item_type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Label className={isRTL ? 'text-right block' : ''}>
-                            {t('partRequests.itemTypeLabel')}
-                          </Label>
-                          <Select
-                            items={[
-                              { value: 'component', label: t('partRequests.itemType.component') },
-                              { value: 'service', label: t('partRequests.itemType.service') },
-                            ]}
-                            value={field.value}
-                            onValueChange={(value) => {
-                              field.onChange(value)
-                              form.setValue('item_id', undefined)
-                            }}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className={isRTL ? 'text-right' : ''}>
-                              <SelectItem value="component">
-                                {t('partRequests.itemType.component')}
-                              </SelectItem>
-                              <SelectItem value="service">
-                                {t('partRequests.itemType.service')}
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="item_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Label className={isRTL ? 'text-right block' : ''}>
-                            {t('partRequests.table.item')}
-                          </Label>
-                          <Select
-                            items={catalog.map((entry) => ({
-                              value: String(entry.id),
-                              label: entry.name,
-                            }))}
-                            value={field.value ? String(field.value) : ''}
-                            onValueChange={(value) => field.onChange(Number(value))}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder={t('partRequests.selectItem')} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className={isRTL ? 'text-right' : ''}>
-                              {catalog.map((entry) => (
-                                <SelectItem key={entry.id} value={String(entry.id)}>
-                                  {entry.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                ) : (
-                  <FormField
-                    control={form.control}
-                    name="custom_item_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <Label className={isRTL ? 'text-right block' : ''}>
-                          {t('partRequests.customItemName')}
-                        </Label>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value ?? ''}
-                            placeholder={t('partRequests.customItemPlaceholder')}
-                            className={isRTL ? 'text-right' : ''}
-                          />
-                        </FormControl>
-                        <p className={`text-xs text-muted-foreground ${isRTL ? 'text-right' : ''}`}>
-                          {t('partRequests.customItemHint')}
-                        </p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                <FormField
-                  control={form.control}
-                  name="quantity"
-                  render={({ field }) => (
-                    <FormItem className="max-w-[160px]">
-                      <Label className={isRTL ? 'text-right block' : ''}>
-                        {t('partRequests.table.quantity')}
-                      </Label>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={999}
-                          value={field.value ?? 1}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                          className={isRTL ? 'text-right' : ''}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                <PartRequestItemsFields
+                  control={form.control as any}
+                  components={components}
+                  services={services}
                 />
+                {form.formState.errors.items && (
+                  <p className="text-sm text-destructive">
+                    {(form.formState.errors.items as any)?.message}
+                  </p>
+                )}
 
                 <FormField
                   control={form.control}

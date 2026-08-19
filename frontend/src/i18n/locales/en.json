@@ -550,7 +550,11 @@
       "pending": "Awaiting review",
       "awaiting": "Awaiting delivery",
       "delivered": "Delivered"
-    }
+    },
+    "itemsLabel": "Requested items",
+    "addItem": "Add item",
+    "noItems": "No items added yet",
+    "itemsSummary": "{{count}} items"
   },
   "exports": {
     "export": "Export",

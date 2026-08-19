@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import { PartRequest } from '../types'
 import { PartRequestStatusBadge } from './PartRequestStatusBadge'
 import { FormattedDate } from '@/components/common/FormattedDate'
-import { Package, Hash, User, ShieldCheck, FileText, Calendar, Truck } from 'lucide-react'
+import { Package, User, ShieldCheck, FileText, Calendar, Truck } from 'lucide-react'
 
 interface PartRequestViewDialogProps {
   open: boolean
@@ -67,23 +67,34 @@ export function PartRequestViewDialog({
         </DialogHeader>
 
         <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-4">
-            <DetailRow
-              label={t('partRequests.table.item')}
-              value={
+          {/* A request can hold several lines now; fall back to the legacy
+              single-item fields for rows filed before that change. */}
+          <DetailRow
+            label={t('partRequests.itemsLabel')}
+            value={
+              (request.items?.length ?? 0) > 0 ? (
+                <span className="block space-y-1">
+                  {request.items.map((item) => (
+                    <span key={item.id} className="block">
+                      {item.item_name} × {item.quantity}
+                      {item.is_custom_item && (
+                        <span className="text-muted-foreground">
+                          {' '}
+                          ({t('partRequests.customBadge')})
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                </span>
+              ) : (
                 <span>
-                  {request.item_name}{' '}
+                  {request.item_name} × {request.quantity}{' '}
                   <span className="text-muted-foreground">({itemTypeLabel})</span>
                 </span>
-              }
-              icon={Package}
-            />
-            <DetailRow
-              label={t('partRequests.table.quantity')}
-              value={request.quantity}
-              icon={Hash}
-            />
-          </div>
+              )
+            }
+            icon={Package}
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <DetailRow

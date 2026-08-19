@@ -48,6 +48,25 @@ func (PartRequest) TableName() string {
 	return "component_requests"
 }
 
+// PartRequestItem is one line of a request. A request used to hold exactly one
+// item in the columns above; those are still written (from the first line) so
+// existing rows, the table CHECK constraint and older readers keep working,
+// but this is the real list.
+type PartRequestItem struct {
+	ID                 uint      `gorm:"primaryKey" json:"id"`
+	ComponentRequestID uint      `gorm:"not null" json:"component_request_id"`
+	ItemType           string    `gorm:"size:20;not null" json:"item_type"`
+	RepairComponentID  *uint     `json:"repair_component_id,omitempty"`
+	RepairServiceID    *uint     `json:"repair_service_id,omitempty"`
+	CustomItemName     string    `gorm:"size:150" json:"custom_item_name,omitempty"`
+	Quantity           int       `gorm:"not null;default:1" json:"quantity"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+func (PartRequestItem) TableName() string {
+	return "component_request_items"
+}
+
 // Item types
 const (
 	ItemTypeComponent = "component"

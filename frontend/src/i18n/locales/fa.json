@@ -550,7 +550,11 @@
       "pending": "در انتظار بررسی",
       "awaiting": "در انتظار تحویل",
       "delivered": "تحویل شده"
-    }
+    },
+    "itemsLabel": "اقلام درخواستی",
+    "addItem": "افزودن قلم",
+    "noItems": "هنوز قلمی اضافه نشده است",
+    "itemsSummary": "{{count}} قلم"
   },
   "exports": {
     "export": "خروجی",

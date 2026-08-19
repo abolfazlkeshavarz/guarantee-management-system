@@ -38,14 +38,23 @@ export interface PartRequest {
   customer_name?: string
   product_name?: string
 
+  /** First line, kept for compact table columns. */
   item_type: PartRequestItemType
   item_id?: number
   item_name: string
   is_custom_item: boolean
 
+  /** Every requested line. */
+  items: PartRequestItem[]
+
   quantity: number
   notes: string
   status: PartRequestStatus
+
+  /** The repair these parts are for, when one was linked. */
+  repair_id?: number
+  /** Guarantee had already expired when filed -- billed differently. */
+  guarantee_was_expired: boolean
 
   reviewed_by?: number
   reviewed_by_name?: string
@@ -57,12 +66,27 @@ export interface PartRequest {
   updated_at: string
 }
 
-export interface CreatePartRequestData {
-  guarantee_code?: string
+export interface PartRequestItem {
+  id: number
+  item_type: PartRequestItemType
+  item_id?: number
+  item_name: string
+  is_custom_item: boolean
+  quantity: number
+}
+
+export interface CreatePartRequestItemData {
   item_type: PartRequestItemType
   item_id?: number
   custom_item_name?: string
   quantity: number
+}
+
+export interface CreatePartRequestData {
+  guarantee_code?: string
+  /** Optional link to the repair these parts are for. */
+  repair_id?: number
+  items: CreatePartRequestItemData[]
   notes?: string
 }
 

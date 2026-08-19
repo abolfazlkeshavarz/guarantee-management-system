@@ -114,6 +114,11 @@ export function PartRequestTable({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <span>{request.item_name}</span>
+                    {(request.items?.length ?? 0) > 1 && (
+                      <Badge variant="outline">
+                        +{request.items.length - 1}
+                      </Badge>
+                    )}
                     {request.is_custom_item ? (
                       <Badge
                         variant="outline"

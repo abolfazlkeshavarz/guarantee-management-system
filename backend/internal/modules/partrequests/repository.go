@@ -14,6 +14,31 @@ func (r *PartRequestRepository) Create(request *PartRequest) error {
 	return r.db.Create(request).Error
 }
 
+// CreateWithItems writes the request and its lines in one transaction, so a
+// request can never end up stored with a partial item list.
+func (r *PartRequestRepository) CreateWithItems(request *PartRequest, items []PartRequestItem) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(request).Error; err != nil {
+			return err
+		}
+		for i := range items {
+			items[i].ComponentRequestID = request.ID
+		}
+		if len(items) > 0 {
+			if err := tx.Create(&items).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (r *PartRequestRepository) FindItemsByRequestID(requestID uint) ([]PartRequestItem, error) {
+	var items []PartRequestItem
+	err := r.db.Where("component_request_id = ?", requestID).Order("id").Find(&items).Error
+	return items, err
+}
+
 func (r *PartRequestRepository) FindByID(id uint) (*PartRequest, error) {
 	var request PartRequest
 	if err := r.db.First(&request, id).Error; err != nil {
