@@ -5,6 +5,9 @@ export interface Admin {
   username: string
   full_name: string
   email: string
+  /** "admin" or "technical" (full access except delete). */
+  role: 'admin' | 'technical'
+  phone: string
   is_active: boolean
   created_at: string
 }
@@ -25,6 +28,7 @@ export interface UpdateProfileData {
   username?: string
   full_name?: string
   email?: string
+  phone?: string
 }
 
 export type AuthResponse = {

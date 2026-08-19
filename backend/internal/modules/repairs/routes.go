@@ -22,11 +22,10 @@ func NewRepairModule(db *gorm.DB) *RepairModule {
 }
 
 func (m *RepairModule) RegisterRoutes(router *gin.RouterGroup) {
-	// Reviewer routes -- admins and "technical" technicians. Reading and
-	// reviewing other people's repairs is the whole point of the technical
-	// role, so those verbs are shared.
+	// Staff routes -- admins and technical users share every verb here;
+	// only delete is withheld, which AuthMiddleware enforces.
 	reviewer := router.Group("/repairs")
-	reviewer.Use(middleware.AuthMiddleware(), middleware.ReviewerOnly())
+	reviewer.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
 	{
 		reviewer.GET("", m.handler.List)
 		reviewer.GET("/:id", m.handler.Get)

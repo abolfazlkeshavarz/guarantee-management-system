@@ -12,6 +12,10 @@ type Repair struct {
 	TechnicianID *uint          `json:"technician_id"`
 	Status       string         `gorm:"size:20;default:'Pending'" json:"status"`
 	Description  string         `gorm:"type:text" json:"description"`
+	// True when the guarantee had already expired as the work was filed --
+	// out-of-warranty work is billed differently. Stamped at creation so a
+	// later renewal cannot rewrite history.
+	GuaranteeWasExpired bool    `json:"guarantee_was_expired"`
 	ReviewedBy   *uint          `json:"reviewed_by,omitempty"`
 	// Set instead of ReviewedBy when a "technical" technician did the review;
 	// reviewed_by is a FK to admins, so it cannot hold a technician id.

@@ -39,12 +39,23 @@ func AuthMiddleware() gin.HandlerFunc {
 		// Set user context with role
 		c.Set("role", claims.Role)
 		c.Set("username", claims.Username)
-		
-		if claims.Role == "admin" {
+
+		if claims.Role == "admin" || claims.Role == "technical" {
 			c.Set("admin_id", claims.AdminID)
 		} else if claims.Role == "technician" {
 			c.Set("technician_id", claims.TechnicianID)
-			c.Set("is_technical", claims.IsTechnical)
+		}
+
+		// A technical user may do everything a full admin can except delete.
+		// The rule lives here because every authenticated route passes through
+		// this function, including ones added later -- a router.Use()
+		// middleware could not do it, since it runs before this one and would
+		// see no role. Enforcing it route-by-route would only hold until
+		// someone forgot.
+		if c.Request.Method == "DELETE" && claims.Role == "technical" {
+			responses.Forbidden(c, "Technical users cannot delete records")
+			c.Abort()
+			return
 		}
 
 		c.Next()
@@ -63,7 +74,24 @@ func TechnicianOnly() gin.HandlerFunc {
 	}
 }
 
+// AdminOnly admits both staff roles. "technical" is a full staff account: it
+// may create and update everything an admin can, and is barred only from
+// deleting, which AuthMiddleware enforces.
 func AdminOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("role")
+		if !exists || (role != "admin" && role != "technical") {
+			responses.Forbidden(c, "Staff access only")
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// StrictAdminOnly excludes technical users, for the few things only a full
+// admin should reach -- managing staff accounts themselves.
+func StrictAdminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, exists := c.Get("role")
 		if !exists || role != "admin" {
@@ -72,26 +100,5 @@ func AdminOnly() gin.HandlerFunc {
 			return
 		}
 		c.Next()
-	}
-}
-
-// ReviewerOnly admits admins and "technical" technicians -- the two who may
-// review part requests and repair reports. A plain technician can still file
-// their own work, but not sit in judgement of anyone else's.
-func ReviewerOnly() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		role, _ := c.Get("role")
-		if role == "admin" {
-			c.Next()
-			return
-		}
-		if role == "technician" {
-			if isTechnical, ok := c.Get("is_technical"); ok && isTechnical == true {
-				c.Next()
-				return
-			}
-		}
-		responses.Forbidden(c, "Reviewer access only")
-		c.Abort()
 	}
 }

@@ -21,6 +21,18 @@ func NewPartRequestService(repo *PartRequestRepository, db *gorm.DB) *PartReques
 
 // ─── Creation ────────────────────────────────────────────────────────────────
 
+// staffReviewerPhones is everyone who should hear about new technician work: the
+// configured admin number plus every active staff account with a phone
+// (admins and technical users alike, since both review this work now).
+func staffReviewerPhones(db *gorm.DB) []string {
+	phones := []string{sms.AdminPhone()}
+	var staffPhones []string
+	db.Table("admins").
+		Where("is_active = ? AND deleted_at IS NULL AND phone <> ''", true).
+		Pluck("phone", &staffPhones)
+	return append(phones, staffPhones...)
+}
+
 // resolveGuarantee looks up an optional guarantee code. An empty code is not
 // an error: requests are allowed to stand on their own.
 func (s *PartRequestService) resolveGuarantee(code string) (*uint, string, error) {
@@ -103,13 +115,48 @@ func (s *PartRequestService) CreateByTechnician(techID uint, req *CreatePartRequ
 		return nil, err
 	}
 
+	// A linked repair implies its guarantee, so the code can be inherited
+	// when the technician did not type one.
+	if req.RepairID != nil && *req.RepairID != 0 {
+		var r struct {
+			ID          uint
+			GuaranteeID uint
+			Code        string
+		}
+		if err := s.db.Table("repairs").
+			Select("repairs.id, repairs.guarantee_id, guarantees.code").
+			Joins("LEFT JOIN guarantees ON guarantees.id = repairs.guarantee_id").
+			Where("repairs.id = ? AND repairs.deleted_at IS NULL", *req.RepairID).
+			Scan(&r).Error; err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to verify repair", 500)
+		}
+		if r.ID == 0 {
+			return nil, errors.NewAppError(errors.ErrNotFound, "Repair not found", 404)
+		}
+		if guaranteeID == nil && r.GuaranteeID != 0 {
+			gid := r.GuaranteeID
+			guaranteeID = &gid
+			guaranteeCode = r.Code
+		}
+	}
+
+	wasExpired := false
+	if guaranteeID != nil {
+		var expiry time.Time
+		s.db.Table("guarantees").Select("expiry_date").
+			Where("id = ?", *guaranteeID).Scan(&expiry)
+		wasExpired = !expiry.IsZero() && expiry.Before(time.Now())
+	}
+
 	request := &PartRequest{
-		TechnicianID:  techID,
-		GuaranteeID:   guaranteeID,
-		GuaranteeCode: guaranteeCode,
-		Quantity:      req.Quantity,
-		Notes:         strings.TrimSpace(req.Notes),
-		Status:        StatusPending,
+		TechnicianID:        techID,
+		GuaranteeID:         guaranteeID,
+		GuaranteeCode:       guaranteeCode,
+		RepairID:            req.RepairID,
+		GuaranteeWasExpired: wasExpired,
+		Quantity:            req.Quantity,
+		Notes:               strings.TrimSpace(req.Notes),
+		Status:              StatusPending,
 	}
 
 	if err := s.applyItem(request, req); err != nil {
@@ -125,21 +172,11 @@ func (s *PartRequestService) CreateByTechnician(techID uint, req *CreatePartRequ
 	if item == "" {
 		item = request.CustomItemName
 	}
-	sms.NotifyPartRequest(s.reviewerPhones(), dto.TechnicianName, item, request.CreatedAt)
+	sms.NotifyPartRequest(staffReviewerPhones(s.db), dto.TechnicianName, item, request.CreatedAt)
 
 	return dto, nil
 }
 
-// reviewerPhones is everyone who reviews part requests: the configured admin
-// number plus every active "technical" technician.
-func (s *PartRequestService) reviewerPhones() []string {
-	phones := []string{sms.AdminPhone()}
-	var techPhones []string
-	s.db.Table("technicians").
-		Where("is_technical = ? AND is_active = ? AND deleted_at IS NULL AND phone <> ''", true, true).
-		Pluck("phone", &techPhones)
-	return append(phones, techPhones...)
-}
 
 // ─── Reads ───────────────────────────────────────────────────────────────────
 
@@ -318,6 +355,8 @@ func (s *PartRequestService) mapToDTO(request *PartRequest) *PartRequestDTO {
 		Quantity:      request.Quantity,
 		Notes:         request.Notes,
 		Status:        request.Status,
+		RepairID:            request.RepairID,
+		GuaranteeWasExpired: request.GuaranteeWasExpired,
 		ReviewedBy:    request.ReviewedBy,
 		ReviewNotes:   request.ReviewNotes,
 		CreatedAt:     request.CreatedAt.Format(time.RFC3339),

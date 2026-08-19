@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { usePermissions } from '@/features/auth/hooks/usePermissions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -22,6 +23,7 @@ import { invalidateDashboard } from '@/lib/query-client'
 
 export function TechniciansPage() {
   const { t } = useTranslation()
+  const { canDelete } = usePermissions()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
@@ -185,7 +187,7 @@ export function TechniciansPage() {
         technicians={data?.technicians || []}
         onEdit={handleEdit}
         onToggleStatus={handleToggleStatus}
-        onDelete={handleDeleteClick}
+        onDelete={canDelete ? handleDeleteClick : undefined}
         isLoading={isLoading}
       />
 

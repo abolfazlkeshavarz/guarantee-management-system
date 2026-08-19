@@ -20,6 +20,8 @@ type PartRequestDTO struct {
 	Notes    string `json:"notes"`
 	Status   string `json:"status"`
 
+	RepairID       *uint   `json:"repair_id,omitempty"`
+	GuaranteeWasExpired bool `json:"guarantee_was_expired"`
 	ReviewedBy     *uint   `json:"reviewed_by,omitempty"`
 	ReviewedByName string  `json:"reviewed_by_name,omitempty"`
 	ReviewedByRole string  `json:"reviewed_by_role,omitempty"`
@@ -35,6 +37,8 @@ type PartRequestDTO struct {
 // optional -- the technician is asked up front whether the request relates to
 // a guarantee, and skips the field if it doesn't.
 type CreatePartRequestRequest struct {
+	// Optional: the repair this part is needed for.
+	RepairID *uint `json:"repair_id"`
 	GuaranteeCode string `json:"guarantee_code"`
 
 	ItemType       string `json:"item_type" binding:"required,oneof=component service custom"`

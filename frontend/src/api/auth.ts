@@ -21,8 +21,10 @@ export const authService = {
     })
   },
 
-  async updateProfile(id: number, data: UpdateProfileData): Promise<Admin> {
-    const response = await api.put<{ data: Admin }>(`/admins/${id}`, data)
+  // Editing your own profile goes to /auth/profile, not /admins/:id --
+  // the latter is staff management and is now restricted to full admins.
+  async updateProfile(_id: number, data: UpdateProfileData): Promise<Admin> {
+    const response = await api.put<{ data: Admin }>('/auth/profile', data)
     return response.data.data
   },
 }

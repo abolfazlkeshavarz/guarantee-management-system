@@ -45,7 +45,7 @@ func (s *AuthService) Login(username, password string) (*AdminDTO, string, int64
 	}
 
 	// Generate JWT token
-	token, expiresIn, err := utils.GenerateToken(admin.ID, admin.Username, s.config.JWTSecret, s.config.JWTExpiration)
+	token, expiresIn, err := utils.GenerateToken(admin.ID, admin.Username, admin.Role, s.config.JWTSecret, s.config.JWTExpiration)
 	if err != nil {
 		return nil, "", 0, errors.NewAppError(errors.ErrInternalServer, "Failed to generate token", 500)
 	}
@@ -115,11 +115,17 @@ func (s *AuthService) CreateAdmin(req *AdminCreateRequest) (*AdminDTO, error) {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to hash password", 500)
 	}
 
+	role := req.Role
+	if role == "" {
+		role = "admin"
+	}
 	admin := &Admin{
 		Username: req.Username,
 		Password: string(hashedPassword),
 		FullName: req.FullName,
 		Email:    req.Email,
+		Role:     role,
+		Phone:    req.Phone,
 		IsActive: true,
 	}
 
@@ -160,6 +166,12 @@ func (s *AuthService) UpdateAdmin(adminID uint, req *AdminUpdateRequest) (*Admin
 			return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Username already exists", 409)
 		}
 		admin.Username = req.Username
+	}
+	if req.Role != "" {
+		admin.Role = req.Role
+	}
+	if req.Phone != "" {
+		admin.Phone = req.Phone
 	}
 	if req.FullName != "" {
 		admin.FullName = req.FullName
@@ -218,6 +230,8 @@ func (s *AuthService) mapToDTO(admin *Admin) *AdminDTO {
 		Username:  admin.Username,
 		FullName:  admin.FullName,
 		Email:     admin.Email,
+		Role:      admin.Role,
+		Phone:     admin.Phone,
 		IsActive:  admin.IsActive,
 		CreatedAt: admin.CreatedAt.Format(time.RFC3339),
 	}

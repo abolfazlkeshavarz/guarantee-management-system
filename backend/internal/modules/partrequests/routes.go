@@ -21,10 +21,10 @@ func NewPartRequestModule(db *gorm.DB) *PartRequestModule {
 }
 
 func (m *PartRequestModule) RegisterRoutes(router *gin.RouterGroup) {
-	// Reviewer routes -- admins and "technical" technicians. Static segments
+	// Staff routes -- admins and technical users. Static segments
 	// stay registered before /:id so Gin's router tree accepts them.
 	reviewer := router.Group("/part-requests")
-	reviewer.Use(middleware.AuthMiddleware(), middleware.ReviewerOnly())
+	reviewer.Use(middleware.AuthMiddleware(), middleware.AdminOnly())
 	{
 		reviewer.GET("", m.handler.List)
 		reviewer.GET("/status-counts", m.handler.StatusCounts)

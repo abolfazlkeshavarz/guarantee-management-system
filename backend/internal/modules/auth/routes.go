@@ -33,12 +33,23 @@ func (m *AuthModule) RegisterRoutes(router *gin.RouterGroup) {
 	{
 		protected.GET("/auth/profile", m.handler.GetProfile)
 		protected.POST("/auth/change-password", m.handler.ChangePassword)
+		// Editing your own name/email/username. Separate from the staff
+		// management routes below so a non-admin can maintain their own
+		// profile without being handed everyone else's.
+		protected.PUT("/auth/profile", m.handler.UpdateOwnProfile)
+	}
 
-		// Admin management
-		protected.POST("/admins", m.handler.CreateAdmin)
-		protected.GET("/admins", m.handler.ListAdmins)
-		protected.GET("/admins/:id", m.handler.GetAdmin)
-		protected.PUT("/admins/:id", m.handler.UpdateAdmin)
-		protected.DELETE("/admins/:id", m.handler.DeleteAdmin)
+	// Staff management. Previously these sat behind AuthMiddleware alone, so
+	// ANY valid token -- a technician's included -- could create an admin
+	// account. Full admins only, and technical users are excluded too: being
+	// able to mint accounts would let them grant themselves delete rights.
+	staff := router.Group("/")
+	staff.Use(middleware.AuthMiddleware(), middleware.StrictAdminOnly())
+	{
+		staff.POST("/admins", m.handler.CreateAdmin)
+		staff.GET("/admins", m.handler.ListAdmins)
+		staff.GET("/admins/:id", m.handler.GetAdmin)
+		staff.PUT("/admins/:id", m.handler.UpdateAdmin)
+		staff.DELETE("/admins/:id", m.handler.DeleteAdmin)
 	}
 }

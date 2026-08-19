@@ -27,6 +27,10 @@ type PartRequest struct {
 	Notes    string `gorm:"type:text" json:"notes"`
 	Status   string `gorm:"size:20;default:'Pending'" json:"status"`
 
+	// The repair this part is for, when the technician linked one.
+	RepairID    *uint      `json:"repair_id,omitempty"`
+	// Guarantee already expired when the request was filed (billed differently).
+	GuaranteeWasExpired bool `json:"guarantee_was_expired"`
 	ReviewedBy  *uint      `json:"reviewed_by,omitempty"`
 	// Set instead of ReviewedBy when a "technical" technician reviewed it;
 	// reviewed_by is a FK to admins and cannot hold a technician id.

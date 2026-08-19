@@ -37,6 +37,8 @@ type RepairDTO struct {
 	Description    string                   `json:"description"`
 	Components     []RepairComponentItemDTO `json:"components"`
 	Services       []RepairServiceItemDTO   `json:"services"`
+	GuaranteeWasExpired bool                `json:"guarantee_was_expired"`
+	RepairCountForGuarantee int64           `json:"repair_count_for_guarantee"`
 	ReviewedBy     *uint                    `json:"reviewed_by,omitempty"`
 	ReviewedByName string                   `json:"reviewed_by_name,omitempty"`
 	ReviewedByRole string                   `json:"reviewed_by_role,omitempty"`

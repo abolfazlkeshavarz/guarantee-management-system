@@ -63,6 +63,8 @@ func printUsage() {
 	fmt.Println("    -password=xxx       Password (required)")
 	fmt.Println("    -fullname=xxx       Full name")
 	fmt.Println("    -email=xxx          Email address")
+	fmt.Println("    -role=xxx           admin (default) or technical")
+	fmt.Println("    -phone=xxx          Phone, for reviewer SMS")
 	fmt.Println()
 	fmt.Println("  list                  List all admin users")
 	fmt.Println()
@@ -100,6 +102,8 @@ func createAdmin(db *gorm.DB) {
 	password := flag.String("password", "", "Password")
 	fullname := flag.String("fullname", "", "Full name")
 	email := flag.String("email", "", "Email")
+	role := flag.String("role", "admin", "Role: admin or technical")
+	phone := flag.String("phone", "", "Phone (used for reviewer SMS)")
 
 	// Parse flags after the command
 	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
@@ -108,6 +112,9 @@ func createAdmin(db *gorm.DB) {
 
 	if *username == "" || *password == "" {
 		log.Fatal("Error: username and password are required")
+	}
+	if *role != "admin" && *role != "technical" {
+		log.Fatal("Error: role must be 'admin' or 'technical'")
 	}
 
 	// Check if user already exists
@@ -129,6 +136,8 @@ func createAdmin(db *gorm.DB) {
 		"password":  string(hashedPassword),
 		"full_name": *fullname,
 		"email":     *email,
+		"role":      *role,
+		"phone":     *phone,
 		"is_active": true,
 	}
 

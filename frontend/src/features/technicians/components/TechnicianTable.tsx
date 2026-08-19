@@ -23,7 +23,7 @@ interface TechnicianTableProps {
   technicians: Technician[]
   onEdit: (technician: Technician) => void
   onToggleStatus: (technician: Technician) => void
-  onDelete: (technician: Technician) => void
+  onDelete?: (technician: Technician) => void
   isLoading?: boolean
 }
 
@@ -98,13 +98,15 @@ export function TechnicianTable({
                       <Power className="me-2 h-4 w-4" />
                       {tech.is_active ? t('common.deactivate') : t('common.activate')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem
+                    {onDelete && (
+<DropdownMenuItem
                       onClick={() => onDelete(tech)}
                       className="text-destructive"
                     >
                       <Trash2 className="me-2 h-4 w-4" />
                       {t('common.delete')}
                     </DropdownMenuItem>
+)}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

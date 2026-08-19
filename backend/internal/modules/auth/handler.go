@@ -57,7 +57,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	// AuthMiddleware never runs on the login route, so without this the audit
 	// trail would record every sign-in as an anonymous "public" action.
 	c.Set("username", admin.Username)
-	c.Set("role", "admin")
+	c.Set("role", admin.Role)
 	c.Set("admin_id", admin.ID)
 
 	responses.Success(c, LoginResponse{
@@ -244,6 +244,41 @@ func (h *AuthHandler) GetAdmin(c *gin.Context) {
 // @Failure 400 {object} responses.Response
 // @Failure 404 {object} responses.Response
 // @Router /admins/{id} [put]
+// UpdateOwnProfile lets a signed-in staff member edit their own name, email
+// and username.
+//
+// The id comes from the token, never the request, so this cannot be pointed
+// at somebody else's account. Role and active-status are stripped for the
+// same reason: a technical user editing their own profile must not be able to
+// promote themselves to admin and thereby regain delete rights.
+func (h *AuthHandler) UpdateOwnProfile(c *gin.Context) {
+	adminID := c.GetUint("admin_id")
+	if adminID == 0 {
+		responses.Forbidden(c, "Staff account required")
+		return
+	}
+
+	var req AdminUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+	req.Role = ""
+	req.IsActive = nil
+
+	admin, err := h.service.UpdateAdmin(adminID, &req)
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			responses.Error(c, appErr.Code, appErr.Message)
+			return
+		}
+		responses.InternalError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Profile updated successfully", admin)
+}
+
 func (h *AuthHandler) UpdateAdmin(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {

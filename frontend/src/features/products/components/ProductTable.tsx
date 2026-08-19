@@ -14,7 +14,7 @@ import { FormattedDate } from '@/components/common/FormattedDate'
 interface ProductTableProps {
   products: Product[]
   onEdit: (product: Product) => void
-  onDelete: (product: Product) => void
+  onDelete?: (product: Product) => void
   isLoading?: boolean
 }
 
@@ -71,10 +71,12 @@ export function ProductTable({ products, onEdit, onDelete, isLoading }: ProductT
                       <Edit className="me-2 h-4 w-4" />
                       {t('common.edit')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onDelete(product)} className="text-destructive">
+                    {onDelete && (
+<DropdownMenuItem onClick={() => onDelete(product)} className="text-destructive">
                       <Trash2 className="me-2 h-4 w-4" />
                       {t('common.delete')}
                     </DropdownMenuItem>
+)}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

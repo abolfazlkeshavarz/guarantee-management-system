@@ -23,7 +23,7 @@ interface CustomerTableProps {
   customers: Customer[]
   onView: (customer: Customer) => void
   onEdit: (customer: Customer) => void
-  onDelete: (customer: Customer) => void
+  onDelete?: (customer: Customer) => void
   isLoading?: boolean
 }
 
@@ -96,13 +96,15 @@ export function CustomerTable({
                       <Edit className="me-2 h-4 w-4" />
                       Edit
                     </DropdownMenuItem>
-                    <DropdownMenuItem
+                    {onDelete && (
+<DropdownMenuItem
                       onClick={() => onDelete(customer)}
                       className="text-destructive"
                     >
                       <Trash2 className="me-2 h-4 w-4" />
                       Delete
                     </DropdownMenuItem>
+)}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

@@ -59,7 +59,6 @@ export function TechnicianForm({
       national_id: '',
       address: '',
       is_active: true,
-      is_technical: false,
     },
   })
 
@@ -73,7 +72,6 @@ export function TechnicianForm({
         national_id: technician.national_id || '',
         address: technician.address || '',
         is_active: technician.is_active,
-        is_technical: technician.is_technical ?? false,
       })
     } else {
       form.reset({
@@ -84,7 +82,6 @@ export function TechnicianForm({
         national_id: '',
         address: '',
         is_active: true,
-        is_technical: false,
       })
     }
   }, [technician, form])
@@ -246,37 +243,6 @@ export function TechnicianForm({
                       <SelectItem value="false">{t('forms.inactive')}</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="is_technical"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('technicians.form.role')}</FormLabel>
-                  <Select
-                    items={[
-                      { value: 'false', label: t('technicians.role.technician') },
-                      { value: 'true', label: t('technicians.role.technical') },
-                    ]}
-                    value={field.value ? 'true' : 'false'}
-                    onValueChange={(value) => field.onChange(value === 'true')}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="false">{t('technicians.role.technician')}</SelectItem>
-                      <SelectItem value="true">{t('technicians.role.technical')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {t('technicians.role.technicalHint')}
-                  </p>
                   <FormMessage />
                 </FormItem>
               )}

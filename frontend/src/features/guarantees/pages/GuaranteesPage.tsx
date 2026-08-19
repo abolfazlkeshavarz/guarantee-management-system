@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { usePermissions } from '@/features/auth/hooks/usePermissions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -26,6 +27,7 @@ import { invalidateDashboard } from '@/lib/query-client'
 
 export function GuaranteesPage() {
   const { t } = useTranslation()
+  const { canDelete } = usePermissions()
   const queryClient = useQueryClient()
 
   const [page, setPage] = useState(1)
@@ -238,7 +240,7 @@ export function GuaranteesPage() {
           setSelectedGuarantee(g)
           if (confirm(t('guarantees.cancelConfirm', { code: g.code, customer: g.customer_name }))) handleCancel()
         }}
-        onDelete={(g) => { setSelectedGuarantee(g); setIsDeleteOpen(true) }}
+        onDelete={canDelete ? ((g) => { setSelectedGuarantee(g); setIsDeleteOpen(true) }) : undefined}
         onSetGolden={(g) => { setSelectedGuarantee(g); setIsSetGoldenOpen(true) }}
         onRemoveGolden={(g) => { setSelectedGuarantee(g); setIsRemoveGoldenOpen(true) }}
         isLoading={isLoading}

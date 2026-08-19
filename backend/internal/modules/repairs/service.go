@@ -18,11 +18,27 @@ func NewRepairService(repo *RepairRepository, db *gorm.DB) *RepairService {
 	return &RepairService{repo: repo, db: db}
 }
 
-// verifyGuaranteeValid confirms the guarantee exists and is currently under
-// warranty (Approved/Renewed and not expired) -- the same check a technician
-// already saw client-side via the public guarantee-check endpoint, verified
-// here authoritatively before a repair can be filed against it.
-func (s *RepairService) verifyGuaranteeValid(guaranteeID uint) error {
+// staffReviewerPhones is everyone who should hear about new technician work: the
+// configured admin number plus every active staff account with a phone
+// (admins and technical users alike, since both review this work now).
+func staffReviewerPhones(db *gorm.DB) []string {
+	phones := []string{sms.AdminPhone()}
+	var staffPhones []string
+	db.Table("admins").
+		Where("is_active = ? AND deleted_at IS NULL AND phone <> ''", true).
+		Pluck("phone", &staffPhones)
+	return append(phones, staffPhones...)
+}
+
+// verifyGuarantee confirms the guarantee exists and reports whether it had
+// already expired.
+//
+// Expired guarantees are deliberately NOT rejected: out-of-warranty work is
+// still real work that gets recorded, it is simply billed differently. The
+// caller stamps the returned flag onto the record so the billing basis is
+// fixed at the time of the work, rather than shifting if the guarantee is
+// renewed later.
+func (s *RepairService) verifyGuarantee(guaranteeID uint) (wasExpired bool, err error) {
 	var g struct {
 		ID         uint
 		Status     string
@@ -32,19 +48,22 @@ func (s *RepairService) verifyGuaranteeValid(guaranteeID uint) error {
 		Select("id, status, expiry_date").
 		Where("id = ? AND deleted_at IS NULL", guaranteeID).
 		Scan(&g).Error; err != nil {
-		return errors.NewAppError(errors.ErrInternalServer, "Failed to verify guarantee", 500)
+		return false, errors.NewAppError(errors.ErrInternalServer, "Failed to verify guarantee", 500)
 	}
 	if g.ID == 0 {
-		return ErrGuaranteeNotFound
+		return false, ErrGuaranteeNotFound
 	}
-	if (g.Status != "Approved" && g.Status != "Renewed") || g.ExpiryDate.Before(time.Now()) {
-		return ErrGuaranteeNotValid
+	// A cancelled or rejected guarantee is not a warranty at all, so it still
+	// cannot take work -- only *expiry* is now permitted.
+	if g.Status != "Approved" && g.Status != "Renewed" && g.Status != "Expired" {
+		return false, ErrGuaranteeNotValid
 	}
-	return nil
+	return g.ExpiryDate.Before(time.Now()), nil
 }
 
 func (s *RepairService) Create(req *CreateRepairRequest) (*RepairDTO, error) {
-	if err := s.verifyGuaranteeValid(req.GuaranteeID); err != nil {
+	wasExpired, err := s.verifyGuarantee(req.GuaranteeID)
+	if err != nil {
 		return nil, err
 	}
 	if len(req.Components) == 0 && len(req.Services) == 0 {
@@ -52,10 +71,11 @@ func (s *RepairService) Create(req *CreateRepairRequest) (*RepairDTO, error) {
 	}
 
 	repair := &Repair{
-		GuaranteeID:  req.GuaranteeID,
-		TechnicianID: req.TechnicianID,
-		Status:       StatusPending,
-		Description:  req.Description,
+		GuaranteeID:         req.GuaranteeID,
+		TechnicianID:        req.TechnicianID,
+		Status:              StatusPending,
+		Description:         req.Description,
+		GuaranteeWasExpired: wasExpired,
 	}
 
 	if err := s.repo.CreateWithItems(repair, req.Components, req.Services); err != nil {
@@ -66,7 +86,8 @@ func (s *RepairService) Create(req *CreateRepairRequest) (*RepairDTO, error) {
 }
 
 func (s *RepairService) CreateByTechnician(techID uint, req *CreateMyRepairRequest) (*RepairDTO, error) {
-	if err := s.verifyGuaranteeValid(req.GuaranteeID); err != nil {
+	wasExpired, err := s.verifyGuarantee(req.GuaranteeID)
+	if err != nil {
 		return nil, err
 	}
 	if len(req.Components) == 0 && len(req.Services) == 0 {
@@ -74,10 +95,11 @@ func (s *RepairService) CreateByTechnician(techID uint, req *CreateMyRepairReque
 	}
 
 	repair := &Repair{
-		GuaranteeID:  req.GuaranteeID,
-		TechnicianID: &techID, // forced server-side — cannot be spoofed by the client
-		Status:       StatusPending,
-		Description:  req.Description,
+		GuaranteeID:         req.GuaranteeID,
+		TechnicianID:        &techID, // forced server-side — cannot be spoofed by the client
+		Status:              StatusPending,
+		Description:         req.Description,
+		GuaranteeWasExpired: wasExpired,
 	}
 
 	if err := s.repo.CreateWithItems(repair, req.Components, req.Services); err != nil {
@@ -85,22 +107,11 @@ func (s *RepairService) CreateByTechnician(techID uint, req *CreateMyRepairReque
 	}
 
 	dto := s.mapToDTO(repair)
-	sms.NotifyRepairReport(s.reviewerPhones(), dto.TechnicianName, dto.GuaranteeCode, repair.CreatedAt)
+	sms.NotifyRepairReport(staffReviewerPhones(s.db), dto.TechnicianName, dto.GuaranteeCode, repair.CreatedAt)
 
 	return dto, nil
 }
 
-// reviewerPhones is everyone who should hear about new technician work: the
-// configured admin number plus every active "technical" technician, who can
-// now review these themselves.
-func (s *RepairService) reviewerPhones() []string {
-	phones := []string{sms.AdminPhone()}
-	var techPhones []string
-	s.db.Table("technicians").
-		Where("is_technical = ? AND is_active = ? AND deleted_at IS NULL AND phone <> ''", true, true).
-		Pluck("phone", &techPhones)
-	return append(phones, techPhones...)
-}
 
 func (s *RepairService) GetByID(id uint) (*RepairDTO, error) {
 	repair, err := s.repo.FindByID(id)
@@ -295,6 +306,7 @@ func (s *RepairService) mapToDTO(repair *Repair) *RepairDTO {
 		TechnicianID: repair.TechnicianID,
 		Status:       repair.Status,
 		Description:  repair.Description,
+		GuaranteeWasExpired: repair.GuaranteeWasExpired,
 		ReviewedBy:   repair.ReviewedBy,
 		ReviewNotes:  repair.ReviewNotes,
 		CreatedAt:    repair.CreatedAt.Format(time.RFC3339),
@@ -327,6 +339,12 @@ func (s *RepairService) mapToDTO(repair *Repair) *RepairDTO {
 		s.db.Table("technicians").Where("id = ?", *repair.TechnicianID).Select("full_name").Scan(&techName)
 		dto.TechnicianName = techName
 	}
+
+	// How many repairs this guarantee has had overall -- a frequently
+	// repaired product should stand out in the listings.
+	s.db.Table("repairs").
+		Where("guarantee_id = ? AND deleted_at IS NULL", repair.GuaranteeID).
+		Count(&dto.RepairCountForGuarantee)
 
 	if repair.ReviewedByTechnicianID != nil {
 		var techReviewer string

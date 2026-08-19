@@ -56,7 +56,7 @@ interface GuaranteeTableProps {
   onReject: (guarantee: Guarantee) => void
   onRenew: (guarantee: Guarantee) => void
   onCancel: (guarantee: Guarantee) => void
-  onDelete: (guarantee: Guarantee) => void
+  onDelete?: (guarantee: Guarantee) => void
   onSetGolden: (guarantee: Guarantee) => void
   onRemoveGolden: (guarantee: Guarantee) => void
   isLoading?: boolean
@@ -223,14 +223,18 @@ export function GuaranteeTable({
                       </DropdownMenuItem>
                     )}
 
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => onDelete(guarantee)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="me-2 h-4 w-4" />
-                      {t('common.delete')}
-                    </DropdownMenuItem>
+                    {onDelete && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => onDelete(guarantee)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="me-2 h-4 w-4" />
+                          {t('common.delete')}
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

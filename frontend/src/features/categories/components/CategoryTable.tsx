@@ -14,7 +14,7 @@ import { FormattedDate } from '@/components/common/FormattedDate'
 interface CategoryTableProps {
   categories: Category[]
   onEdit: (category: Category) => void
-  onDelete: (category: Category) => void
+  onDelete?: (category: Category) => void
   isLoading?: boolean
 }
 
@@ -71,10 +71,12 @@ export function CategoryTable({ categories, onEdit, onDelete, isLoading }: Categ
                       <Edit className="me-2 h-4 w-4" />
                       {t('common.edit')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onDelete(category)} className="text-destructive">
+                    {onDelete && (
+<DropdownMenuItem onClick={() => onDelete(category)} className="text-destructive">
                       <Trash2 className="me-2 h-4 w-4" />
                       {t('common.delete')}
                     </DropdownMenuItem>
+)}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

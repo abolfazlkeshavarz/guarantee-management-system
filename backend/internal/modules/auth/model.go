@@ -12,6 +12,9 @@ type Admin struct {
 	Password  string         `gorm:"size:255;not null" json:"-"`
 	FullName  string         `gorm:"size:100" json:"full_name"`
 	Email     string         `gorm:"size:100" json:"email"`
+	// "admin" or "technical" (full staff access except delete).
+	Role      string         `gorm:"size:20;not null;default:admin" json:"role"`
+	Phone     string         `gorm:"size:20" json:"phone"`
 	IsActive  bool           `gorm:"default:true" json:"is_active"`
 	LastLogin *time.Time     `json:"last_login,omitempty"`
 	CreatedAt time.Time      `json:"created_at"`
