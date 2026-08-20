@@ -28,18 +28,30 @@ func NewGuaranteeHandler(service *GuaranteeService, validator *GuaranteeValidato
 
 func (h *GuaranteeHandler) Create(c *gin.Context) {
 	req, err := h.validator.ValidateCreateRequest(c)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	adminID := c.GetUint("admin_id")
 	guarantee, err := h.service.Create(req, adminID)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.SuccessWithMessage(c, "Guarantee created successfully", guarantee)
 }
 
 func (h *GuaranteeHandler) Get(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil { responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID"); return }
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
 	guarantee, err := h.service.GetByID(uint(id))
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.Success(c, guarantee)
 }
 
@@ -52,14 +64,24 @@ func (h *GuaranteeHandler) List(c *gin.Context) {
 
 	var customerID, productID *uint
 	if id, err := strconv.ParseUint(c.DefaultQuery("customer_id", "0"), 10, 32); err == nil && id > 0 {
-		customerID = new(uint); *customerID = uint(id)
+		customerID = new(uint)
+		*customerID = uint(id)
 	}
 	if id, err := strconv.ParseUint(c.DefaultQuery("product_id", "0"), 10, 32); err == nil && id > 0 {
-		productID = new(uint); *productID = uint(id)
+		productID = new(uint)
+		*productID = uint(id)
 	}
 
-	result, err := h.service.List(page, limit, search, status, customerID, productID, tier)
-	if err != nil { handleError(c, err); return }
+	var expiringWithinMonths *int
+	if m, err := strconv.Atoi(c.DefaultQuery("expiring_within_months", "0")); err == nil && m > 0 {
+		expiringWithinMonths = &m
+	}
+
+	result, err := h.service.List(page, limit, search, status, customerID, productID, tier, expiringWithinMonths)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.SuccessWithMeta(c, result.Guarantees, responses.PaginationMeta{
 		CurrentPage: result.Page,
 		PerPage:     result.Limit,
@@ -70,56 +92,98 @@ func (h *GuaranteeHandler) List(c *gin.Context) {
 
 func (h *GuaranteeHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil { responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID"); return }
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
 	req, err := h.validator.ValidateUpdateRequest(c)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	guarantee, err := h.service.Update(uint(id), req)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.SuccessWithMessage(c, "Guarantee updated successfully", guarantee)
 }
 
 func (h *GuaranteeHandler) Approve(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil { responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID"); return }
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
 	req, err := h.validator.ValidateApproveRequest(c)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	adminID := c.GetUint("admin_id")
 	guarantee, err := h.service.Approve(uint(id), req, adminID)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.SuccessWithMessage(c, "Guarantee approved successfully", guarantee)
 }
 
 func (h *GuaranteeHandler) Renew(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil { responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID"); return }
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
 	req, err := h.validator.ValidateRenewRequest(c)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	adminID := c.GetUint("admin_id")
 	guarantee, err := h.service.Renew(uint(id), req, adminID)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.SuccessWithMessage(c, "Guarantee renewed successfully", guarantee)
 }
 
 func (h *GuaranteeHandler) Cancel(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil { responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID"); return }
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
 	adminID := c.GetUint("admin_id")
 	guarantee, err := h.service.Cancel(uint(id), adminID)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.SuccessWithMessage(c, "Guarantee cancelled successfully", guarantee)
 }
 
 func (h *GuaranteeHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil { responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID"); return }
-	if err := h.service.Delete(uint(id)); err != nil { handleError(c, err); return }
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
+	if err := h.service.Delete(uint(id)); err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.SuccessWithMessage(c, "Guarantee deleted successfully", nil)
 }
 
 func (h *GuaranteeHandler) GetExpiringSoon(c *gin.Context) {
 	days, _ := strconv.Atoi(c.DefaultQuery("days", "30"))
 	guarantees, err := h.service.GetExpiringSoon(days)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.Success(c, guarantees)
 }
 
@@ -127,7 +191,10 @@ func (h *GuaranteeHandler) GetExpiringSoon(c *gin.Context) {
 
 func (h *GuaranteeHandler) SetGolden(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil { responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID"); return }
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
 
 	var req SetGoldenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -137,17 +204,26 @@ func (h *GuaranteeHandler) SetGolden(c *gin.Context) {
 
 	adminID := c.GetUint("admin_id")
 	guarantee, err := h.service.SetGolden(uint(id), &req, adminID)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.SuccessWithMessage(c, "Guarantee set to golden successfully", guarantee)
 }
 
 func (h *GuaranteeHandler) RemoveGolden(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil { responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID"); return }
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid guarantee ID")
+		return
+	}
 
 	adminID := c.GetUint("admin_id")
 	guarantee, err := h.service.RemoveGolden(uint(id), adminID)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.SuccessWithMessage(c, "Golden status removed successfully", guarantee)
 }
 
@@ -162,7 +238,10 @@ func (h *GuaranteeHandler) PublicRegister(c *gin.Context) {
 		return
 	}
 	response, err := h.service.PublicRegister(&req)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.SuccessWithMessage(c, "Guarantee registered successfully", response)
 }
 
@@ -172,15 +251,24 @@ func (h *GuaranteeHandler) GetGuaranteePeriods(c *gin.Context) {
 
 func (h *GuaranteeHandler) CheckGuaranteeStatus(c *gin.Context) {
 	code := c.Query("code")
-	if code == "" { responses.Error(c, http.StatusBadRequest, "Guarantee code is required"); return }
+	if code == "" {
+		responses.Error(c, http.StatusBadRequest, "Guarantee code is required")
+		return
+	}
 	guarantee, err := h.service.GetByCode(code)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.Success(c, guarantee)
 }
 
 func (h *GuaranteeHandler) UploadFile(c *gin.Context) {
 	file, err := c.FormFile("file")
-	if err != nil { responses.Error(c, http.StatusBadRequest, "No file uploaded"); return }
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "No file uploaded")
+		return
+	}
 
 	allowedTypes := map[string]bool{
 		"image/jpeg": true, "image/png": true, "image/gif": true,
@@ -197,7 +285,10 @@ func (h *GuaranteeHandler) UploadFile(c *gin.Context) {
 	}
 
 	info, err := storage.SaveFile(file, "guarantees")
-	if err != nil { responses.InternalError(c, err); return }
+	if err != nil {
+		responses.InternalError(c, err)
+		return
+	}
 
 	fileURL := fmt.Sprintf("%s/uploads/%s", strings.TrimRight(h.appURL, "/"), filepath.ToSlash(info.Path))
 	responses.Success(c, gin.H{
@@ -216,7 +307,10 @@ func (h *GuaranteeHandler) CreateByAdmin(c *gin.Context) {
 	}
 	adminID := c.GetUint("admin_id")
 	guarantee, err := h.service.CreateByAdmin(&req, adminID)
-	if err != nil { handleError(c, err); return }
+	if err != nil {
+		handleError(c, err)
+		return
+	}
 	responses.SuccessWithMessage(c, "Guarantee created successfully by admin", guarantee)
 }
 

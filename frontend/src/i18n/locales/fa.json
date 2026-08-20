@@ -146,7 +146,8 @@
     "tabs": {
       "all": "همه",
       "golden": "طلایی",
-      "normal": "عادی"
+      "normal": "عادی",
+      "expired": "منقضی‌شده"
     },
     "tier": {
       "_": "سطح",
@@ -200,7 +201,22 @@
     "renewNotesPlaceholder": "یادداشتی درباره این تمدید بنویسید...",
     "processing": "در حال پردازش...",
     "approvedByColumn": "بررسی‌شده توسط",
-    "notReviewed": "-"
+    "notReviewed": "-",
+    "remaining": {
+      "left": "{{amount}} باقی مانده",
+      "expiredAgo": "{{amount}} از انقضا گذشته",
+      "expiresOn": "انقضا در {{date}}",
+      "monthsAndDays": "{{months}} ماه و {{days}} روز",
+      "daysOnly": "{{days}} روز",
+      "column": "روزهای باقی‌مانده",
+      "expiredColumn": "{{days}} روز از انقضا گذشته",
+      "filterLabel": "زمان باقی‌مانده گارانتی",
+      "monthsOnly": "{{months}} ماه"
+    },
+    "expiring": {
+      "any": "همه زمان‌ها",
+      "within": "کمتر از {{months}} ماه باقی مانده"
+    }
   },
   "customers": {
     "title": "مشتریان",
@@ -409,7 +425,9 @@
     "submitSuccess": "گزارش تعمیر ثبت شد",
     "submitError": "ثبت گزارش تعمیر ناموفق بود",
     "reviewPartRequestsNav": "بررسی درخواست قطعات",
-    "reviewRepairsNav": "بررسی تعمیرات"
+    "reviewRepairsNav": "بررسی تعمیرات",
+    "guaranteeExpired": "گارانتی منقضی شده است",
+    "expiredBillingNote": "کار همچنان ثبت می‌شود، اما به‌صورت خارج از گارانتی محاسبه می‌گردد."
   },
   "repairItems": {
     "componentsReplaced": "قطعات تعویض‌شده",

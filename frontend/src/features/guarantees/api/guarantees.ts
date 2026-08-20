@@ -26,7 +26,9 @@ export const guaranteeService = {
     status: string = '',
     customerId?: number,
     productId?: number,
-    tier?: string
+    tier?: string,
+    /** Only guarantees whose cover is still live but runs out within N months. */
+    expiringWithinMonths?: number
   ): Promise<GuaranteeListResponse> {
     const response = await api.get('/guarantees', {
       params: {
@@ -36,6 +38,7 @@ export const guaranteeService = {
         customer_id: customerId || undefined,
         product_id: productId || undefined,
         tier: tier || undefined,
+        expiring_within_months: expiringWithinMonths || undefined,
       },
     })
     return {

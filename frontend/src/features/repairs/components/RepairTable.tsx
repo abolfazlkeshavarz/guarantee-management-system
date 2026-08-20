@@ -106,7 +106,7 @@ export function RepairTable({
                 </Badge>
               </TableCell>
               <TableCell>{repair.customer_name}</TableCell>
-              <TableCell>{repair.technician_name || 'Unassigned'}</TableCell>
+              <TableCell>{repair.technician_name || t('repairView.unassigned')}</TableCell>
               <TableCell>
                 <RepairStatusBadge status={repair.status} />
               </TableCell>

@@ -25,8 +25,21 @@ export const technicianGuaranteeService = {
   },
 }
 
+/**
+ * Whether work may be recorded against this guarantee at all.
+ *
+ * Deliberately ignores the expiry date. Out-of-warranty work is still done and
+ * still has to be recorded -- it is simply billed differently -- so refusing
+ * an expired guarantee here would leave the technician no way to file the job.
+ * Only the status can rule a guarantee out: a rejected or cancelled one was
+ * never valid cover in the first place.
+ */
+export function isGuaranteeAcceptable(guarantee: Guarantee): boolean {
+  return ['Approved', 'Renewed'].includes(guarantee.status)
+}
+
+/** Whether the guarantee is still inside its cover period. */
 export function isGuaranteeValid(guarantee: Guarantee): boolean {
-  const validStatuses = ['Approved', 'Renewed']
-  if (!validStatuses.includes(guarantee.status)) return false
+  if (!isGuaranteeAcceptable(guarantee)) return false
   return new Date(guarantee.expiry_date) >= new Date()
 }

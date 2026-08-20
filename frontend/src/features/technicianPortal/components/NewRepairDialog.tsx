@@ -17,7 +17,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Form, FormField, FormItem, FormControl, FormMessage } from '@/components/ui/form'
 import { technicianAuthService } from '../api/technicianAuth'
-import { technicianGuaranteeService, isGuaranteeValid, Guarantee } from '../api/technicianGuarantees'
+import {
+  technicianGuaranteeService,
+  isGuaranteeAcceptable,
+  Guarantee,
+} from '../api/technicianGuarantees'
 import { repairComponentService, repairServiceCatalogService } from '@/features/repairCatalog/api/repairCatalog'
 import {
   RepairItemsFields,
@@ -26,7 +30,8 @@ import {
 import { technicianPartRequestService } from '@/features/partRequests/api/partRequests'
 import { repairSchema, RepairFormValues } from '@/features/repairs/schemas/repairSchema'
 import { toast } from 'sonner'
-import { Plus, Search, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { GuaranteeStatePanel } from './GuaranteeStatePanel'
+import { Plus, Search, XCircle, Loader2 } from 'lucide-react'
 
 export function NewRepairDialog() {
   const { t, i18n } = useTranslation()
@@ -110,7 +115,7 @@ export function NewRepairDialog() {
     setGuarantee(null)
     try {
       const result = await technicianGuaranteeService.checkByCode(code.trim().toUpperCase())
-      if (!isGuaranteeValid(result)) {
+      if (!isGuaranteeAcceptable(result)) {
         const statusLabel = t(`repairs.status.${result.status}`, { defaultValue: result.status })
         setCheckError(t('technicianPortal.guaranteeInvalidStatus', { status: statusLabel }))
         return
@@ -174,15 +179,7 @@ export function NewRepairDialog() {
               </Button>
             )}
           </div>
-          {guarantee && (
-            <div className={`p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800 flex items-start gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-              <CheckCircle2 className={`h-4 w-4 mt-0.5 shrink-0 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-              <div className={isRTL ? 'text-right' : ''}>
-                <p className="font-medium">{t('technicianPortal.guaranteeValid')}</p>
-                <p>{guarantee.product_name} — {guarantee.customer_name}</p>
-              </div>
-            </div>
-          )}
+          {guarantee && <GuaranteeStatePanel guarantee={guarantee} />}
           {checkError && (
             <div className={`p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800 flex items-start gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <XCircle className={`h-4 w-4 mt-0.5 shrink-0 ${isRTL ? 'ml-2' : 'mr-2'}`} />

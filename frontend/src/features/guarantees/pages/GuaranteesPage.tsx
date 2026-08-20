@@ -20,7 +20,7 @@ import { SetGoldenDialog } from '../components/SetGoldenDialog'
 import { RemoveGoldenDialog } from '../components/RemoveGoldenDialog'
 import { GuaranteeExportDialog } from '../components/GuaranteeExportDialog'
 import { guaranteeService } from '../api/guarantees'
-import { Guarantee, GUARANTEE_STATUSES, SetGoldenData } from '../types'
+import { Guarantee, GUARANTEE_STATUSES, SetGoldenData, EXPIRING_WINDOWS } from '../types'
 import { customerService } from '@/features/customers/api/customers'
 import { productService } from '@/features/products/api/products'
 import { invalidateDashboard } from '@/lib/query-client'
@@ -36,6 +36,8 @@ export function GuaranteesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [tierFilter, setTierFilter] = useState('all')
+  // '' = no window; otherwise cover that runs out within N months.
+  const [expiringFilter, setExpiringFilter] = useState('all')
   const [customerFilter, setCustomerFilter] = useState('all')
   const [productFilter, setProductFilter] = useState('all')
 
@@ -66,7 +68,7 @@ export function GuaranteesPage() {
   }, [search])
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['guarantees', page, limit, debouncedSearch, statusFilter, tierFilter, customerFilter, productFilter],
+    queryKey: ['guarantees', page, limit, debouncedSearch, statusFilter, tierFilter, customerFilter, productFilter, expiringFilter],
     queryFn: () =>
       guaranteeService.list(
         page, limit, debouncedSearch,
@@ -74,6 +76,7 @@ export function GuaranteesPage() {
         customerFilter !== 'all' ? Number(customerFilter) : undefined,
         productFilter !== 'all' ? Number(productFilter) : undefined,
         tierFilter !== 'all' ? tierFilter : undefined,
+        expiringFilter !== 'all' ? Number(expiringFilter) : undefined,
       ),
   })
 
@@ -169,6 +172,9 @@ export function GuaranteesPage() {
           <TabsTrigger value="all">{t('guarantees.tabs.all')}</TabsTrigger>
           <TabsTrigger value="golden">{t('guarantees.tabs.golden')}</TabsTrigger>
           <TabsTrigger value="normal">{t('guarantees.tabs.normal')}</TabsTrigger>
+          <TabsTrigger value="expired" className="data-[selected]:bg-red-100 data-[selected]:text-red-800">
+            {t('guarantees.tabs.expired')}
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -187,6 +193,30 @@ export function GuaranteesPage() {
           <SelectContent>
             <SelectItem value="all">{t('guarantees.allStatus')}</SelectItem>
             {GUARANTEE_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select
+          items={[
+            { value: 'all', label: t('guarantees.expiring.any') },
+            ...EXPIRING_WINDOWS.map((m) => ({
+              value: String(m),
+              label: t('guarantees.expiring.within', { months: m }),
+            })),
+          ]}
+          value={expiringFilter}
+          onValueChange={(v) => { setExpiringFilter(v ?? 'all'); setPage(1) }}
+        >
+          <SelectTrigger className="w-[190px]">
+            <SelectValue placeholder={t('guarantees.expiring.any')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('guarantees.expiring.any')}</SelectItem>
+            {EXPIRING_WINDOWS.map((m) => (
+              <SelectItem key={m} value={String(m)}>
+                {t('guarantees.expiring.within', { months: m })}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 

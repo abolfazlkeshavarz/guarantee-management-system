@@ -84,3 +84,12 @@ func (g *Guarantee) Tier(now time.Time) string {
 	}
 	return TierNormal
 }
+
+// DaysRemaining is how many days of cover are left, counting from today.
+// Negative once the guarantee has lapsed, which is what lets a caller say
+// "expired 12 days ago" rather than just "expired".
+func (g *Guarantee) DaysRemaining(now time.Time) int {
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	expiry := time.Date(g.ExpiryDate.Year(), g.ExpiryDate.Month(), g.ExpiryDate.Day(), 0, 0, 0, 0, time.UTC)
+	return int(expiry.Sub(today).Hours() / 24)
+}

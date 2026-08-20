@@ -146,7 +146,8 @@
     "tabs": {
       "all": "All",
       "golden": "Golden",
-      "normal": "Normal"
+      "normal": "Normal",
+      "expired": "Expired"
     },
     "tier": {
       "_": "Tier",
@@ -200,7 +201,22 @@
     "renewNotesPlaceholder": "Add notes about this renewal...",
     "processing": "Processing...",
     "approvedByColumn": "Reviewed by",
-    "notReviewed": "-"
+    "notReviewed": "-",
+    "remaining": {
+      "left": "{{amount}} left",
+      "expiredAgo": "Expired {{amount}} ago",
+      "expiresOn": "Expires {{date}}",
+      "monthsAndDays": "{{months}} months and {{days}} days",
+      "daysOnly": "{{days}} days",
+      "column": "Days remaining",
+      "expiredColumn": "expired {{days}} days ago",
+      "filterLabel": "Remaining cover",
+      "monthsOnly": "{{months}} months"
+    },
+    "expiring": {
+      "any": "Any remaining time",
+      "within": "Runs out within {{months}} months"
+    }
   },
   "customers": {
     "title": "Customers",
@@ -409,7 +425,9 @@
     "submitSuccess": "Repair report submitted",
     "submitError": "Failed to submit repair report",
     "reviewPartRequestsNav": "Review part requests",
-    "reviewRepairsNav": "Review repairs"
+    "reviewRepairsNav": "Review repairs",
+    "guaranteeExpired": "Guarantee has expired",
+    "expiredBillingNote": "The work can still be recorded, but it is billed as out-of-warranty."
   },
   "repairItems": {
     "componentsReplaced": "Components Replaced",

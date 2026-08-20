@@ -129,14 +129,14 @@ func (s *GuaranteeService) GetByID(id uint) (*GuaranteeDTO, error) {
 	return s.mapToDTO(guarantee), nil
 }
 
-func (s *GuaranteeService) List(page, limit int, search, status string, customerID, productID *uint, tier string) (*ListGuaranteesResponse, error) {
+func (s *GuaranteeService) List(page, limit int, search, status string, customerID, productID *uint, tier string, expiringWithinMonths *int) (*ListGuaranteesResponse, error) {
 	if page < 1 {
 		page = 1
 	}
 	if limit < 1 || limit > 100 {
 		limit = 10
 	}
-	guarantees, total, err := s.repo.FindAll(page, limit, search, status, customerID, productID, tier)
+	guarantees, total, err := s.repo.FindAll(page, limit, search, status, customerID, productID, tier, expiringWithinMonths)
 	if err != nil {
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to list guarantees", 500)
 	}
@@ -382,7 +382,7 @@ func (s *GuaranteeService) SetGolden(id uint, req *SetGoldenRequest, adminID uin
 			"Golden expiry date cannot exceed the overall guarantee expiry date", 400)
 	}
 
-	guarantee.GoldenStartDate  = &startDate
+	guarantee.GoldenStartDate = &startDate
 	guarantee.GoldenExpiryDate = &goldenExpiry
 
 	if err := s.repo.Update(guarantee); err != nil {
@@ -405,7 +405,7 @@ func (s *GuaranteeService) RemoveGolden(id uint, adminID uint) (*GuaranteeDTO, e
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to find guarantee", 500)
 	}
 
-	guarantee.GoldenStartDate  = nil
+	guarantee.GoldenStartDate = nil
 	guarantee.GoldenExpiryDate = nil
 
 	if err := s.repo.Update(guarantee); err != nil {
@@ -446,6 +446,7 @@ func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
 		dto.GoldenExpiryDate = &ge
 	}
 	dto.Tier = guarantee.Tier(time.Now())
+	dto.DaysRemaining = guarantee.DaysRemaining(time.Now())
 
 	if guarantee.Customer.ID > 0 {
 		dto.CustomerName = guarantee.Customer.FullName

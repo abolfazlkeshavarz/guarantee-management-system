@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { formatRemaining } from '@/lib/guaranteeRemaining'
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,16 @@ import { Repair } from '../types'
 import { RepairStatusBadge } from './RepairStatusBadge'
 import { FormattedDate } from '@/components/common/FormattedDate'
 import { useCalendar } from '@/contexts/CalendarContext'
-import { Badge } from '@/components/ui/badge'
-import { partRequestService } from '@/features/partRequests/api/partRequests'
-import { Calendar, Package, FileText, Wrench, User, Wrench as ComponentIcon } from 'lucide-react'
+import {
+  Calendar,
+  Package,
+  FileText,
+  Wrench,
+  User,
+  AlertTriangle,
+  ShieldCheck,
+  Wrench as ComponentIcon,
+} from 'lucide-react'
 
 interface RepairViewDialogProps {
   open: boolean
@@ -30,13 +37,6 @@ export function RepairViewDialog({
   const { t, i18n } = useTranslation()
   const { formatDate } = useCalendar()
   const isRTL = i18n.language === 'fa'
-
-  const { data: partsData } = useQuery({
-    queryKey: ['part-requests-for-repair', repair?.id],
-    queryFn: () => partRequestService.list(1, 100, '', '', undefined, repair!.id),
-    enabled: open && !!repair?.id,
-  })
-  const linkedParts = partsData?.requests ?? []
 
   if (!repair) return null
 
@@ -69,6 +69,11 @@ export function RepairViewDialog({
             <DetailRow label={t('guarantees.table.product')} value={repair.product_name} icon={Package} />
           </div>
 
+          <GuaranteeRemaining
+            daysRemaining={repair.guarantee_days_remaining}
+            expiryDate={repair.guarantee_expiry_date}
+          />
+
           <div className={`grid grid-cols-2 gap-4 ${isRTL ? 'text-right' : ''}`}>
             <DetailRow label={t('repairs.table.technician')} value={repair.technician_name || t('repairView.unassigned')} icon={Wrench} />
             <DetailRow
@@ -97,7 +102,7 @@ export function RepairViewDialog({
                     <div key={item.id} className="bg-muted p-2 rounded-md text-sm">
                       <p className="font-medium">{item.component_name}</p>
                       {item.report && <p className="text-muted-foreground">{item.report}</p>}
-                      <PartOrigin item={item} />
+                      <PartOrigin item={item} requireSource />
                     </div>
                   ))}
                 </div>
@@ -122,39 +127,6 @@ export function RepairViewDialog({
               </div>
             </>
           )}
-
-          {/* Which parts were requested for this repair. Fetched here rather
-              than embedded in the repair DTO, so listing repairs does not pay
-              for a per-row query nobody asked for. */}
-          <Separator />
-          <div>
-            <p className={`text-sm font-medium mb-2 ${isRTL ? 'text-right' : ''}`}>
-              {t('repairs.linkedParts')}
-            </p>
-            {linkedParts.length === 0 ? (
-              <p className={`text-sm text-muted-foreground ${isRTL ? 'text-right' : ''}`}>
-                {t('repairs.noLinkedParts')}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {linkedParts.map((part) => (
-                  <div
-                    key={part.id}
-                    className={`bg-muted p-2 rounded-md text-sm flex items-center justify-between gap-3 ${
-                      isRTL ? 'flex-row-reverse' : ''
-                    }`}
-                  >
-                    <span className="font-medium">
-                      {part.item_name} × {part.quantity}
-                    </span>
-                    <Badge variant="outline">
-                      {t(`partRequests.status.${part.status}`, { defaultValue: part.status })}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           {repair.reviewed_by_name && (
             <>
@@ -194,14 +166,22 @@ export function RepairViewDialog({
  */
 function PartOrigin({
   item,
+  requireSource = false,
 }: {
   item: { part_request_id?: number; part_request_delivered_at?: string }
+  /**
+   * Only components must come from a delivered request. A service without one
+   * is the ordinary case, so flagging it would cry wolf and teach the reader
+   * to ignore the warning that matters.
+   */
+  requireSource?: boolean
 }) {
   const { t, i18n } = useTranslation()
   const { formatDate } = useCalendar()
   const isRTL = i18n.language === 'fa'
 
   if (!item.part_request_id) {
+    if (!requireSource) return null
     return (
       <p className={`text-xs text-amber-700 mt-1 ${isRTL ? 'text-right' : ''}`}>
         {t('repairItems.noSourceRequest')}
@@ -217,5 +197,52 @@ function PartOrigin({
           date: formatDate(item.part_request_delivered_at),
         })}`}
     </p>
+  )
+}
+
+/**
+ * How much guarantee is left, stated in the units people actually use: months
+ * once there is more than a month to go, days when the end is close.
+ *
+ * An expired guarantee is deliberately loud. It is the fact that changes how
+ * the job is billed, and it is easy to miss in a quiet grey row -- so it gets
+ * colour, a border and an icon rather than a line of muted text.
+ */
+function GuaranteeRemaining({
+  daysRemaining,
+  expiryDate,
+}: {
+  daysRemaining?: number
+  expiryDate?: string
+}) {
+  const { t, i18n } = useTranslation()
+  const { formatDate } = useCalendar()
+  const isRTL = i18n.language === 'fa'
+
+  if (daysRemaining === undefined || !expiryDate) return null
+
+  const expired = daysRemaining < 0
+  const amount = formatRemaining(t, daysRemaining)
+
+  const tone = expired
+    ? 'bg-red-50 border-red-300 text-red-800'
+    : daysRemaining <= 30
+      ? 'bg-amber-50 border-amber-300 text-amber-900'
+      : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+
+  return (
+    <div className={`rounded-md border p-3 ${tone} ${isRTL ? 'text-right' : ''}`}>
+      <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+        {expired ? <AlertTriangle className="h-4 w-4 shrink-0" /> : <ShieldCheck className="h-4 w-4 shrink-0" />}
+        <p className="text-sm font-semibold">
+          {expired
+            ? t('guarantees.remaining.expiredAgo', { amount })
+            : t('guarantees.remaining.left', { amount })}
+        </p>
+      </div>
+      <p className="text-xs mt-1 opacity-80">
+        {t('guarantees.remaining.expiresOn', { date: formatDate(expiryDate, 'YYYY/MM/DD') })}
+      </p>
+    </div>
   )
 }

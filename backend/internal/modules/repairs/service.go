@@ -454,9 +454,10 @@ func (s *RepairService) mapToDTO(repair *Repair) *RepairDTO {
 		Code         string
 		CustomerName string
 		ProductName  string
+		ExpiryDate   *time.Time
 	}
 	if err := s.db.Table("guarantees").
-		Select("guarantees.code, customers.full_name as customer_name, products.name as product_name").
+		Select("guarantees.code, guarantees.expiry_date, customers.full_name as customer_name, products.name as product_name").
 		Joins("LEFT JOIN customers ON customers.id = guarantees.customer_id").
 		Joins("LEFT JOIN products ON products.id = guarantees.product_id").
 		Where("guarantees.id = ?", repair.GuaranteeID).
@@ -464,6 +465,13 @@ func (s *RepairService) mapToDTO(repair *Repair) *RepairDTO {
 		dto.GuaranteeCode = g.Code
 		dto.CustomerName = g.CustomerName
 		dto.ProductName = g.ProductName
+		if g.ExpiryDate != nil {
+			dto.GuaranteeExpiryDate = g.ExpiryDate.Format("2006-01-02")
+			today := time.Now()
+			midnight := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
+			expiry := time.Date(g.ExpiryDate.Year(), g.ExpiryDate.Month(), g.ExpiryDate.Day(), 0, 0, 0, 0, time.UTC)
+			dto.GuaranteeDaysRemaining = int(expiry.Sub(midnight).Hours() / 24)
+		}
 	}
 
 	if repair.TechnicianID != nil {

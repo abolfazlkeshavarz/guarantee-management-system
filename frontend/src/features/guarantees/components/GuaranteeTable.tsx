@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { formatRemaining } from '@/lib/guaranteeRemaining'
 import {
   Table,
   TableBody,
@@ -75,7 +76,8 @@ export function GuaranteeTable({
   onRemoveGolden,
   isLoading,
 }: GuaranteeTableProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isRTL = i18n.language === 'fa'
 
   if (isLoading) {
     return (
@@ -135,8 +137,18 @@ export function GuaranteeTable({
         </TableHeader>
         <TableBody>
           {guarantees.map((guarantee) => (
-            <TableRow key={guarantee.id} className={isExpired(guarantee) ? 'bg-red-50/50' : ''}>
-              <TableCell className="font-medium">{guarantee.code}</TableCell>
+            <TableRow
+              key={guarantee.id}
+              className={isExpired(guarantee) ? 'bg-red-50 border-s-4 border-s-red-500' : ''}
+            >
+              <TableCell className="font-medium">
+                <span className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  {isExpired(guarantee) && (
+                    <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" aria-hidden />
+                  )}
+                  {guarantee.code}
+                </span>
+              </TableCell>
               <TableCell>{guarantee.customer_name}</TableCell>
               <TableCell>{guarantee.product_name}</TableCell>
               <TableCell>
@@ -150,9 +162,10 @@ export function GuaranteeTable({
                 )}
               </TableCell>
               <TableCell>
-                <span className={isExpired(guarantee) ? 'text-red-600 font-medium' : ''}>
+                <span className={isExpired(guarantee) ? 'text-red-700 font-semibold' : ''}>
                   <FormattedDate date={guarantee.expiry_date} format="YYYY/MM/DD" />
                   {isExpired(guarantee) && ` ${t('guarantees.expired')}`}
+                  <RemainingHint days={guarantee.days_remaining} expired={isExpired(guarantee)} />
                 </span>
               </TableCell>
               <TableCell>
@@ -243,5 +256,24 @@ export function GuaranteeTable({
         </TableBody>
       </Table>
     </div>
+  )
+}
+
+/**
+ * How much cover is left, next to the expiry date. Rendered only when it is
+ * worth acting on -- a guarantee with a year to run needs no annotation, and
+ * annotating every row would bury the ones that matter.
+ */
+function RemainingHint({ days, expired }: { days?: number; expired: boolean }) {
+  const { t } = useTranslation()
+  if (days === undefined || expired) return null
+  if (days > 90) return null
+
+  const label = formatRemaining(t, days)
+
+  return (
+    <span className="block text-xs font-medium text-amber-700">
+      {t('guarantees.remaining.left', { amount: label })}
+    </span>
   )
 }

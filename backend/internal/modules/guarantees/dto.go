@@ -1,17 +1,20 @@
 package guarantees
 
 type GuaranteeDTO struct {
-	ID                 uint    `json:"id"`
-	Code               string  `json:"code"`
-	CustomerID         uint    `json:"customer_id"`
-	CustomerName       string  `json:"customer_name"`
-	ProductID          uint    `json:"product_id"`
-	ProductName        string  `json:"product_name"`
-	PurchaseDate       string  `json:"purchase_date"`
-	ExpiryDate         string  `json:"expiry_date"`
-	GoldenStartDate    *string `json:"golden_start_date,omitempty"`
-	GoldenExpiryDate   *string `json:"golden_expiry_date,omitempty"`
-	Tier               string  `json:"tier,omitempty"`
+	ID               uint    `json:"id"`
+	Code             string  `json:"code"`
+	CustomerID       uint    `json:"customer_id"`
+	CustomerName     string  `json:"customer_name"`
+	ProductID        uint    `json:"product_id"`
+	ProductName      string  `json:"product_name"`
+	PurchaseDate     string  `json:"purchase_date"`
+	ExpiryDate       string  `json:"expiry_date"`
+	GoldenStartDate  *string `json:"golden_start_date,omitempty"`
+	GoldenExpiryDate *string `json:"golden_expiry_date,omitempty"`
+	Tier             string  `json:"tier,omitempty"`
+	// Days of cover left, counting from today. Negative once lapsed, so the
+	// UI can say how long ago rather than only that it happened.
+	DaysRemaining      int     `json:"days_remaining"`
 	Status             string  `json:"status"`
 	InvoiceImage       string  `json:"invoice_image"`
 	GuaranteeCardImage string  `json:"guarantee_card_image"`
@@ -30,7 +33,7 @@ type AdminCreateGuaranteeRequest struct {
 	CustomerFullName   string `json:"customer_full_name"`
 	CustomerPhone      string `json:"customer_phone"`
 	CustomerNationalID string `json:"customer_national_id"`
-	CustomerProvince    string `json:"customer_province"`
+	CustomerProvince   string `json:"customer_province"`
 	CustomerCity       string `json:"customer_city"`
 	CustomerAddress    string `json:"customer_address"`
 
@@ -77,7 +80,7 @@ type RenewGuaranteeRequest struct {
 type SetGoldenRequest struct {
 	StartDateType   string `json:"start_date_type" binding:"required,oneof=today purchase_date custom"`
 	CustomStartDate string `json:"custom_start_date"`
-	GoldenMonths   int    `json:"golden_months" binding:"required,oneof=3 6 12"`
+	GoldenMonths    int    `json:"golden_months" binding:"required,oneof=3 6 12"`
 }
 
 type ListGuaranteesResponse struct {

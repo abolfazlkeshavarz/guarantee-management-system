@@ -29,6 +29,7 @@ import { technicianGuaranteeService, Guarantee } from '../api/technicianGuarante
 import { technicianPartRequestService } from '@/features/partRequests/api/partRequests'
 import { technicianAuthService } from '../api/technicianAuth'
 import { useCalendar } from '@/contexts/CalendarContext'
+import { GuaranteeStatePanel } from './GuaranteeStatePanel'
 import {
   partRequestSchema,
   PartRequestFormValues,
@@ -38,7 +39,7 @@ import {
   repairServiceCatalogService,
 } from '@/features/repairCatalog/api/repairCatalog'
 import { toast } from 'sonner'
-import { Plus, Search, CheckCircle2, XCircle, Loader2, ShieldCheck, ShieldOff } from 'lucide-react'
+import { Plus, Search, XCircle, Loader2, ShieldCheck, ShieldOff } from 'lucide-react'
 
 type GuaranteeMode = 'unset' | 'with' | 'without'
 
@@ -261,21 +262,7 @@ export function NewPartRequestDialog() {
                 </Button>
               )}
             </div>
-            {guarantee && (
-              <div
-                className={`p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800 flex items-start gap-2 ${
-                  isRTL ? 'flex-row-reverse' : ''
-                }`}
-              >
-                <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-                <div className={isRTL ? 'text-right' : ''}>
-                  <p className="font-medium">{t('partRequests.guaranteeFound')}</p>
-                  <p>
-                    {guarantee.product_name} - {guarantee.customer_name}
-                  </p>
-                </div>
-              </div>
-            )}
+            {guarantee && <GuaranteeStatePanel guarantee={guarantee} />}
             {checkError && (
               <div
                 className={`p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800 flex items-start gap-2 ${

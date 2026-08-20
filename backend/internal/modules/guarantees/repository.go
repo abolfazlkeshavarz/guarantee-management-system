@@ -1,9 +1,9 @@
 package guarantees
 
 import (
-	"time"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"time"
 )
 
 type GuaranteeRepository struct {
@@ -43,7 +43,7 @@ func (r *GuaranteeRepository) FindByIDSimple(id uint) (*Guarantee, error) {
 	return &guarantee, nil
 }
 
-func (r *GuaranteeRepository) FindAll(page, limit int, search string, status string, customerID, productID *uint, tier string) ([]Guarantee, int64, error) {
+func (r *GuaranteeRepository) FindAll(page, limit int, search string, status string, customerID, productID *uint, tier string, expiringWithinMonths *int) ([]Guarantee, int64, error) {
 	var guarantees []Guarantee
 	var total int64
 	query := r.db.Model(&Guarantee{})
@@ -66,6 +66,15 @@ func (r *GuaranteeRepository) FindAll(page, limit int, search string, status str
 
 	if productID != nil && *productID > 0 {
 		query = query.Where("guarantees.product_id = ?", productID)
+	}
+
+	// "Expiring within N months" means cover that is still live but runs out
+	// inside the window -- an already-lapsed guarantee is not expiring, it has
+	// expired, and mixing the two would make a renewal worklist useless.
+	if expiringWithinMonths != nil && *expiringWithinMonths > 0 {
+		query = query.Where(
+			"guarantees.status IN ? AND guarantees.expiry_date >= CURRENT_DATE AND guarantees.expiry_date < (CURRENT_DATE + make_interval(months => ?))",
+			[]string{StatusApproved, StatusRenewed}, *expiringWithinMonths)
 	}
 
 	if tier != "" && tier != "all" {

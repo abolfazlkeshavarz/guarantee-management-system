@@ -39,26 +39,30 @@ type RepairServiceItemDTO struct {
 }
 
 type RepairDTO struct {
-	ID                      uint                     `json:"id"`
-	GuaranteeID             uint                     `json:"guarantee_id"`
-	GuaranteeCode           string                   `json:"guarantee_code"`
-	CustomerName            string                   `json:"customer_name"`
-	ProductName             string                   `json:"product_name"`
-	TechnicianID            *uint                    `json:"technician_id"`
-	TechnicianName          string                   `json:"technician_name"`
-	Status                  string                   `json:"status"`
-	Description             string                   `json:"description"`
-	Components              []RepairComponentItemDTO `json:"components"`
-	Services                []RepairServiceItemDTO   `json:"services"`
-	GuaranteeWasExpired     bool                     `json:"guarantee_was_expired"`
-	RepairCountForGuarantee int64                    `json:"repair_count_for_guarantee"`
-	ReviewedBy              *uint                    `json:"reviewed_by,omitempty"`
-	ReviewedByName          string                   `json:"reviewed_by_name,omitempty"`
-	ReviewedByRole          string                   `json:"reviewed_by_role,omitempty"`
-	ReviewedAt              *string                  `json:"reviewed_at,omitempty"`
-	ReviewNotes             string                   `json:"review_notes,omitempty"`
-	CreatedAt               string                   `json:"created_at"`
-	UpdatedAt               string                   `json:"updated_at"`
+	ID                  uint                     `json:"id"`
+	GuaranteeID         uint                     `json:"guarantee_id"`
+	GuaranteeCode       string                   `json:"guarantee_code"`
+	CustomerName        string                   `json:"customer_name"`
+	ProductName         string                   `json:"product_name"`
+	TechnicianID        *uint                    `json:"technician_id"`
+	TechnicianName      string                   `json:"technician_name"`
+	Status              string                   `json:"status"`
+	Description         string                   `json:"description"`
+	Components          []RepairComponentItemDTO `json:"components"`
+	Services            []RepairServiceItemDTO   `json:"services"`
+	GuaranteeWasExpired bool                     `json:"guarantee_was_expired"`
+	// The state of the guarantee right now, so the card can say how much cover
+	// is left rather than only what was true when the repair was filed.
+	GuaranteeExpiryDate     string  `json:"guarantee_expiry_date,omitempty"`
+	GuaranteeDaysRemaining  int     `json:"guarantee_days_remaining"`
+	RepairCountForGuarantee int64   `json:"repair_count_for_guarantee"`
+	ReviewedBy              *uint   `json:"reviewed_by,omitempty"`
+	ReviewedByName          string  `json:"reviewed_by_name,omitempty"`
+	ReviewedByRole          string  `json:"reviewed_by_role,omitempty"`
+	ReviewedAt              *string `json:"reviewed_at,omitempty"`
+	ReviewNotes             string  `json:"review_notes,omitempty"`
+	CreatedAt               string  `json:"created_at"`
+	UpdatedAt               string  `json:"updated_at"`
 }
 
 type CreateRepairRequest struct {

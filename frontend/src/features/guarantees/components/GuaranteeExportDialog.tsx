@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Label } from '@/components/ui/label'
+import { EXPIRING_WINDOWS } from '../types'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -29,6 +30,7 @@ export function GuaranteeExportDialog({ open, onOpenChange }: GuaranteeExportDia
 
   const [status, setStatus] = useState('all')
   const [productId, setProductId] = useState('all')
+  const [expiringWithin, setExpiringWithin] = useState('all')
   const [codeFrom, setCodeFrom] = useState('')
   const [codeTo, setCodeTo] = useState('')
 
@@ -46,7 +48,9 @@ export function GuaranteeExportDialog({ open, onOpenChange }: GuaranteeExportDia
         '',
         status !== 'all' ? status : '',
         undefined,
-        productId !== 'all' ? Number(productId) : undefined
+        productId !== 'all' ? Number(productId) : undefined,
+        undefined,
+        expiringWithin !== 'all' ? Number(expiringWithin) : undefined
       )
       return { items: res.guarantees, total: res.total }
     })
@@ -88,6 +92,15 @@ export function GuaranteeExportDialog({ open, onOpenChange }: GuaranteeExportDia
           value: (g) => (g.golden_expiry_date ? formatDate(g.golden_expiry_date, 'YYYY/MM/DD') : ''),
         },
         { header: t('guarantees.tier._'), value: (g) => g.tier ?? '' },
+        {
+          header: t('guarantees.remaining.column'),
+          value: (g) =>
+            g.days_remaining === undefined
+              ? ''
+              : g.days_remaining < 0
+                ? t('guarantees.remaining.expiredColumn', { days: Math.abs(g.days_remaining) })
+                : String(g.days_remaining),
+        },
         {
           header: t('common.status'),
           value: (g) => t(`status.${g.status}`, { defaultValue: g.status }),
@@ -155,6 +168,33 @@ export function GuaranteeExportDialog({ open, onOpenChange }: GuaranteeExportDia
             {products.map((p: any) => (
               <SelectItem key={p.id} value={String(p.id)}>
                 {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>{t('guarantees.remaining.filterLabel')}</Label>
+        <Select
+          items={[
+            { value: 'all', label: t('guarantees.expiring.any') },
+            ...EXPIRING_WINDOWS.map((m) => ({
+              value: String(m),
+              label: t('guarantees.expiring.within', { months: m }),
+            })),
+          ]}
+          value={expiringWithin}
+          onValueChange={(v) => setExpiringWithin(v || 'all')}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('guarantees.expiring.any')}</SelectItem>
+            {EXPIRING_WINDOWS.map((m) => (
+              <SelectItem key={m} value={String(m)}>
+                {t('guarantees.expiring.within', { months: m })}
               </SelectItem>
             ))}
           </SelectContent>

@@ -4,6 +4,7 @@ import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { LogOut, Wrench, Home, User, PackagePlus, ClipboardCheck } from 'lucide-react'
+import { Logo } from '@/components/common/Logo'
 
 export function TechnicianLayout() {
   const { technician, logout } = useTechnicianAuth()
@@ -25,10 +26,13 @@ export function TechnicianLayout() {
       <header className="bg-white border-b px-6 py-3">
         <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
           <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <Wrench className="h-6 w-6 text-primary" />
-            <h1 className="text-lg font-semibold text-gray-800">
-              {t('technicianPortal.portalTitle')}
-            </h1>
+            <Logo height={30} />
+            <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <Wrench className="h-5 w-5 text-primary" />
+              <h1 className="text-lg font-semibold text-gray-800">
+                {t('technicianPortal.portalTitle')}
+              </h1>
+            </div>
           </div>
           <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
             {/* Language/calendar are admin-controlled globally. */}

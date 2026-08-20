@@ -10,6 +10,8 @@ export interface Guarantee {
   golden_start_date?: string
   golden_expiry_date?: string
   tier?: string
+  /** Days of cover left; negative once lapsed. */
+  days_remaining?: number
   status: 'Pending' | 'Approved' | 'Rejected' | 'Renewed' | 'Cancelled' | 'Expired'
   invoice_image: string
   guarantee_card_image: string
@@ -70,3 +72,6 @@ export const GUARANTEE_STATUS_LABELS: Record<GuaranteeStatus, string> = {
   Cancelled: 'Cancelled',
   Expired: 'Expired',
 }
+
+/** Remaining-cover windows offered in the filters, in months. */
+export const EXPIRING_WINDOWS = [1, 2, 3, 6, 12] as const

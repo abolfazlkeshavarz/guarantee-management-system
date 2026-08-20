@@ -30,6 +30,9 @@ export interface Repair {
   status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'
   /** Guarantee had already expired when this was filed -- billed differently. */
   guarantee_was_expired: boolean
+  /** The guarantee's state now: negative days means it has already lapsed. */
+  guarantee_expiry_date?: string
+  guarantee_days_remaining?: number
   /** How many repairs this guarantee has had in total. */
   repair_count_for_guarantee: number
   description: string
