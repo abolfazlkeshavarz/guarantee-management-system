@@ -353,7 +353,15 @@
     "outOfWarranty": "خارج از گارانتی",
     "linkedParts": "قطعات درخواست‌شده برای این تعمیر",
     "noLinkedParts": "هنوز قطعه‌ای برای این تعمیر درخواست نشده است",
-    "forRepair": "برای تعمیر"
+    "forRepair": "برای تعمیر",
+    "status": {
+      "Pending": "در انتظار",
+      "Approved": "تایید شده",
+      "Rejected": "رد شده",
+      "Cancelled": "لغو شده",
+      "InProgress": "در حال انجام",
+      "Completed": "انجام شده"
+    }
   },
   "status": {
     "Pending": "در انتظار",

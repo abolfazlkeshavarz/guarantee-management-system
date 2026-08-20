@@ -40,7 +40,7 @@ export function TechnicianDashboardPage() {
   const stats = [
     { title: t('technicianPortal.totalRepairs'), value: total, icon: ClipboardList, color: 'text-blue-600' },
     { title: t('technicianPortal.pendingReview'), value: pending, icon: Clock, color: 'text-yellow-600' },
-    { title: t('repairs.status.approved'), value: approved, icon: CheckCircle, color: 'text-green-600' },
+    { title: t('repairs.status.Approved'), value: approved, icon: CheckCircle, color: 'text-green-600' },
   ]
 
   return (
@@ -84,7 +84,7 @@ export function TechnicianDashboardPage() {
           <CardTitle>{t('technicianPortal.myRepairReports')}</CardTitle>
           <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Select
-              items={[{ value: 'all', label: t('guarantees.allStatus') }, ...REPAIR_STATUSES.map((status) => ({ value: status, label: t(`repairs.status.${status.toLowerCase()}`) }))]}
+              items={[{ value: 'all', label: t('guarantees.allStatus') }, ...REPAIR_STATUSES.map((status) => ({ value: status, label: t(`repairs.status.${status}`) }))]}
               value={statusFilter || 'all'}
               onValueChange={(value) => {
                 const newValue = value || ''
@@ -99,7 +99,7 @@ export function TechnicianDashboardPage() {
                 <SelectItem value="all">{t('guarantees.allStatus')}</SelectItem>
                 {REPAIR_STATUSES.map((status) => (
                   <SelectItem key={status} value={status}>
-                    {t(`repairs.status.${status.toLowerCase()}`)}
+                    {t(`repairs.status.${status}`)}
                   </SelectItem>
                 ))}
               </SelectContent>

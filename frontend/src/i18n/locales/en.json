@@ -353,7 +353,15 @@
     "outOfWarranty": "Out of warranty",
     "linkedParts": "Parts requested for this repair",
     "noLinkedParts": "No parts requested for this repair yet",
-    "forRepair": "For repair"
+    "forRepair": "For repair",
+    "status": {
+      "Pending": "Pending",
+      "Approved": "Approved",
+      "Rejected": "Rejected",
+      "Cancelled": "Cancelled",
+      "InProgress": "In progress",
+      "Completed": "Completed"
+    }
   },
   "status": {
     "Pending": "Pending",

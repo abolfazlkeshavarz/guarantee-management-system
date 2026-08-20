@@ -52,10 +52,20 @@ export function NewRepairDialog() {
 
   // The parts this technician has actually been handed. A repair report names
   // what was fitted, so it can only name something that reached them.
+  //
+  // Never served from cache. Delivery happens on someone else's screen, so a
+  // technician who opened this dialog before their part arrived would keep
+  // being told they have nothing -- the app's default five-minute staleTime
+  // would hold that empty answer well past the moment it stopped being true.
+  //
+  // The limit is 100 because the API clamps anything higher back down to 10,
+  // which would silently hide all but the ten most recent deliveries.
   const { data: deliveredRequests } = useQuery({
     queryKey: ['my-delivered-part-requests'],
-    queryFn: () => technicianPartRequestService.list(1, 200, 'Delivered'),
+    queryFn: () => technicianPartRequestService.list(1, 100, 'Delivered'),
     enabled: open,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   const deliveredLines = (deliveredRequests?.requests ?? []).flatMap((request) =>
@@ -101,7 +111,7 @@ export function NewRepairDialog() {
     try {
       const result = await technicianGuaranteeService.checkByCode(code.trim().toUpperCase())
       if (!isGuaranteeValid(result)) {
-        const statusLabel = t(`repairs.status.${result.status.toLowerCase()}`, { defaultValue: result.status })
+        const statusLabel = t(`repairs.status.${result.status}`, { defaultValue: result.status })
         setCheckError(t('technicianPortal.guaranteeInvalidStatus', { status: statusLabel }))
         return
       }

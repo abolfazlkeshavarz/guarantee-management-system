@@ -14,7 +14,7 @@ interface RepairStatusBadgeProps {
 export function RepairStatusBadge({ status, className }: RepairStatusBadgeProps) {
   const { t } = useTranslation()
   const colorClass = REPAIR_STATUS_COLORS[status] || 'bg-gray-100 text-gray-800 border-gray-200'
-  const key = `repairs.status.${status.toLowerCase()}`
+  const key = `repairs.status.${status}`
   const label = t(key, { defaultValue: status })
   return (
     <Badge
