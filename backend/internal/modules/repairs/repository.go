@@ -20,9 +20,10 @@ func (r *RepairRepository) CreateWithItems(repair *Repair, components []RepairCo
 
 		for _, c := range components {
 			item := RepairComponentItem{
-				RepairID:          repair.ID,
-				RepairComponentID: c.ComponentID,
-				Report:            c.Report,
+				RepairID:               repair.ID,
+				RepairComponentID:      c.ComponentID,
+				Report:                 c.Report,
+				ComponentRequestItemID: c.ComponentRequestItemID,
 			}
 			if err := tx.Create(&item).Error; err != nil {
 				return err
@@ -31,9 +32,10 @@ func (r *RepairRepository) CreateWithItems(repair *Repair, components []RepairCo
 
 		for _, s := range services {
 			item := RepairServiceItem{
-				RepairID:        repair.ID,
-				RepairServiceID: s.ServiceID,
-				Report:          s.Report,
+				RepairID:               repair.ID,
+				RepairServiceID:        s.ServiceID,
+				Report:                 s.Report,
+				ComponentRequestItemID: s.ComponentRequestItemID,
 			}
 			if err := tx.Create(&item).Error; err != nil {
 				return err

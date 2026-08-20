@@ -413,7 +413,12 @@
     "selectComponent": "Select component",
     "selectService": "Select service",
     "componentReportPlaceholder": "Report for this component...",
-    "serviceReportPlaceholder": "Report for this service..."
+    "serviceReportPlaceholder": "Report for this service...",
+    "selectDeliveredPart": "Select a delivered part",
+    "noDeliveredParts": "No delivered parts yet — request one and wait for delivery",
+    "fromRequest": "From part request #{{id}}",
+    "deliveredOn": "delivered {{date}}",
+    "noSourceRequest": "No delivered part request behind this line"
   },
   "repairView": {
     "title": "Repair Details",

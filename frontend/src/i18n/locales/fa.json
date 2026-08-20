@@ -413,7 +413,12 @@
     "selectComponent": "انتخاب قطعه",
     "selectService": "انتخاب خدمت",
     "componentReportPlaceholder": "گزارش این قطعه...",
-    "serviceReportPlaceholder": "گزارش این خدمت..."
+    "serviceReportPlaceholder": "گزارش این خدمت...",
+    "selectDeliveredPart": "قطعه تحویل‌شده را انتخاب کنید",
+    "noDeliveredParts": "هنوز قطعه‌ای تحویل نگرفته‌اید — ابتدا درخواست دهید و منتظر تحویل بمانید",
+    "fromRequest": "از درخواست قطعه شماره {{id}}",
+    "deliveredOn": "تحویل در {{date}}",
+    "noSourceRequest": "برای این مورد درخواست قطعه تحویل‌شده‌ای ثبت نشده است"
   },
   "repairView": {
     "title": "جزئیات تعمیر",

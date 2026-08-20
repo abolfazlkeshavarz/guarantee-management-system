@@ -7,26 +7,26 @@ import (
 )
 
 type Repair struct {
-	ID           uint           `gorm:"primaryKey" json:"id"`
-	GuaranteeID  uint           `gorm:"not null" json:"guarantee_id"`
-	TechnicianID *uint          `json:"technician_id"`
-	Status       string         `gorm:"size:20;default:'Pending'" json:"status"`
-	Description  string         `gorm:"type:text" json:"description"`
+	ID           uint   `gorm:"primaryKey" json:"id"`
+	GuaranteeID  uint   `gorm:"not null" json:"guarantee_id"`
+	TechnicianID *uint  `json:"technician_id"`
+	Status       string `gorm:"size:20;default:'Pending'" json:"status"`
+	Description  string `gorm:"type:text" json:"description"`
 	// True when the guarantee had already expired as the work was filed --
 	// out-of-warranty work is billed differently. Stamped at creation so a
 	// later renewal cannot rewrite history.
-	GuaranteeWasExpired bool    `json:"guarantee_was_expired"`
-	ReviewedBy   *uint          `json:"reviewed_by,omitempty"`
+	GuaranteeWasExpired bool  `json:"guarantee_was_expired"`
+	ReviewedBy          *uint `json:"reviewed_by,omitempty"`
 	// Set instead of ReviewedBy when a "technical" technician did the review;
 	// reviewed_by is a FK to admins, so it cannot hold a technician id.
-	ReviewedByTechnicianID *uint `json:"reviewed_by_technician_id,omitempty"`
-	ReviewedAt   *time.Time     `json:"reviewed_at,omitempty"`
-	ReviewNotes  string         `gorm:"type:text" json:"review_notes,omitempty"`
-	StartedAt    *time.Time     `json:"started_at,omitempty"`
-	CompletedAt  *time.Time     `json:"completed_at,omitempty"`
-	CreatedAt    time.Time      `json:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at"`
-	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
+	ReviewedByTechnicianID *uint          `json:"reviewed_by_technician_id,omitempty"`
+	ReviewedAt             *time.Time     `json:"reviewed_at,omitempty"`
+	ReviewNotes            string         `gorm:"type:text" json:"review_notes,omitempty"`
+	StartedAt              *time.Time     `json:"started_at,omitempty"`
+	CompletedAt            *time.Time     `json:"completed_at,omitempty"`
+	CreatedAt              time.Time      `json:"created_at"`
+	UpdatedAt              time.Time      `json:"updated_at"`
+	DeletedAt              gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 func (Repair) TableName() string {
@@ -36,11 +36,14 @@ func (Repair) TableName() string {
 // RepairComponentItem is one "component replaced" row on a submitted repair,
 // pointing at a repaircatalog.RepairComponent and carrying its own report.
 type RepairComponentItem struct {
-	ID                uint      `gorm:"primaryKey" json:"id"`
-	RepairID          uint      `gorm:"not null" json:"repair_id"`
-	RepairComponentID uint      `gorm:"not null;column:repair_component_id" json:"repair_component_id"`
-	Report            string    `gorm:"type:text" json:"report"`
-	CreatedAt         time.Time `json:"created_at"`
+	ID                uint   `gorm:"primaryKey" json:"id"`
+	RepairID          uint   `gorm:"not null" json:"repair_id"`
+	RepairComponentID uint   `gorm:"not null;column:repair_component_id" json:"repair_component_id"`
+	Report            string `gorm:"type:text" json:"report"`
+	// The delivered part-request line this component came out of. Nullable:
+	// repairs filed before the link existed have nothing to point at.
+	ComponentRequestItemID *uint     `json:"component_request_item_id,omitempty"`
+	CreatedAt              time.Time `json:"created_at"`
 }
 
 func (RepairComponentItem) TableName() string {
@@ -50,11 +53,13 @@ func (RepairComponentItem) TableName() string {
 // RepairServiceItem is one "service performed" row on a submitted repair,
 // pointing at a repaircatalog.RepairServiceCatalog and carrying its own report.
 type RepairServiceItem struct {
-	ID              uint      `gorm:"primaryKey" json:"id"`
-	RepairID        uint      `gorm:"not null" json:"repair_id"`
-	RepairServiceID uint      `gorm:"not null;column:repair_service_id" json:"repair_service_id"`
-	Report          string    `gorm:"type:text" json:"report"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID              uint   `gorm:"primaryKey" json:"id"`
+	RepairID        uint   `gorm:"not null" json:"repair_id"`
+	RepairServiceID uint   `gorm:"not null;column:repair_service_id" json:"repair_service_id"`
+	Report          string `gorm:"type:text" json:"report"`
+	// Set when the service was one of the lines on a delivered part request.
+	ComponentRequestItemID *uint     `json:"component_request_item_id,omitempty"`
+	CreatedAt              time.Time `json:"created_at"`
 }
 
 func (RepairServiceItem) TableName() string {

@@ -1,13 +1,18 @@
 import { z } from 'zod'
 
+// component_request_item_id ties the line to the delivered part it came out
+// of. Optional in the schema because an admin filing a repair has no delivery
+// to point at; the technician path requires it, and the server enforces that.
 const repairItemSchema = z.object({
   component_id: z.number().min(1),
   report: z.string().optional().default(''),
+  component_request_item_id: z.number().optional(),
 })
 
 const serviceItemSchema = z.object({
   service_id: z.number().min(1),
   report: z.string().optional().default(''),
+  component_request_item_id: z.number().optional(),
 })
 
 export const repairSchema = z

@@ -1,11 +1,18 @@
-export interface RepairComponentItem {
+/** Where a reported line came from, when it was backed by a delivery. */
+interface PartOriginFields {
+  component_request_item_id?: number
+  part_request_id?: number
+  part_request_delivered_at?: string
+}
+
+export interface RepairComponentItem extends PartOriginFields {
   id: number
   component_id: number
   component_name: string
   report: string
 }
 
-export interface RepairServiceItem {
+export interface RepairServiceItem extends PartOriginFields {
   id: number
   service_id: number
   service_name: string

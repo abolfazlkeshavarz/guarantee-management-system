@@ -19,7 +19,11 @@ import { Form, FormField, FormItem, FormControl, FormMessage } from '@/component
 import { technicianAuthService } from '../api/technicianAuth'
 import { technicianGuaranteeService, isGuaranteeValid, Guarantee } from '../api/technicianGuarantees'
 import { repairComponentService, repairServiceCatalogService } from '@/features/repairCatalog/api/repairCatalog'
-import { RepairItemsFields } from '@/features/repairs/components/RepairItemsFields'
+import {
+  RepairItemsFields,
+  type DeliveredPart,
+} from '@/features/repairs/components/RepairItemsFields'
+import { technicianPartRequestService } from '@/features/partRequests/api/partRequests'
 import { repairSchema, RepairFormValues } from '@/features/repairs/schemas/repairSchema'
 import { toast } from 'sonner'
 import { Plus, Search, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
@@ -45,6 +49,34 @@ export function NewRepairDialog() {
     queryFn: repairServiceCatalogService.listActive,
     enabled: open,
   })
+
+  // The parts this technician has actually been handed. A repair report names
+  // what was fitted, so it can only name something that reached them.
+  const { data: deliveredRequests } = useQuery({
+    queryKey: ['my-delivered-part-requests'],
+    queryFn: () => technicianPartRequestService.list(1, 200, 'Delivered'),
+    enabled: open,
+  })
+
+  const deliveredLines = (deliveredRequests?.requests ?? []).flatMap((request) =>
+    (request.items ?? []).map((item) => ({
+      itemId: item.id,
+      requestId: request.id,
+      catalogId: item.item_id ?? 0,
+      name: item.item_name,
+      quantity: item.quantity,
+      itemType: item.item_type,
+    }))
+  )
+
+  // A custom line has no catalog entry to report against, so it cannot back a
+  // repair line; it still shows on the request itself.
+  const deliveredComponents: DeliveredPart[] = deliveredLines.filter(
+    (l) => l.itemType === 'component' && l.catalogId > 0
+  )
+  const deliveredServices: DeliveredPart[] = deliveredLines.filter(
+    (l) => l.itemType === 'service' && l.catalogId > 0
+  )
 
   const form = useForm<RepairFormValues>({
     resolver: zodResolver(repairSchema),
@@ -152,7 +184,13 @@ export function NewRepairDialog() {
         {guarantee && (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-              <RepairItemsFields control={form.control as any} components={components} services={services} />
+              <RepairItemsFields
+                control={form.control as any}
+                components={components}
+                services={services}
+                deliveredComponents={deliveredComponents}
+                deliveredServices={deliveredServices}
+              />
 
               <FormField
                 control={form.control}

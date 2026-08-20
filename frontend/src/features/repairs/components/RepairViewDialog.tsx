@@ -97,6 +97,7 @@ export function RepairViewDialog({
                     <div key={item.id} className="bg-muted p-2 rounded-md text-sm">
                       <p className="font-medium">{item.component_name}</p>
                       {item.report && <p className="text-muted-foreground">{item.report}</p>}
+                      <PartOrigin item={item} />
                     </div>
                   ))}
                 </div>
@@ -114,6 +115,7 @@ export function RepairViewDialog({
                     <div key={item.id} className="bg-muted p-2 rounded-md text-sm">
                       <p className="font-medium">{item.service_name}</p>
                       {item.report && <p className="text-muted-foreground">{item.report}</p>}
+                      <PartOrigin item={item} />
                     </div>
                   ))}
                 </div>
@@ -181,5 +183,39 @@ export function RepairViewDialog({
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * Where a reported item came from. A part traced back to the request that
+ * issued it is the difference between the report being a record and being a
+ * claim, so the absence of a link is worth showing too -- that line was
+ * entered against the catalog with no delivery behind it.
+ */
+function PartOrigin({
+  item,
+}: {
+  item: { part_request_id?: number; part_request_delivered_at?: string }
+}) {
+  const { t, i18n } = useTranslation()
+  const { formatDate } = useCalendar()
+  const isRTL = i18n.language === 'fa'
+
+  if (!item.part_request_id) {
+    return (
+      <p className={`text-xs text-amber-700 mt-1 ${isRTL ? 'text-right' : ''}`}>
+        {t('repairItems.noSourceRequest')}
+      </p>
+    )
+  }
+
+  return (
+    <p className={`text-xs text-muted-foreground mt-1 ${isRTL ? 'text-right' : ''}`}>
+      {t('repairItems.fromRequest', { id: item.part_request_id })}
+      {item.part_request_delivered_at &&
+        ` · ${t('repairItems.deliveredOn', {
+          date: formatDate(item.part_request_delivered_at),
+        })}`}
+    </p>
   )
 }

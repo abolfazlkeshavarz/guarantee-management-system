@@ -1,6 +1,7 @@
 package repairs
 
 import (
+	"fmt"
 	"time"
 
 	"guarantee-management-system/internal/shared/errors"
@@ -85,6 +86,110 @@ func (s *RepairService) Create(req *CreateRepairRequest) (*RepairDTO, error) {
 	return s.mapToDTO(repair), nil
 }
 
+// deliveredPartLine is one line of a part request that reached the technician.
+type deliveredPartLine struct {
+	ID                 uint
+	ComponentRequestID uint
+	TechnicianID       uint
+	Status             string
+	ItemType           string
+	RepairComponentID  *uint
+	RepairServiceID    *uint
+}
+
+// requireDeliveredParts enforces that a technician reports only parts that
+// were actually issued to them.
+//
+// The rule exists because the repair report is what the office bills and
+// stocks against. Letting a technician name any catalog part would make the
+// report a claim rather than a record: nothing would tie "a motor was
+// replaced" to a motor having left the store. So every component line must
+// name the delivered request line it came out of, and that line must belong
+// to this technician, have reached Delivered, and be for the same part the
+// report names -- otherwise the link would be decorative.
+//
+// Services are exempt. They are labour, not stock; a technician can perform
+// one without anything being issued to them. A service line may still carry
+// a link when the request happened to include it, and that link is checked
+// the same way.
+func (s *RepairService) requireDeliveredParts(techID uint, components []RepairComponentItemInput, services []RepairServiceItemInput) error {
+	ids := make([]uint, 0, len(components)+len(services))
+	for i, c := range components {
+		if c.ComponentRequestItemID == nil || *c.ComponentRequestItemID == 0 {
+			return errors.NewAppError(errors.ErrValidation,
+				fmt.Sprintf("Component %d: choose the delivered part request this part came from", i+1), 400)
+		}
+		ids = append(ids, *c.ComponentRequestItemID)
+	}
+	for _, sv := range services {
+		if sv.ComponentRequestItemID != nil && *sv.ComponentRequestItemID != 0 {
+			ids = append(ids, *sv.ComponentRequestItemID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	var rows []deliveredPartLine
+	if err := s.db.Table("component_request_items AS i").
+		Select("i.id, i.component_request_id, i.item_type, i.repair_component_id, i.repair_service_id, r.technician_id, r.status").
+		Joins("JOIN component_requests r ON r.id = i.component_request_id").
+		Where("i.id IN ? AND r.deleted_at IS NULL", ids).
+		Scan(&rows).Error; err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to verify delivered parts", 500)
+	}
+
+	byID := make(map[uint]deliveredPartLine, len(rows))
+	for _, r := range rows {
+		byID[r.ID] = r
+	}
+
+	check := func(itemID uint, wantComponent, wantService *uint, label string) error {
+		line, ok := byID[itemID]
+		if !ok {
+			return errors.NewAppError(errors.ErrNotFound, label+": that part request line does not exist", 404)
+		}
+		if line.TechnicianID != techID {
+			return errors.NewAppError(errors.ErrForbidden,
+				label+": you can only report parts delivered to you", 403)
+		}
+		if line.Status != "Delivered" {
+			return errors.NewAppError(errors.ErrValidation,
+				label+": that part has not been delivered yet", 400)
+		}
+		if wantComponent != nil {
+			if line.RepairComponentID == nil || *line.RepairComponentID != *wantComponent {
+				return errors.NewAppError(errors.ErrValidation,
+					label+": the part you delivered does not match the part you reported", 400)
+			}
+		}
+		if wantService != nil {
+			if line.RepairServiceID == nil || *line.RepairServiceID != *wantService {
+				return errors.NewAppError(errors.ErrValidation,
+					label+": the service on that request line does not match the one you reported", 400)
+			}
+		}
+		return nil
+	}
+
+	for i, c := range components {
+		componentID := c.ComponentID
+		if err := check(*c.ComponentRequestItemID, &componentID, nil, fmt.Sprintf("Component %d", i+1)); err != nil {
+			return err
+		}
+	}
+	for i, sv := range services {
+		if sv.ComponentRequestItemID == nil || *sv.ComponentRequestItemID == 0 {
+			continue
+		}
+		serviceID := sv.ServiceID
+		if err := check(*sv.ComponentRequestItemID, nil, &serviceID, fmt.Sprintf("Service %d", i+1)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *RepairService) CreateByTechnician(techID uint, req *CreateMyRepairRequest) (*RepairDTO, error) {
 	wasExpired, err := s.verifyGuarantee(req.GuaranteeID)
 	if err != nil {
@@ -92,6 +197,9 @@ func (s *RepairService) CreateByTechnician(techID uint, req *CreateMyRepairReque
 	}
 	if len(req.Components) == 0 && len(req.Services) == 0 {
 		return nil, ErrNoItemsProvided
+	}
+	if err := s.requireDeliveredParts(techID, req.Components, req.Services); err != nil {
+		return nil, err
 	}
 
 	repair := &Repair{
@@ -111,7 +219,6 @@ func (s *RepairService) CreateByTechnician(techID uint, req *CreateMyRepairReque
 
 	return dto, nil
 }
-
 
 func (s *RepairService) GetByID(id uint) (*RepairDTO, error) {
 	repair, err := s.repo.FindByID(id)
@@ -299,18 +406,43 @@ func (s *RepairService) Delete(id uint) error {
 	return nil
 }
 
+// partRequestOrigin resolves a delivered part-request line back to the request
+// it belongs to, so a repair report can show where its parts came from.
+func (s *RepairService) partRequestOrigin(itemID *uint) (*uint, string) {
+	if itemID == nil || *itemID == 0 {
+		return nil, ""
+	}
+	var row struct {
+		RequestID   uint
+		DeliveredAt *time.Time
+	}
+	if err := s.db.Table("component_request_items AS i").
+		Select("i.component_request_id AS request_id, r.delivered_at").
+		Joins("JOIN component_requests r ON r.id = i.component_request_id").
+		Where("i.id = ?", *itemID).
+		Scan(&row).Error; err != nil || row.RequestID == 0 {
+		return nil, ""
+	}
+	delivered := ""
+	if row.DeliveredAt != nil {
+		delivered = row.DeliveredAt.Format(time.RFC3339)
+	}
+	requestID := row.RequestID
+	return &requestID, delivered
+}
+
 func (s *RepairService) mapToDTO(repair *Repair) *RepairDTO {
 	dto := &RepairDTO{
-		ID:           repair.ID,
-		GuaranteeID:  repair.GuaranteeID,
-		TechnicianID: repair.TechnicianID,
-		Status:       repair.Status,
-		Description:  repair.Description,
+		ID:                  repair.ID,
+		GuaranteeID:         repair.GuaranteeID,
+		TechnicianID:        repair.TechnicianID,
+		Status:              repair.Status,
+		Description:         repair.Description,
 		GuaranteeWasExpired: repair.GuaranteeWasExpired,
-		ReviewedBy:   repair.ReviewedBy,
-		ReviewNotes:  repair.ReviewNotes,
-		CreatedAt:    repair.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:    repair.UpdatedAt.Format(time.RFC3339),
+		ReviewedBy:          repair.ReviewedBy,
+		ReviewNotes:         repair.ReviewNotes,
+		CreatedAt:           repair.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:           repair.UpdatedAt.Format(time.RFC3339),
 	}
 
 	if repair.ReviewedAt != nil {
@@ -363,11 +495,15 @@ func (s *RepairService) mapToDTO(repair *Repair) *RepairDTO {
 	for i, item := range componentItems {
 		var name string
 		s.db.Table("repair_components").Where("id = ?", item.RepairComponentID).Select("name").Scan(&name)
+		requestID, deliveredAt := s.partRequestOrigin(item.ComponentRequestItemID)
 		dto.Components[i] = RepairComponentItemDTO{
-			ID:            item.ID,
-			ComponentID:   item.RepairComponentID,
-			ComponentName: name,
-			Report:        item.Report,
+			ID:                     item.ID,
+			ComponentID:            item.RepairComponentID,
+			ComponentName:          name,
+			Report:                 item.Report,
+			ComponentRequestItemID: item.ComponentRequestItemID,
+			PartRequestID:          requestID,
+			PartRequestDeliveredAt: deliveredAt,
 		}
 	}
 
@@ -376,11 +512,15 @@ func (s *RepairService) mapToDTO(repair *Repair) *RepairDTO {
 	for i, item := range serviceItems {
 		var name string
 		s.db.Table("repair_services").Where("id = ?", item.RepairServiceID).Select("name").Scan(&name)
+		requestID, deliveredAt := s.partRequestOrigin(item.ComponentRequestItemID)
 		dto.Services[i] = RepairServiceItemDTO{
-			ID:          item.ID,
-			ServiceID:   item.RepairServiceID,
-			ServiceName: name,
-			Report:      item.Report,
+			ID:                     item.ID,
+			ServiceID:              item.RepairServiceID,
+			ServiceName:            name,
+			Report:                 item.Report,
+			ComponentRequestItemID: item.ComponentRequestItemID,
+			PartRequestID:          requestID,
+			PartRequestDeliveredAt: deliveredAt,
 		}
 	}
 
