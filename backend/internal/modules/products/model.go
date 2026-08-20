@@ -13,10 +13,12 @@ const (
 	// CodeFormatJalaliEncoded codes carry the Jalali manufacture year/month
 	// and are additionally parsed and validated by the warrantycode package.
 	CodeFormatJalaliEncoded = "jalali_encoded"
-	// CodeFormatJalaliSeasonal codes predate the encoded format: they carry no
-	// month, so the manufacture season is recovered by looking the serial up in
-	// that year's production batches.
-	CodeFormatJalaliSeasonal = "jalali_seasonal"
+	// CodeFormatEvinkiVacuum is the Evinki vacuum-cleaner scheme, covering both
+	// of that line's code eras: the seasonal codes used in 1403-1404, whose
+	// month comes from a production-batch table, and the encoded codes used
+	// from 1405 onward. One product, so one format -- neither the admin nor
+	// the customer should have to know which era a device came from.
+	CodeFormatEvinkiVacuum = "evinki_vacuum"
 	// CodeFormatAny accepts any code as-is. It exists for stock that was
 	// labelled before any scheme was agreed, or codes printed by a supplier
 	// whose format we don't control. Nothing about the device can be inferred

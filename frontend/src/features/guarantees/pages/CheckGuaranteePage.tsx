@@ -16,6 +16,7 @@ import { GuaranteeStatusBadge } from '../components/GuaranteeStatusBadge'
 import { FormattedDate } from '@/components/common/FormattedDate'
 import { useCalendar } from '@/contexts/CalendarContext'
 import { Search, ShieldCheck, AlertCircle } from 'lucide-react'
+import { Logo } from '@/components/common/Logo'
 
 // Compares date-only values in UTC. The old check ran `new Date(expiry) < new
 // Date()`, which parsed the expiry as UTC midnight and so flagged a guarantee
@@ -68,6 +69,9 @@ export function CheckGuaranteePage() {
       <div className="max-w-2xl mx-auto">
         {/* Language/calendar are a single global setting an admin controls;
             customers inherit it via GlobalSettingsSync rather than choosing. */}
+        <div className="flex justify-center mb-6">
+          <Logo height={48} />
+        </div>
         <Card className="shadow-lg">
           <CardHeader className="text-center border-b">
             <div className="flex justify-center mb-4">

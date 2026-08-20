@@ -46,6 +46,7 @@ import {
   FileText,
   Image as ImageIcon,
 } from 'lucide-react'
+import { Logo } from '@/components/common/Logo'
 import { DatePicker } from '@/components/ui/date-picker'
 import { useDebounce } from '@/hooks/useDebounce'
 
@@ -433,6 +434,9 @@ export function PublicRegisterPage() {
       <div className="max-w-3xl mx-auto">
         {/* Language/calendar come from the admin-controlled global setting. */}
 
+        <div className="flex justify-center mb-6">
+          <Logo height={48} />
+        </div>
         <Card className="shadow-lg">
           <CardHeader className="text-center border-b">
             <div className="flex justify-center mb-4">

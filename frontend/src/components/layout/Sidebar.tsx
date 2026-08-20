@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { Logo } from '@/components/common/Logo'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -62,7 +63,7 @@ export function Sidebar() {
   return (
     <div className="flex flex-col w-64 bg-gray-900 text-white">
       <div className="flex items-center justify-center h-16 border-b border-gray-800">
-        <h1 className="text-xl font-bold">GMS</h1>
+        <Logo variant="onDark" height={28} />
       </div>
       <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
         {topNav.map(renderLink)}

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Wrench, ArrowLeft } from 'lucide-react'
+import { Logo } from '@/components/common/Logo'
 
 export function TechnicianLoginPage() {
   const navigate = useNavigate()
@@ -40,6 +41,7 @@ export function TechnicianLoginPage() {
 
         {/* Brand */}
         <div className={`text-center ${isRTL ? 'text-right' : ''}`}>
+          <Logo height={48} className="mb-3" />
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
             <Wrench className="h-8 w-8 text-primary" />
           </div>

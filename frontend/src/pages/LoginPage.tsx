@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
-import { Loader2, ShieldCheck, Shield, UserCog, FileCheck, Search } from 'lucide-react'
+import { Loader2, Shield, UserCog, FileCheck, Search } from 'lucide-react'
+import { Logo } from '@/components/common/Logo'
 
 const loginSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
@@ -73,9 +74,7 @@ export function LoginPage() {
 
         {/* Brand */}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-            <ShieldCheck className="h-8 w-8 text-primary" />
-          </div>
+          <Logo height={56} className="mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">{t('login.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">{t('login.subtitle')}</p>
         </div>

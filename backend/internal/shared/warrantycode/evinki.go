@@ -220,3 +220,72 @@ func ValidateSeasonalCode(code, prefix string) ValidationResult {
 		MessageType:            messageType,
 	}
 }
+
+// ── The Evinki vacuum-cleaner code scheme ────────────────────────────────────
+//
+// One product line, two code eras. A device made in 1403 or 1404 carries a
+// seasonal code; one made from 1405 onward carries an encoded code with its
+// month spelled out. Both are the same product, so they are one format here
+// rather than two: an admin registering the product should not have to know
+// which era a customer's device came from, and a customer typing a code off a
+// label should not have to pick.
+//
+// The two shapes cannot be confused for each other -- a seasonal code has the
+// literal model segment and a 4-digit serial, an encoded one has a 2-digit
+// month and a 5-digit serial -- so the right rules can always be chosen from
+// the code alone.
+
+// EvinkiPattern matches either era's shape for the given prefix.
+func EvinkiPattern(prefix string) string {
+	base := SeasonalBase(prefix)
+	full := strings.ToUpper(strings.TrimSpace(prefix))
+	return fmt.Sprintf(`^[0-9]{4}(%sD?%s[0-9]{4}|%s(0[1-9]|1[0-2])[0-9]{5})$`,
+		regexp.QuoteMeta(base), seasonalModelSegment, regexp.QuoteMeta(full))
+}
+
+// ParseEvinkiCode parses a code from either era.
+func ParseEvinkiCode(code, prefix string) *ParsedCode {
+	if parsed := ParseCode(code, prefix); parsed != nil {
+		return parsed
+	}
+	return ParseSeasonalCode(code, prefix)
+}
+
+// ValidateEvinkiCode validates a code from either era, choosing the rules that
+// match the shape the customer actually typed.
+func ValidateEvinkiCode(code, prefix string) ValidationResult {
+	if code == "" {
+		return ValidationResult{
+			Valid:       false,
+			Message:     "کد گارانتی نمی‌تواند خالی باشد",
+			MessageType: "error",
+		}
+	}
+
+	trimmed := strings.ToUpper(strings.TrimSpace(code))
+	base := SeasonalBase(prefix)
+	full := strings.ToUpper(strings.TrimSpace(prefix))
+
+	// The model segment is what distinguishes a seasonal code, and it is
+	// present even when the rest of the code is wrong -- so a typo in a
+	// seasonal code still gets the seasonal error message rather than a
+	// generic one about the encoded format.
+	looksSeasonal := regexp.MustCompile(`^[0-9]{4}` + regexp.QuoteMeta(base) + `D?` + seasonalModelSegment).MatchString(trimmed)
+	if looksSeasonal {
+		return ValidateSeasonalCode(code, prefix)
+	}
+
+	if result := ValidateCodeFormat(code, prefix); result.Valid {
+		return result
+	}
+
+	// Neither era claimed it. Describe both, since the customer may hold a
+	// device from either one.
+	return ValidationResult{
+		Valid: false,
+		Message: fmt.Sprintf(
+			"فرمت کد گارانتی نامعتبر است. برای دستگاه‌های ۱۴۰۵ به بعد: سال%sماهسریال (مثال: 1405%s0912345) و برای ۱۴۰۳ و ۱۴۰۴: سال%s%sسریال (مثال: 1404%s%s1234)",
+			full, full, base, seasonalModelSegment, base, seasonalModelSegment),
+		MessageType: "error",
+	}
+}

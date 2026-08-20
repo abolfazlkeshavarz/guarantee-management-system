@@ -83,14 +83,14 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
   const codeFormatOptions = [
     { value: 'simple', label: t('products.codeFormat.simple') },
     { value: 'jalali_encoded', label: t('products.codeFormat.jalaliEncoded') },
-    { value: 'jalali_seasonal', label: t('products.codeFormat.jalaliSeasonal') },
+    { value: 'evinki_vacuum', label: t('products.codeFormat.evinkiVacuum') },
     { value: 'any', label: t('products.codeFormat.any') },
   ]
 
   const codeFormatHints: Record<string, string> = {
     simple: t('products.codeFormat.simpleHint'),
     jalali_encoded: t('products.codeFormat.jalaliEncodedHint'),
-    jalali_seasonal: t('products.codeFormat.jalaliSeasonalHint'),
+    evinki_vacuum: t('products.codeFormat.evinkiVacuumHint'),
     any: t('products.codeFormat.anyHint'),
   }
 

@@ -294,10 +294,10 @@ func (s *ProductService) LookupByCode(code string) (*ProductDTO, error) {
 
 	// CodeFormatAny deliberately falls through both branches: an arbitrary code
 	// carries no manufacture date, so there is nothing to validate or report.
-	if product.CodeFormat == CodeFormatJalaliEncoded || product.CodeFormat == CodeFormatJalaliSeasonal {
+	if product.CodeFormat == CodeFormatJalaliEncoded || product.CodeFormat == CodeFormatEvinkiVacuum {
 		var result warrantycode.ValidationResult
-		if product.CodeFormat == CodeFormatJalaliSeasonal {
-			result = warrantycode.ValidateSeasonalCode(code, product.CodePrefix)
+		if product.CodeFormat == CodeFormatEvinkiVacuum {
+			result = warrantycode.ValidateEvinkiCode(code, product.CodePrefix)
 		} else {
 			result = warrantycode.ValidateCodeFormat(code, product.CodePrefix)
 		}
@@ -366,8 +366,8 @@ func BuildCodePattern(prefix, format, manual string) (string, error) {
 	switch format {
 	case CodeFormatJalaliEncoded:
 		return fmt.Sprintf(`^[0-9]{4}%s(0[1-9]|1[0-2])[0-9]{5}$`, regexp.QuoteMeta(prefix)), nil
-	case CodeFormatJalaliSeasonal:
-		return warrantycode.SeasonalPattern(prefix), nil
+	case CodeFormatEvinkiVacuum:
+		return warrantycode.EvinkiPattern(prefix), nil
 	case CodeFormatSimple:
 		if manual == "" {
 			return fmt.Sprintf(`^%s-[0-9]{6}$`, regexp.QuoteMeta(prefix)), nil

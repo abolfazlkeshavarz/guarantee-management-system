@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Logo } from '@/components/common/Logo'
 import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
 import { User, Settings, LogOut } from 'lucide-react'
@@ -35,9 +36,12 @@ export function Header() {
   return (
     <header className="bg-white border-b px-6 py-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800">
-          {t('header.title')}
-        </h2>
+        <div className="flex items-center gap-3">
+          <Logo height={32} />
+          <h2 className="text-lg font-semibold text-gray-800">
+            {t('header.title')}
+          </h2>
+        </div>
         <div className="flex items-center gap-4">
           <LanguageSwitcher />
           <CalendarSwitcher />

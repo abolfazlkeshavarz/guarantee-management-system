@@ -38,7 +38,7 @@ type CreateProductRequest struct {
 	CategoryID             uint   `json:"category_id" binding:"required"`
 	IsActive               *bool  `json:"is_active"`
 	CodePrefix             string `json:"code_prefix" binding:"omitempty,min=2,max=20,alphanum"`
-	CodeFormat             string `json:"code_format" binding:"required,oneof=simple jalali_encoded jalali_seasonal any"`
+	CodeFormat             string `json:"code_format" binding:"required,oneof=simple jalali_encoded evinki_vacuum any"`
 	CodePattern            string `json:"code_pattern"` // only used when code_format=simple
 	DefaultGuaranteeMonths int    `json:"default_guarantee_months" binding:"required,min=1,max=120"`
 	GoldenGuaranteeMonths  int    `json:"golden_guarantee_months" binding:"min=0,max=120"`
@@ -50,7 +50,7 @@ type UpdateProductRequest struct {
 	CategoryID             uint   `json:"category_id" binding:"omitempty"`
 	IsActive               *bool  `json:"is_active"`
 	CodePrefix             string `json:"code_prefix" binding:"omitempty,min=2,max=20,alphanum"`
-	CodeFormat             string `json:"code_format" binding:"omitempty,oneof=simple jalali_encoded jalali_seasonal any"`
+	CodeFormat             string `json:"code_format" binding:"omitempty,oneof=simple jalali_encoded evinki_vacuum any"`
 	CodePattern            string `json:"code_pattern"`
 	DefaultGuaranteeMonths *int   `json:"default_guarantee_months" binding:"omitempty,min=1,max=120"`
 	GoldenGuaranteeMonths  *int   `json:"golden_guarantee_months" binding:"omitempty,min=0,max=120"`

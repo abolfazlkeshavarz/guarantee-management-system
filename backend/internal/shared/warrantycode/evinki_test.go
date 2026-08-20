@@ -1,6 +1,10 @@
 package warrantycode
 
-import "testing"
+import (
+	"regexp"
+	"strings"
+	"testing"
+)
 
 // The batch boundaries are the whole point of the seasonal format, so they are
 // pinned here: an off-by-one moves a device into the wrong season and, with it,
@@ -137,4 +141,90 @@ func TestValidateSeasonalCode_ExplainsOutOfRangeSerial(t *testing.T) {
 	if res.MessageType != "error" {
 		t.Errorf("message type = %q, want error", res.MessageType)
 	}
+}
+
+// The Evinki format spans both eras, so the risk is a code from one era being
+// judged by the other's rules.
+func TestEvinkiCode_AcceptsBothEras(t *testing.T) {
+	cases := []struct {
+		name       string
+		code       string
+		wantYear   int
+		wantMonth  int
+		seasonOnly bool
+	}{
+		{"encoded 1405", "1405FZD0912345", 1405, 9, false},
+		{"encoded 1406", "1406FZD0112345", 1406, 1, false},
+		{"seasonal 1404 plain", "1404FZ2400101201", 1404, 6, true},
+		{"seasonal 1404 with D", "1404FZD2400103401", 1404, 12, true},
+		{"seasonal 1403 plain", "1403FZ2400100700", 1403, 3, true},
+		{"seasonal 1403 with D", "1403FZD2400101801", 1403, 12, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ParseEvinkiCode(tc.code, "FZD")
+			if got == nil {
+				t.Fatalf("Evinki format rejected %q", tc.code)
+			}
+			if got.Year != tc.wantYear || got.Month != tc.wantMonth {
+				t.Errorf("got %d/%d, want %d/%d", got.Year, got.Month, tc.wantYear, tc.wantMonth)
+			}
+			if got.SeasonOnly != tc.seasonOnly {
+				t.Errorf("SeasonOnly = %v, want %v", got.SeasonOnly, tc.seasonOnly)
+			}
+		})
+	}
+}
+
+// A code with the model segment is a seasonal code even when it is malformed,
+// so its error must talk about batches rather than the encoded shape.
+func TestEvinkiCode_MalformedSeasonalGetsSeasonalError(t *testing.T) {
+	res := ValidateEvinkiCode("1403FZ2400109999", "FZD")
+	if res.Valid {
+		t.Fatal("serial past the last 1403 batch must not validate")
+	}
+	if !contains(res.Message, "سریال") {
+		t.Errorf("expected a serial-range message, got %q", res.Message)
+	}
+}
+
+func TestEvinkiCode_RejectsNeitherEra(t *testing.T) {
+	for _, code := range []string{
+		"1402FZ2400100001", // no batch table for 1402
+		"1404FZD0912345",   // encoded shape, but a year the encoded era excludes
+		"1405FZD091234",    // encoded, serial one digit short
+		"NONSENSE",
+	} {
+		if got := ParseEvinkiCode(code, "FZD"); got != nil {
+			t.Errorf("%q should be rejected, got %d/%d", code, got.Year, got.Month)
+		}
+		if res := ValidateEvinkiCode(code, "FZD"); res.Valid {
+			t.Errorf("%q should not validate", code)
+		}
+	}
+}
+
+// The pattern routes codes to this product in Postgres, so it must accept
+// exactly what the parser accepts.
+func TestEvinkiPatternAgreesWithParser(t *testing.T) {
+	pattern := EvinkiPattern("FZD")
+	want := `^[0-9]{4}(FZD?240010[0-9]{4}|FZD(0[1-9]|1[0-2])[0-9]{5})$`
+	if pattern != want {
+		t.Fatalf("pattern = %q, want %q", pattern, want)
+	}
+	re := regexp.MustCompile(pattern)
+	for _, code := range []string{"1405FZD0912345", "1404FZ2400101201", "1403FZD2400101801"} {
+		if !re.MatchString(code) {
+			t.Errorf("pattern does not match %q, which the parser accepts", code)
+		}
+	}
+	for _, code := range []string{"1405FZD091234", "1404FZ24001012345", "OTHER-123456"} {
+		if re.MatchString(code) {
+			t.Errorf("pattern matches %q, which the parser rejects", code)
+		}
+	}
+}
+
+func contains(haystack, needle string) bool {
+	return strings.Contains(haystack, needle)
 }

@@ -76,7 +76,7 @@ func Load() *Config {
 	return &Config{
 		AppEnv:  getEnv("APP_ENV", "development"),
 		AppPort: getEnv("APP_PORT", "8080"),
-		AppName: getEnv("APP_NAME", "Guarantee Management System"),
+		AppName: getEnv("APP_NAME", "Evinki System"),
 		AppURL:  getEnv("APP_URL", ""),
 
 		DBHost:     getEnv("DB_HOST", "localhost"),

@@ -71,7 +71,7 @@
     "auditLog": "Activity log"
   },
   "header": {
-    "title": "Guarantee Management System",
+    "title": "Evinki System",
     "myAccount": "My Account",
     "profile": "Profile",
     "settings": "Settings",
@@ -82,7 +82,7 @@
     "persian": "فارسی"
   },
   "login": {
-    "title": "Guarantee Management System",
+    "title": "Evinki System",
     "subtitle": "Protecting your products, building trust",
     "customerServices": "Customer Services",
     "customerServicesDesc": "Register your product guarantee or check its status",
@@ -98,7 +98,7 @@
     "loggingIn": "Logging in...",
     "admin": "Admin",
     "technician": "Technician",
-    "footer": "© {{year}} Guarantee Management System. All rights reserved."
+    "footer": "© {{year}} Evinki System. All rights reserved."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -240,14 +240,14 @@
     "updateSuccess": "Product updated successfully",
     "codeFormat": {
       "simple": "Simple",
-      "simpleHint": "A fixed pattern, e.g. EVC-000123. No date is read from the code.",
+      "simpleHint": "A fixed shape you define, e.g. EVC-000123. A code must match it, but no date is read from it.",
       "jalaliEncoded": "Jalali encoded (1405 onward)",
       "jalaliEncodedHint": "Year, month and serial are in the code, e.g. 1405FZD0912345. The exact manufacture month is known.",
-      "jalaliSeasonal": "Jalali seasonal (1403-1404)",
-      "jalaliSeasonalHint": "Older codes such as 1404FZ2400101234. The serial identifies the production batch, so only the manufacture season is known.",
       "any": "Accept any code",
-      "anyHint": "Every code is accepted exactly as entered. Nothing is checked and no manufacture date or expiry can be read. Only one product can use this.",
-      "noPrefixNeeded": "Not needed for this format"
+      "anyHint": "No shape at all: every code is accepted as typed. Use for stock with no scheme. Only one product can use this.",
+      "noPrefixNeeded": "Not needed for this format",
+      "evinkiVacuum": "Evinki vacuum cleaner",
+      "evinkiVacuumHint": "Both eras of the Evinki vacuum code: 1405 onward (1405FZD0912345, exact month) and 1403-1404 (1404FZ2400101234, season only)."
     }
   },
   "categories": {
@@ -371,7 +371,7 @@
     "signingIn": "Signing in...",
     "invalidCredentials": "Invalid username or password",
     "backToStaffLogin": "Back to Staff Login",
-    "footer": "© {{year}} Guarantee Management System. All rights reserved.",
+    "footer": "© {{year}} Evinki System. All rights reserved.",
     "dashboardNav": "Dashboard",
     "profileNav": "Profile",
     "logout": "Logout",
