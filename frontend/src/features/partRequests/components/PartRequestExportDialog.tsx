@@ -35,31 +35,57 @@ export function PartRequestExportDialog({ open, onOpenChange }: PartRequestExpor
       return { items: res.requests, total: res.total }
     })
 
-    if (rows.length === 0) {
+    // A request holds a list of items, but the sheet had been written from the
+    // request's legacy first-item columns -- so every line after the first was
+    // silently dropped. One row per item instead: the part is what the reader
+    // is counting, and a request with three parts is three things to fulfil.
+    const lines = rows.flatMap((r) =>
+      (r.items && r.items.length > 0
+        ? r.items
+        : [
+            {
+              id: r.id,
+              item_type: r.item_type,
+              item_name: r.item_name,
+              quantity: r.quantity,
+              is_custom_item: r.is_custom_item,
+            },
+          ]
+      ).map((item) => ({ request: r, item }))
+    )
+
+    if (lines.length === 0) {
       toast.error(t('exports.noRows'))
       return
     }
 
     await exportRows({
-      rows,
+      rows: lines,
       fileName: `part-requests-${new Date().toISOString().slice(0, 10)}`,
       format,
       rightToLeft: i18n.language === 'fa',
       columns: [
-        { header: t('exports.technician'), value: (r) => r.technician_name },
-        { header: t('exports.item'), value: (r) => r.item_name },
-        { header: t('exports.quantity'), value: (r) => r.quantity },
-        { header: t('exports.guaranteeCode'), value: (r) => r.guarantee_code ?? '' },
-        { header: t('exports.customerName'), value: (r) => r.customer_name ?? '' },
+        { header: t('partRequests.table.requestId'), value: ({ request }) => `#${request.id}` },
+        { header: t('exports.technician'), value: ({ request }) => request.technician_name },
+        { header: t('exports.item'), value: ({ item }) => item.item_name },
+        {
+          header: t('partRequests.itemTypeLabel'),
+          value: ({ item }) =>
+            t(`partRequests.itemType.${item.item_type}`, { defaultValue: item.item_type }),
+        },
+        { header: t('exports.quantity'), value: ({ item }) => item.quantity },
+        { header: t('exports.guaranteeCode'), value: ({ request }) => request.guarantee_code ?? '' },
+        { header: t('exports.customerName'), value: ({ request }) => request.customer_name ?? '' },
         {
           header: t('common.status'),
-          value: (r) => t(`partRequests.status.${r.status}`, { defaultValue: r.status }),
+          value: ({ request }) =>
+            t(`partRequests.status.${request.status}`, { defaultValue: request.status }),
         },
-        { header: t('common.notes'), value: (r) => r.notes },
-        { header: t('exports.reviewedBy'), value: (r) => r.reviewed_by_name ?? '' },
+        { header: t('common.notes'), value: ({ request }) => request.notes },
+        { header: t('exports.reviewedBy'), value: ({ request }) => request.reviewed_by_name ?? '' },
         {
           header: t('common.created'),
-          value: (r) => formatDate(r.created_at, 'YYYY/MM/DD'),
+          value: ({ request }) => formatDate(request.created_at, 'YYYY/MM/DD'),
         },
       ],
     })

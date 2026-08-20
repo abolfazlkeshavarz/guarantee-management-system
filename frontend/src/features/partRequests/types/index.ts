@@ -73,6 +73,8 @@ export interface PartRequestItem {
   item_name: string
   is_custom_item: boolean
   quantity: number
+  /** The repair this delivered line has already been fitted on, if any. */
+  used_in_repair_id?: number
 }
 
 export interface CreatePartRequestItemData {

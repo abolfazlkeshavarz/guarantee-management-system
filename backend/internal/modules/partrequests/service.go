@@ -227,7 +227,6 @@ func (s *PartRequestService) CreateByTechnician(techID uint, req *CreatePartRequ
 	return dto, nil
 }
 
-
 // ─── Reads ───────────────────────────────────────────────────────────────────
 
 func (s *PartRequestService) GetByID(id uint) (*PartRequestDTO, error) {
@@ -395,22 +394,76 @@ func (s *PartRequestService) Delete(id uint) error {
 
 // ─── DTO mapping ─────────────────────────────────────────────────────────────
 
+// repairsHoldingItems returns, for the given delivered request lines, the
+// repair each one has already been reported on.
+//
+// A repair that was rejected or cancelled releases its parts again: the work
+// did not happen, so the part is still on the shelf. Anything else -- awaiting
+// review or approved -- holds onto it.
+func (s *PartRequestService) repairsHoldingItems(itemIDs []uint) map[uint]uint {
+	held := map[uint]uint{}
+	if len(itemIDs) == 0 {
+		return held
+	}
+
+	var rows []struct {
+		ItemID   uint
+		RepairID uint
+	}
+	const q = `
+		SELECT rci.component_request_item_id AS item_id, rci.repair_id
+		  FROM repair_component_items rci
+		  JOIN repairs r ON r.id = rci.repair_id
+		 WHERE rci.component_request_item_id IN ?
+		   AND r.deleted_at IS NULL AND r.status IN ?
+		 UNION
+		SELECT rsi.component_request_item_id AS item_id, rsi.repair_id
+		  FROM repair_service_items rsi
+		  JOIN repairs r ON r.id = rsi.repair_id
+		 WHERE rsi.component_request_item_id IN ?
+		   AND r.deleted_at IS NULL AND r.status IN ?`
+
+	standing := []string{"Pending", "Approved"}
+	if err := s.db.Raw(q, itemIDs, standing, itemIDs, standing).Scan(&rows).Error; err != nil {
+		return held
+	}
+	for _, r := range rows {
+		held[r.ItemID] = r.RepairID
+	}
+	return held
+}
+
+// markUsedItems stamps each line with the repair holding it, if any.
+func (s *PartRequestService) markUsedItems(items []PartRequestItemDTO) {
+	ids := make([]uint, 0, len(items))
+	for _, it := range items {
+		ids = append(ids, it.ID)
+	}
+	held := s.repairsHoldingItems(ids)
+	for i := range items {
+		if repairID, ok := held[items[i].ID]; ok {
+			id := repairID
+			items[i].UsedInRepairID = &id
+		}
+	}
+}
+
 func (s *PartRequestService) mapToDTO(request *PartRequest) *PartRequestDTO {
 	dto := &PartRequestDTO{
-		ID:            request.ID,
-		TechnicianID:  request.TechnicianID,
-		GuaranteeID:   request.GuaranteeID,
-		GuaranteeCode: request.GuaranteeCode,
-		ItemType:      request.ItemType,
-		Quantity:      request.Quantity,
-		Notes:         request.Notes,
-		Status:        request.Status,
+		ID:                  request.ID,
+		TechnicianID:        request.TechnicianID,
+		GuaranteeID:         request.GuaranteeID,
+		GuaranteeCode:       request.GuaranteeCode,
+		ItemType:            request.ItemType,
+		Quantity:            request.Quantity,
+		Notes:               request.Notes,
+		Status:              request.Status,
 		RepairID:            request.RepairID,
 		GuaranteeWasExpired: request.GuaranteeWasExpired,
-		ReviewedBy:    request.ReviewedBy,
-		ReviewNotes:   request.ReviewNotes,
-		CreatedAt:     request.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:     request.UpdatedAt.Format(time.RFC3339),
+		ReviewedBy:          request.ReviewedBy,
+		ReviewNotes:         request.ReviewNotes,
+		CreatedAt:           request.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:           request.UpdatedAt.Format(time.RFC3339),
 	}
 
 	if request.ReviewedAt != nil {
@@ -491,6 +544,7 @@ func (s *PartRequestService) mapToDTO(request *PartRequest) *PartRequestDTO {
 			}
 			dto.Items = append(dto.Items, out)
 		}
+		s.markUsedItems(dto.Items)
 	}
 
 	// Guarantee context, when the request is tied to one

@@ -24,14 +24,14 @@ type PartRequestDTO struct {
 	Notes    string `json:"notes"`
 	Status   string `json:"status"`
 
-	RepairID       *uint   `json:"repair_id,omitempty"`
-	GuaranteeWasExpired bool `json:"guarantee_was_expired"`
-	ReviewedBy     *uint   `json:"reviewed_by,omitempty"`
-	ReviewedByName string  `json:"reviewed_by_name,omitempty"`
-	ReviewedByRole string  `json:"reviewed_by_role,omitempty"`
-	ReviewedAt     *string `json:"reviewed_at,omitempty"`
-	ReviewNotes    string  `json:"review_notes,omitempty"`
-	DeliveredAt    *string `json:"delivered_at,omitempty"`
+	RepairID            *uint   `json:"repair_id,omitempty"`
+	GuaranteeWasExpired bool    `json:"guarantee_was_expired"`
+	ReviewedBy          *uint   `json:"reviewed_by,omitempty"`
+	ReviewedByName      string  `json:"reviewed_by_name,omitempty"`
+	ReviewedByRole      string  `json:"reviewed_by_role,omitempty"`
+	ReviewedAt          *string `json:"reviewed_at,omitempty"`
+	ReviewNotes         string  `json:"review_notes,omitempty"`
+	DeliveredAt         *string `json:"delivered_at,omitempty"`
 
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
@@ -47,6 +47,9 @@ type PartRequestItemDTO struct {
 	ItemName     string `json:"item_name"`
 	IsCustomItem bool   `json:"is_custom_item"`
 	Quantity     int    `json:"quantity"`
+	// A delivered part is spent once it has been reported on a repair that
+	// still stands. Set so the technician's picker can stop offering it.
+	UsedInRepairID *uint `json:"used_in_repair_id,omitempty"`
 }
 
 // PartRequestItemInput is one requested line from the client.
@@ -62,7 +65,7 @@ type CreatePartRequestRequest struct {
 	// still accepted so an older client keeps working.
 	Items []PartRequestItemInput `json:"items"`
 	// Optional: the repair this part is needed for.
-	RepairID *uint `json:"repair_id"`
+	RepairID      *uint  `json:"repair_id"`
 	GuaranteeCode string `json:"guarantee_code"`
 
 	// Legacy single-item fields. Optional now that `items` carries the list --

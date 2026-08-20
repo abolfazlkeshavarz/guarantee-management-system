@@ -144,6 +144,40 @@ func (s *RepairService) requireDeliveredParts(techID uint, components []RepairCo
 		byID[r.ID] = r
 	}
 
+	// A physical part can only be fitted once. The picker already hides lines
+	// that are spent, but the id comes from the client, so the rule is enforced
+	// here -- otherwise two repairs could claim the same delivered part and the
+	// trail would say a part was fitted twice.
+	//
+	// Rejected and cancelled repairs release their parts: that work did not
+	// happen, so the part is back on the shelf.
+	spent := map[uint]uint{}
+	{
+		var used []struct {
+			ItemID   uint
+			RepairID uint
+		}
+		const q = `
+			SELECT rci.component_request_item_id AS item_id, rci.repair_id
+			  FROM repair_component_items rci
+			  JOIN repairs r ON r.id = rci.repair_id
+			 WHERE rci.component_request_item_id IN ?
+			   AND r.deleted_at IS NULL AND r.status IN ?
+			 UNION
+			SELECT rsi.component_request_item_id AS item_id, rsi.repair_id
+			  FROM repair_service_items rsi
+			  JOIN repairs r ON r.id = rsi.repair_id
+			 WHERE rsi.component_request_item_id IN ?
+			   AND r.deleted_at IS NULL AND r.status IN ?`
+		standing := []string{StatusPending, StatusApproved}
+		if err := s.db.Raw(q, ids, standing, ids, standing).Scan(&used).Error; err != nil {
+			return errors.NewAppError(errors.ErrInternalServer, "Failed to verify delivered parts", 500)
+		}
+		for _, u := range used {
+			spent[u.ItemID] = u.RepairID
+		}
+	}
+
 	check := func(itemID uint, wantComponent, wantService *uint, label string) error {
 		line, ok := byID[itemID]
 		if !ok {
@@ -156,6 +190,10 @@ func (s *RepairService) requireDeliveredParts(techID uint, components []RepairCo
 		if line.Status != "Delivered" {
 			return errors.NewAppError(errors.ErrValidation,
 				label+": that part has not been delivered yet", 400)
+		}
+		if repairID, used := spent[itemID]; used {
+			return errors.NewAppError(errors.ErrValidation,
+				fmt.Sprintf("%s: that part was already used on repair #%d", label, repairID), 409)
 		}
 		if wantComponent != nil {
 			if line.RepairComponentID == nil || *line.RepairComponentID != *wantComponent {

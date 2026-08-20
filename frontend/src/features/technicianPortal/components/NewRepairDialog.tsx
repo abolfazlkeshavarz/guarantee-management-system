@@ -81,17 +81,32 @@ export function NewRepairDialog() {
       name: item.item_name,
       quantity: item.quantity,
       itemType: item.item_type,
+      guaranteeCode: request.guarantee_code ?? '',
+      usedInRepairId: item.used_in_repair_id,
     }))
   )
 
+  // Parts are issued against a specific guarantee, so only that guarantee's
+  // parts may be reported on its repair -- offering the technician everything
+  // they have ever been sent would let a part bought for one customer's
+  // machine be booked against another's.
+  //
+  // A line already fitted on a repair that still stands is gone: the physical
+  // part cannot be fitted twice. Rejected and cancelled repairs release theirs.
+  //
   // A custom line has no catalog entry to report against, so it cannot back a
   // repair line; it still shows on the request itself.
-  const deliveredComponents: DeliveredPart[] = deliveredLines.filter(
-    (l) => l.itemType === 'component' && l.catalogId > 0
-  )
-  const deliveredServices: DeliveredPart[] = deliveredLines.filter(
-    (l) => l.itemType === 'service' && l.catalogId > 0
-  )
+  const availableFor = (type: string): DeliveredPart[] =>
+    deliveredLines.filter(
+      (l) =>
+        l.itemType === type &&
+        l.catalogId > 0 &&
+        !l.usedInRepairId &&
+        (guarantee ? l.guaranteeCode === guarantee.code : false)
+    )
+
+  const deliveredComponents = availableFor('component')
+  const deliveredServices = availableFor('service')
 
   const form = useForm<RepairFormValues>({
     resolver: zodResolver(repairSchema),
