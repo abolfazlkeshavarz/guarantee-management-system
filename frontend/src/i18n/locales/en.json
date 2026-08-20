@@ -554,7 +554,10 @@
     "itemsLabel": "Requested items",
     "addItem": "Add item",
     "noItems": "No items added yet",
-    "itemsSummary": "{{count}} items"
+    "itemsSummary": "{{count}} items",
+    "forRepairLabel": "For which repair? (optional)",
+    "noRepair": "Not for a specific repair",
+    "forRepairHint": "Linking it lets the office see which parts belong to which repair."
   },
   "exports": {
     "export": "Export",

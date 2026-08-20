@@ -554,7 +554,10 @@
     "itemsLabel": "اقلام درخواستی",
     "addItem": "افزودن قلم",
     "noItems": "هنوز قلمی اضافه نشده است",
-    "itemsSummary": "{{count}} قلم"
+    "itemsSummary": "{{count}} قلم",
+    "forRepairLabel": "برای کدام تعمیر؟ (اختیاری)",
+    "noRepair": "مربوط به تعمیر خاصی نیست",
+    "forRepairHint": "با انتخاب تعمیر، دفتر می‌تواند ببیند کدام قطعات مربوط به کدام تعمیر است."
   },
   "exports": {
     "export": "خروجی",

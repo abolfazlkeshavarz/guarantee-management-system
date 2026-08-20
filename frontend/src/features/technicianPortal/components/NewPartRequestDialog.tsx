@@ -17,9 +17,18 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
 import { technicianGuaranteeService, Guarantee } from '../api/technicianGuarantees'
 import { technicianPartRequestService } from '@/features/partRequests/api/partRequests'
+import { technicianAuthService } from '../api/technicianAuth'
+import { useCalendar } from '@/contexts/CalendarContext'
 import {
   partRequestSchema,
   PartRequestFormValues,
@@ -29,22 +38,21 @@ import {
   repairServiceCatalogService,
 } from '@/features/repairCatalog/api/repairCatalog'
 import { toast } from 'sonner'
-import {
-  Plus,
-  Search,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  ShieldCheck,
-  ShieldOff,
-} from 'lucide-react'
+import { Plus, Search, CheckCircle2, XCircle, Loader2, ShieldCheck, ShieldOff } from 'lucide-react'
 
 type GuaranteeMode = 'unset' | 'with' | 'without'
 
 const DEFAULT_VALUES: PartRequestFormValues = {
   guarantee_code: '',
   // Start with one blank line so the form is immediately usable.
-  items: [{ item_type: 'component', item_id: undefined, custom_item_name: '', quantity: 1 }],
+  items: [
+    {
+      item_type: 'component',
+      item_id: undefined,
+      custom_item_name: '',
+      quantity: 1,
+    },
+  ],
   notes: '',
 }
 
@@ -54,6 +62,7 @@ export function NewPartRequestDialog() {
   const queryClient = useQueryClient()
 
   const [open, setOpen] = useState(false)
+  const { formatDate } = useCalendar()
   const [guaranteeMode, setGuaranteeMode] = useState<GuaranteeMode>('unset')
   const [code, setCode] = useState('')
   const [checking, setChecking] = useState(false)
@@ -71,6 +80,14 @@ export function NewPartRequestDialog() {
     enabled: open,
   })
 
+  // The technician's own repairs, offered as the job a part is needed for.
+  // Only their own: you cannot request parts against someone else's work.
+  const { data: myRepairs } = useQuery({
+    queryKey: ['my-repairs-for-part-request'],
+    queryFn: () => technicianAuthService.getMyRepairs(1, 100),
+    enabled: open,
+  })
+
   const form = useForm<PartRequestFormValues>({
     resolver: zodResolver(partRequestSchema),
     defaultValues: DEFAULT_VALUES,
@@ -80,6 +97,7 @@ export function NewPartRequestDialog() {
     mutationFn: (data: PartRequestFormValues) =>
       technicianPartRequestService.create({
         guarantee_code: guaranteeMode === 'with' ? code.trim().toUpperCase() : undefined,
+        repair_id: data.repair_id || undefined,
         items: (data.items ?? []).map((item) => ({
           item_type: item.item_type,
           item_id: item.item_type === 'custom' ? undefined : item.item_id,
@@ -102,6 +120,7 @@ export function NewPartRequestDialog() {
     setChecking(true)
     setCheckError(null)
     setGuarantee(null)
+    form.setValue('repair_id', undefined)
     try {
       const result = await technicianGuaranteeService.checkByCode(code.trim().toUpperCase())
       setGuarantee(result)
@@ -126,6 +145,24 @@ export function NewPartRequestDialog() {
   const handleSubmit = async (data: PartRequestFormValues) => {
     await createMutation.mutateAsync(data)
   }
+
+  // When a guarantee has been verified, only that guarantee's repairs make
+  // sense as the target; otherwise offer all of the technician's repairs.
+  const repairChoices = (myRepairs?.repairs ?? []).filter((r) =>
+    guaranteeMode === 'with' && guarantee ? r.guarantee_code === guarantee.code : true,
+  )
+
+  // A technician can have several repairs on the same guarantee filed on the
+  // same day, so code + product + date can still read identically. The repair
+  // number is how the rest of the UI identifies a repair, so it leads the
+  // label and keeps every row distinguishable.
+  const repairLabel = (r: {
+    id: number
+    guarantee_code?: string
+    product_name?: string
+    created_at: string
+  }) =>
+    `#${r.id} · ${r.guarantee_code || t('partRequests.withoutGuarantee')} — ${r.product_name || ''} (${formatDate(r.created_at)})`
 
   // The item section unlocks once the technician has answered the guarantee
   // question: either "no guarantee", or "yes" plus a verified code.
@@ -173,6 +210,7 @@ export function NewPartRequestDialog() {
                 setCode('')
                 setGuarantee(null)
                 setCheckError(null)
+                form.setValue('repair_id', undefined)
               }}
               className={isRTL ? 'flex-row-reverse' : ''}
             >
@@ -202,6 +240,7 @@ export function NewPartRequestDialog() {
                   onClick={() => {
                     setGuarantee(null)
                     setCheckError(null)
+                    form.setValue('repair_id', undefined)
                   }}
                 >
                   {t('partRequests.change')}
@@ -256,6 +295,53 @@ export function NewPartRequestDialog() {
             <Separator />
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                {repairChoices.length > 0 && (
+                  <FormField
+                    control={form.control}
+                    name="repair_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label className={isRTL ? 'text-right block' : ''}>
+                          {t('partRequests.forRepairLabel')}
+                        </Label>
+                        <Select
+                          items={[
+                            {
+                              value: 'none',
+                              label: t('partRequests.noRepair'),
+                            },
+                            ...repairChoices.map((r) => ({
+                              value: String(r.id),
+                              label: repairLabel(r),
+                            })),
+                          ]}
+                          value={field.value ? String(field.value) : 'none'}
+                          onValueChange={(value: string | null) =>
+                            field.onChange(value && value !== 'none' ? Number(value) : undefined)
+                          }
+                        >
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className={isRTL ? 'text-right' : ''}>
+                            <SelectItem value="none">{t('partRequests.noRepair')}</SelectItem>
+                            {repairChoices.map((r) => (
+                              <SelectItem key={r.id} value={String(r.id)}>
+                                {repairLabel(r)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className={`text-xs text-muted-foreground ${isRTL ? 'text-right' : ''}`}>
+                          {t('partRequests.forRepairHint')}
+                        </p>
+                      </FormItem>
+                    )}
+                  />
+                )}
+
                 <PartRequestItemsFields
                   control={form.control as any}
                   components={components}

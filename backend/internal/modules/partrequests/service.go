@@ -145,12 +145,13 @@ func (s *PartRequestService) CreateByTechnician(techID uint, req *CreatePartRequ
 	// when the technician did not type one.
 	if req.RepairID != nil && *req.RepairID != 0 {
 		var r struct {
-			ID          uint
-			GuaranteeID uint
-			Code        string
+			ID           uint
+			GuaranteeID  uint
+			Code         string
+			TechnicianID *uint
 		}
 		if err := s.db.Table("repairs").
-			Select("repairs.id, repairs.guarantee_id, guarantees.code").
+			Select("repairs.id, repairs.guarantee_id, repairs.technician_id, guarantees.code").
 			Joins("LEFT JOIN guarantees ON guarantees.id = repairs.guarantee_id").
 			Where("repairs.id = ? AND repairs.deleted_at IS NULL", *req.RepairID).
 			Scan(&r).Error; err != nil {
@@ -158,6 +159,13 @@ func (s *PartRequestService) CreateByTechnician(techID uint, req *CreatePartRequ
 		}
 		if r.ID == 0 {
 			return nil, errors.NewAppError(errors.ErrNotFound, "Repair not found", 404)
+		}
+		// The picker only offers the technician's own repairs, but the id
+		// arrives from the client, so ownership is checked here too --
+		// otherwise a crafted request could file parts against someone
+		// else's job.
+		if r.TechnicianID == nil || *r.TechnicianID != techID {
+			return nil, errors.NewAppError(errors.ErrForbidden, "You can only request parts for your own repairs", 403)
 		}
 		if guaranteeID == nil && r.GuaranteeID != 0 {
 			gid := r.GuaranteeID
