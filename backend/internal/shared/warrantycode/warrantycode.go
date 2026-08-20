@@ -88,6 +88,9 @@ type ParsedCode struct {
 	Year   int
 	Month  int
 	Serial string
+	// SeasonOnly is set when Month came from a batch table rather than the
+	// code itself, meaning it identifies a season and not a single month.
+	SeasonOnly bool
 }
 
 // ParseCode parses a "{year:4}{prefix}{month:2}{serial:5}" guarantee code
@@ -132,6 +135,7 @@ type ValidationResult struct {
 	MonthName              string `json:"month_name,omitempty"`
 	SeasonName             string `json:"season_name,omitempty"`
 	SeasonPeriod           string `json:"season_period,omitempty"`
+	SeasonOnly             bool   `json:"season_only"`
 	Serial                 string `json:"serial,omitempty"`
 	IsExpired              bool   `json:"is_expired"`
 	MonthsSinceManufacture int    `json:"months_since_manufacture"`

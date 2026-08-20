@@ -47,13 +47,28 @@ func (s *ProductService) Create(req *CreateProductRequest) (*ProductDTO, error) 
 	}
 
 	prefix := strings.ToUpper(strings.TrimSpace(req.CodePrefix))
-	existingPrefix, err := s.repo.FindByCodePrefix(prefix)
-	if err != nil {
-		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check code prefix", 500)
+	if prefix != "" {
+		existingPrefix, err := s.repo.FindByCodePrefix(prefix)
+		if err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check code prefix", 500)
+		}
+		if existingPrefix != nil {
+			return nil, errors.NewAppError(errors.ErrDuplicateEntry,
+				"Another product already uses this code prefix", 409)
+		}
 	}
-	if existingPrefix != nil {
-		return nil, errors.NewAppError(errors.ErrDuplicateEntry,
-			"Another product already uses this code prefix", 409)
+
+	// A catch-all matches every code, so a second one would make the
+	// code-to-product lookup a coin toss.
+	if req.CodeFormat == CodeFormatAny {
+		existingAny, err := s.repo.FindByCodeFormat(CodeFormatAny)
+		if err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check code format", 500)
+		}
+		if existingAny != nil {
+			return nil, errors.NewAppError(errors.ErrDuplicateEntry,
+				"Another product already accepts any code. Only one product can do that, otherwise a code could belong to either.", 409)
+		}
 	}
 
 	isActive := true
@@ -215,6 +230,18 @@ func (s *ProductService) Update(id uint, req *UpdateProductRequest) (*ProductDTO
 		rebuildPattern = true
 	}
 
+	// Same rule as on create: only one product may accept any code.
+	if format == CodeFormatAny && product.CodeFormat != CodeFormatAny {
+		existingAny, err := s.repo.FindByCodeFormat(CodeFormatAny)
+		if err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check code format", 500)
+		}
+		if existingAny != nil && existingAny.ID != id {
+			return nil, errors.NewAppError(errors.ErrDuplicateEntry,
+				"Another product already accepts any code. Only one product can do that, otherwise a code could belong to either.", 409)
+		}
+	}
+
 	if rebuildPattern {
 		pattern, err := BuildCodePattern(prefix, format, req.CodePattern)
 		if err != nil {
@@ -265,8 +292,15 @@ func (s *ProductService) LookupByCode(code string) (*ProductDTO, error) {
 
 	dto := s.mapToDTO(product, s.lookupCategoryName(product.CategoryID))
 
-	if product.CodeFormat == CodeFormatJalaliEncoded {
-		result := warrantycode.ValidateCodeFormat(code, product.CodePrefix)
+	// CodeFormatAny deliberately falls through both branches: an arbitrary code
+	// carries no manufacture date, so there is nothing to validate or report.
+	if product.CodeFormat == CodeFormatJalaliEncoded || product.CodeFormat == CodeFormatJalaliSeasonal {
+		var result warrantycode.ValidationResult
+		if product.CodeFormat == CodeFormatJalaliSeasonal {
+			result = warrantycode.ValidateSeasonalCode(code, product.CodePrefix)
+		} else {
+			result = warrantycode.ValidateCodeFormat(code, product.CodePrefix)
+		}
 		if !result.Valid {
 			return nil, errors.NewAppError(errors.ErrValidation, result.Message, 400)
 		}
@@ -279,6 +313,7 @@ func (s *ProductService) LookupByCode(code string) (*ProductDTO, error) {
 			ManufactureMonthName:   result.MonthName,
 			SeasonName:             result.SeasonName,
 			SeasonPeriod:           result.SeasonPeriod,
+			SeasonOnly:             result.SeasonOnly,
 			IsExpired:              result.IsExpired,
 			MonthsSinceManufacture: result.MonthsSinceManufacture,
 			Message:                result.Message,
@@ -310,8 +345,20 @@ func (s *ProductService) mapToDTO(product *Product, categoryName string) *Produc
 	}
 }
 
+// anyCodePattern matches any non-empty code. Length limits still come from the
+// request bindings; this only has to be a valid Postgres regex that never
+// rejects a code the admin chose to accept.
+const anyCodePattern = `^.+$`
+
 func BuildCodePattern(prefix, format, manual string) (string, error) {
 	prefix = strings.ToUpper(strings.TrimSpace(prefix))
+
+	// The catch-all matches on nothing, so it needs no prefix and must not
+	// demand one -- an admin registering unlabelled stock has none to give.
+	if format == CodeFormatAny {
+		return anyCodePattern, nil
+	}
+
 	if prefix == "" {
 		return "", errors.NewAppError(errors.ErrValidation, "Code prefix is required", 400)
 	}
@@ -319,6 +366,8 @@ func BuildCodePattern(prefix, format, manual string) (string, error) {
 	switch format {
 	case CodeFormatJalaliEncoded:
 		return fmt.Sprintf(`^[0-9]{4}%s(0[1-9]|1[0-2])[0-9]{5}$`, regexp.QuoteMeta(prefix)), nil
+	case CodeFormatJalaliSeasonal:
+		return warrantycode.SeasonalPattern(prefix), nil
 	case CodeFormatSimple:
 		if manual == "" {
 			return fmt.Sprintf(`^%s-[0-9]{6}$`, regexp.QuoteMeta(prefix)), nil

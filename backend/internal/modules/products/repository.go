@@ -35,12 +35,31 @@ func (r *ProductRepository) FindByNameAndCategory(name string, categoryID uint) 
 	return &product, nil
 }
 
+// FindByGuaranteeCode resolves a code to the product whose pattern it matches.
+//
+// A product on the catch-all format matches every code, so it is ordered last:
+// a code that a real pattern recognises must resolve to that product, and only
+// codes nothing else claims should fall through to the catch-all.
 func (r *ProductRepository) FindByGuaranteeCode(code string) (*Product, error) {
 	var product Product
 	err := r.db.
 		Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", code).
 		Where("is_active = ?", true).
+		Order("(code_format = 'any') ASC, id ASC").
 		First(&product).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &product, nil
+}
+
+// FindByCodeFormat returns any one product using the given code format.
+func (r *ProductRepository) FindByCodeFormat(format string) (*Product, error) {
+	var product Product
+	err := r.db.Where("code_format = ?", format).First(&product).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil

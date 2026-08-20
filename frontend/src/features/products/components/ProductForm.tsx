@@ -76,6 +76,24 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
     }
   }, [product, form])
 
+  const codeFormat = form.watch('code_format')
+  // The catch-all builds no pattern, so a prefix would be collected and ignored.
+  const prefixApplies = codeFormat !== 'any'
+
+  const codeFormatOptions = [
+    { value: 'simple', label: t('products.codeFormat.simple') },
+    { value: 'jalali_encoded', label: t('products.codeFormat.jalaliEncoded') },
+    { value: 'jalali_seasonal', label: t('products.codeFormat.jalaliSeasonal') },
+    { value: 'any', label: t('products.codeFormat.any') },
+  ]
+
+  const codeFormatHints: Record<string, string> = {
+    simple: t('products.codeFormat.simpleHint'),
+    jalali_encoded: t('products.codeFormat.jalaliEncodedHint'),
+    jalali_seasonal: t('products.codeFormat.jalaliSeasonalHint'),
+    any: t('products.codeFormat.anyHint'),
+  }
+
   const handleSubmit = async (data: ProductFormValues) => {
     await onSubmit(data)
     if (!isLoading) {
@@ -154,9 +172,9 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
                 name="code_prefix"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('products.form.codePrefix')} *</FormLabel>
+                    <FormLabel>{t('products.form.codePrefix')}{prefixApplies ? ' *' : ''}</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. EVC" {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} />
+                      <Input placeholder={prefixApplies ? 'e.g. EVC' : t('products.codeFormat.noPrefixNeeded')} disabled={!prefixApplies} {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value.toUpperCase())} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -169,10 +187,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
                   <FormItem>
                     <FormLabel>{t('products.form.codeFormat')} *</FormLabel>
                     <Select
-                      items={[
-                        { value: 'simple', label: 'Simple' }, 
-                        { value: 'jalali_encoded', label: 'Jalali Encoded' }
-                      ]}
+                      items={codeFormatOptions}
                       value={field.value}
                       onValueChange={field.onChange}
                     >
@@ -182,10 +197,12 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="simple">Simple</SelectItem>
-                        <SelectItem value="jalali_encoded">Jalali Encoded</SelectItem>
+                        {codeFormatOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">{codeFormatHints[field.value] ?? ''}</p>
                     <FormMessage />
                   </FormItem>
                 )}

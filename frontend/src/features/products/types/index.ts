@@ -18,7 +18,7 @@ export interface ProductFormData {
   description: string
   category_id: number
   is_active: boolean
-  code_prefix: string
+  code_prefix?: string
   code_format: string
   default_guarantee_months: number
   golden_guarantee_months: number

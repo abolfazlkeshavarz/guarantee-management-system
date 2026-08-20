@@ -237,7 +237,18 @@
     "deleteDesc": "This will permanently delete the product \"{{name}}\". This action cannot be undone.",
     "deleteSuccess": "Product deleted successfully",
     "createSuccess": "Product created successfully",
-    "updateSuccess": "Product updated successfully"
+    "updateSuccess": "Product updated successfully",
+    "codeFormat": {
+      "simple": "Simple",
+      "simpleHint": "A fixed pattern, e.g. EVC-000123. No date is read from the code.",
+      "jalaliEncoded": "Jalali encoded (1405 onward)",
+      "jalaliEncodedHint": "Year, month and serial are in the code, e.g. 1405FZD0912345. The exact manufacture month is known.",
+      "jalaliSeasonal": "Jalali seasonal (1403-1404)",
+      "jalaliSeasonalHint": "Older codes such as 1404FZ2400101234. The serial identifies the production batch, so only the manufacture season is known.",
+      "any": "Accept any code",
+      "anyHint": "Every code is accepted exactly as entered. Nothing is checked and no manufacture date or expiry can be read. Only one product can use this.",
+      "noPrefixNeeded": "Not needed for this format"
+    }
   },
   "categories": {
     "title": "Product Categories",
