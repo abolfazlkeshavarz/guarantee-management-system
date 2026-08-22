@@ -347,7 +347,7 @@ export function PublicRegisterPage() {
   // ── Success screen ───────────────────────────────────────────────────────
   if (registrationResult?.success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[linear-gradient(to_bottom_right,#FDECEC,#F6CFD1)] flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
@@ -430,12 +430,12 @@ export function PublicRegisterPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4">
+    <div className="min-h-screen bg-[linear-gradient(to_bottom_right,#FDECEC,#F6CFD1)] py-8 px-4">
       <div className="max-w-3xl mx-auto">
         {/* Language/calendar come from the admin-controlled global setting. */}
 
         <div className="flex justify-center mb-6">
-          <Logo height={48} />
+          <Logo height={88} />
         </div>
         <Card className="shadow-lg">
           <CardHeader className="text-center border-b">
