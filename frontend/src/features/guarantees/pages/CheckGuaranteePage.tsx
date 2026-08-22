@@ -109,7 +109,7 @@ export function CheckGuaranteePage() {
             {data && (
               <div className="mt-6 space-y-4">
                 <div className="bg-muted p-4 rounded-lg">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">{t('public.checkStatus.guaranteeCode')}</p>
                       <p className="font-mono font-semibold">{data.code}</p>

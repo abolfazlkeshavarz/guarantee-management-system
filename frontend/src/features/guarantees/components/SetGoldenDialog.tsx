@@ -130,7 +130,7 @@ export function SetGoldenDialog({ open, onOpenChange, guarantee, onConfirm, isLo
                     {/* Preview - uses formatDate from calendar context so it respects Jalali/Gregorian */}
                     <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
                         <p className="text-sm font-semibold text-amber-700">{t('guarantees.setGoldenDialog.preview')}</p>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                             <div>
                                 <p className="text-xs text-muted-foreground">{t('guarantees.setGoldenDialog.goldenStartPreview')}</p>
                                 <p className="font-medium text-amber-700">{formatDate(startDate, 'full')}</p>

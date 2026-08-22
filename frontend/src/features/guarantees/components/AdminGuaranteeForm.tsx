@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -74,6 +75,7 @@ interface AdminGuaranteeFormProps {
 }
 
 export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: AdminGuaranteeFormProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<'existing' | 'new'>('existing')
   const [, setSelectedCustomer] = useState<Customer | null>(null)
   const [lookupResult, setLookupResult] = useState<ProductLookupResult | null>(null)
@@ -189,13 +191,13 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
       const result = await publicGuaranteeService.uploadFile(file)
       if (type === 'invoice') {
         form.setValue('invoice_image', result.url)
-        toast.success('Invoice uploaded successfully')
+        toast.success(t('toasts.invoiceUploaded'))
       } else {
         form.setValue('guarantee_card_image', result.url)
-        toast.success('Guarantee card uploaded successfully')
+        toast.success(t('toasts.cardUploaded'))
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to upload file')
+      toast.error(error.response?.data?.message || t('toasts.uploadFailed'))
     } finally {
       setIsUploading(false)
     }
@@ -205,12 +207,12 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     const file = e.target.files?.[0]
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size exceeds 10MB limit')
+        toast.error(t('toasts.fileTooLarge'))
         return
       }
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
-        toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
+        toast.error(t('toasts.fileTypeInvalid'))
         return
       }
       setInvoiceFile(file)
@@ -223,12 +225,12 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     const file = e.target.files?.[0]
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size exceeds 10MB limit')
+        toast.error(t('toasts.fileTooLarge'))
         return
       }
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
-        toast.error('Invalid file type. Allowed: JPEG, PNG, GIF, WEBP, PDF')
+        toast.error(t('toasts.fileTypeInvalid'))
         return
       }
       setCardFile(file)
@@ -388,7 +390,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                 </TabsContent>
 
                 <TabsContent value="new" className="space-y-4 mt-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="customer_full_name"
@@ -525,7 +527,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="status"
@@ -589,7 +591,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Invoice Upload */}
                   <div>
                     <FormLabel>Invoice Image</FormLabel>

@@ -8,7 +8,6 @@ type TechnicianDTO struct {
 	NationalID string `json:"national_id"`
 	Address    string `json:"address"`
 	IsActive   bool   `json:"is_active"`
-	IsTechnical bool  `json:"is_technical"`
 	CreatedAt  string `json:"created_at"`
 	UpdatedAt  string `json:"updated_at"`
 }
@@ -21,7 +20,6 @@ type CreateTechnicianRequest struct {
 	NationalID string `json:"national_id" binding:"omitempty,min=6,max=20"`
 	Address    string `json:"address"`
 	IsActive   *bool  `json:"is_active"`
-	IsTechnical *bool `json:"is_technical"`
 }
 
 type UpdateTechnicianRequest struct {
@@ -31,7 +29,6 @@ type UpdateTechnicianRequest struct {
 	NationalID string `json:"national_id" binding:"omitempty,min=6,max=20"`
 	Address    string `json:"address"`
 	IsActive   *bool  `json:"is_active"`
-	IsTechnical *bool `json:"is_technical"`
 }
 
 type TechnicianLoginRequest struct {

@@ -87,8 +87,8 @@ export function GuaranteesPage() {
 
   const adminCreateMutation = useMutation({
     mutationFn: guaranteeService.adminCreate,
-    onSuccess: () => { invalidateAll(); toast.success('Guarantee created successfully'); setIsFormOpen(false) },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to create guarantee'),
+    onSuccess: () => { invalidateAll(); toast.success(t('toasts.guaranteeCreated')); setIsFormOpen(false) },
+    onError: (e: any) => toast.error(e.response?.data?.message || t('toasts.guaranteeCreateFailed')),
   })
 
   const approveMutation = useMutation({
@@ -99,39 +99,39 @@ export function GuaranteesPage() {
       toast.success(`Guarantee ${approveAction === 'approve' ? 'approved' : 'rejected'} successfully`)
       setIsApproveOpen(false); setSelectedGuarantee(null)
     },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to process guarantee'),
+    onError: (e: any) => toast.error(e.response?.data?.message || t('toasts.guaranteeProcessFailed')),
   })
 
   const renewMutation = useMutation({
     mutationFn: ({ id, newExpiryDate, notes }: { id: number; newExpiryDate: string; notes?: string }) =>
       guaranteeService.renew(id, newExpiryDate, notes),
-    onSuccess: () => { invalidateAll(); toast.success('Guarantee renewed successfully'); setIsRenewOpen(false); setSelectedGuarantee(null) },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to renew guarantee'),
+    onSuccess: () => { invalidateAll(); toast.success(t('toasts.guaranteeRenewed')); setIsRenewOpen(false); setSelectedGuarantee(null) },
+    onError: (e: any) => toast.error(e.response?.data?.message || t('toasts.guaranteeRenewFailed')),
   })
 
   const cancelMutation = useMutation({
     mutationFn: guaranteeService.cancel,
-    onSuccess: () => { invalidateAll(); toast.success('Guarantee cancelled successfully'); setSelectedGuarantee(null) },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to cancel guarantee'),
+    onSuccess: () => { invalidateAll(); toast.success(t('toasts.guaranteeCancelled')); setSelectedGuarantee(null) },
+    onError: (e: any) => toast.error(e.response?.data?.message || t('toasts.guaranteeCancelFailed')),
   })
 
   const deleteMutation = useMutation({
     mutationFn: guaranteeService.delete,
-    onSuccess: () => { invalidateAll(); toast.success('Guarantee deleted successfully'); setIsDeleteOpen(false); setSelectedGuarantee(null) },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to delete guarantee'),
+    onSuccess: () => { invalidateAll(); toast.success(t('toasts.guaranteeDeleted')); setIsDeleteOpen(false); setSelectedGuarantee(null) },
+    onError: (e: any) => toast.error(e.response?.data?.message || t('toasts.guaranteeDeleteFailed')),
   })
 
   const setGoldenMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: SetGoldenData }) =>
       guaranteeService.setGolden(id, data),
-    onSuccess: () => { invalidateAll(); toast.success('Guarantee set to golden successfully'); setIsSetGoldenOpen(false); setSelectedGuarantee(null) },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to set golden'),
+    onSuccess: () => { invalidateAll(); toast.success(t('toasts.goldenSet')); setIsSetGoldenOpen(false); setSelectedGuarantee(null) },
+    onError: (e: any) => toast.error(e.response?.data?.message || t('toasts.goldenSetFailed')),
   })
 
   const removeGoldenMutation = useMutation({
     mutationFn: guaranteeService.removeGolden,
-    onSuccess: () => { invalidateAll(); toast.success('Golden status removed'); setIsRemoveGoldenOpen(false); setSelectedGuarantee(null) },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to remove golden'),
+    onSuccess: () => { invalidateAll(); toast.success(t('toasts.goldenRemoved')); setIsRemoveGoldenOpen(false); setSelectedGuarantee(null) },
+    onError: (e: any) => toast.error(e.response?.data?.message || t('toasts.goldenRemoveFailed')),
   })
 
   const handleCreate = async (data: any) => { await adminCreateMutation.mutateAsync(data) }
@@ -150,7 +150,7 @@ export function GuaranteesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{t('guarantees.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">{t('guarantees.subtitle')}</p>
@@ -277,7 +277,7 @@ export function GuaranteesPage() {
       />
 
       {data && data.total > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-gray-500">
             {t('common.showingRange', {
               from: ((data.page - 1) * data.limit) + 1,

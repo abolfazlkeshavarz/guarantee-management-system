@@ -62,12 +62,12 @@ export function GuaranteeViewDialog({ open, onOpenChange, guarantee }: Guarantee
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <DetailRow label={t('guarantees.table.customer')} value={guarantee.customer_name} icon={User} />
             <DetailRow label={t('guarantees.table.product')} value={guarantee.product_name} icon={Package} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <DetailRow
               label={t('guarantees.table.purchaseDate')}
               value={<FormattedDate date={guarantee.purchase_date} format="full" />}
@@ -90,7 +90,7 @@ export function GuaranteeViewDialog({ open, onOpenChange, guarantee }: Guarantee
           {/* ── Four-date period overview ── */}
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">{t('guarantees.guaranteePeriods')}</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Golden period card */}
               {hasGolden ? (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -137,7 +137,7 @@ export function GuaranteeViewDialog({ open, onOpenChange, guarantee }: Guarantee
           {/* Images */}
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">Images</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Invoice</p>
                 {guarantee.invoice_image
@@ -163,7 +163,7 @@ export function GuaranteeViewDialog({ open, onOpenChange, guarantee }: Guarantee
           {(guarantee.approved_by_username || guarantee.created_by_username) && (
             <>
               <Separator />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {guarantee.created_by_username && (
                   <DetailRow label="Created By" value={guarantee.created_by_username} icon={CheckCircle2} />
                 )}

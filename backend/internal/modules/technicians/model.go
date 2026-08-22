@@ -14,7 +14,6 @@ type Technician struct {
     NationalID string         `gorm:"size:20;index" json:"national_id"`
     Address    string         `gorm:"type:text" json:"address"`
     IsActive   bool           `gorm:"default:true" json:"is_active"`
-    IsTechnical bool          `gorm:"default:false" json:"is_technical"`
     CreatedAt  time.Time      `json:"created_at"`
     UpdatedAt  time.Time      `json:"updated_at"`
     DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`

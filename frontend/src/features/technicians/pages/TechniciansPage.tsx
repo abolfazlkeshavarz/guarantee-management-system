@@ -144,7 +144,7 @@ export function TechniciansPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-900">{t('technicians.title')}</h1>
         <Button onClick={() => setIsFormOpen(true)}>
           <Plus className="me-2 h-4 w-4" />
@@ -152,7 +152,7 @@ export function TechniciansPage() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <Input
@@ -192,7 +192,7 @@ export function TechniciansPage() {
       />
 
       {data && data.total > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-gray-500">
             {t('common.showingRange', {
               from: Math.min((data.page - 1) * data.limit + 1, data.total),

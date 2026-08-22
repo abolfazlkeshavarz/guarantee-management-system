@@ -239,7 +239,7 @@ export function AuditLogPage() {
       </div>
 
       {data && data.total > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-gray-500">
             {t('common.showingRange', {
               from: (data.page - 1) * data.limit + 1,

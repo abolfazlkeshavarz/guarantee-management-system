@@ -90,7 +90,7 @@ export function LoginPage() {
               {t('login.customerServicesDesc')}
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Link to="/register-guarantee" className="w-full">
               <Button variant="default" className="w-full">
                 <FileCheck className="me-2 h-4 w-4" />

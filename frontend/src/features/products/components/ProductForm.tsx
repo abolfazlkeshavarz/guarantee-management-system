@@ -45,6 +45,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
       is_active: true,
       code_prefix: '',
       code_format: 'simple',
+      code_pattern: '',
       default_guarantee_months: 12,
       golden_guarantee_months: 3,
     },
@@ -59,6 +60,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
         is_active: product.is_active,
         code_prefix: product.code_prefix || '',
         code_format: (product.code_format as any) || 'simple',
+        code_pattern: product.code_pattern || '',
         default_guarantee_months: product.default_guarantee_months || 12,
         golden_guarantee_months: product.golden_guarantee_months || 3,
       })
@@ -166,7 +168,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
               )}
             />
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="code_prefix"
@@ -209,7 +211,30 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {codeFormat === 'simple' && (
+              <FormField
+                control={form.control}
+                name="code_pattern"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('products.codeFormat.patternLabel')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={t('products.codeFormat.patternPlaceholder')}
+                        {...field}
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {t('products.codeFormat.patternHint')}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="default_guarantee_months"

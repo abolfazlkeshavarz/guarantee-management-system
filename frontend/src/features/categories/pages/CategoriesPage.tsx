@@ -49,32 +49,32 @@ export function CategoriesPage() {
     mutationFn: categoryService.create,
     onSuccess: () => {
       invalidateAll()
-      toast.success('Category created successfully')
+      toast.success(t('toasts.categoryCreated'))
       setIsFormOpen(false)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create category'),
+    onError: (error: any) => toast.error(error.response?.data?.message || t('toasts.categoryCreateFailed')),
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => categoryService.update(id, data),
     onSuccess: () => {
       invalidateAll()
-      toast.success('Category updated successfully')
+      toast.success(t('toasts.categoryUpdated'))
       setIsFormOpen(false)
       setSelectedCategory(null)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to update category'),
+    onError: (error: any) => toast.error(error.response?.data?.message || t('toasts.categoryUpdateFailed')),
   })
 
   const deleteMutation = useMutation({
     mutationFn: categoryService.delete,
     onSuccess: () => {
       invalidateAll()
-      toast.success('Category deleted successfully')
+      toast.success(t('toasts.categoryDeleted'))
       setIsDeleteOpen(false)
       setSelectedCategory(null)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to delete category. Make sure no products use it.'),
+    onError: (error: any) => toast.error(error.response?.data?.message || t('toasts.categoryDeleteFailed')),
   })
 
   const handleCreate = async (data: any) => { await createMutation.mutateAsync(data) }
@@ -95,7 +95,7 @@ export function CategoriesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-900">{t('categories.title')}</h1>
         <Button onClick={() => setIsFormOpen(true)}>
           <Plus className="me-2 h-4 w-4" />
@@ -103,7 +103,7 @@ export function CategoriesPage() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <Input placeholder={t('categories.searchPlaceholder')} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-10" />
@@ -126,7 +126,7 @@ export function CategoriesPage() {
       <CategoryTable categories={data?.categories || []} onEdit={handleEdit} onDelete={canDelete ? handleDeleteClick : undefined} isLoading={isLoading} />
 
       {data && data.total > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-gray-500">
             {t('common.showingRange', {
               from: ((data.page - 1) * data.limit) + 1,

@@ -14,9 +14,13 @@ import {
 import { Logo } from '@/components/common/Logo'
 import { CalendarSwitcher } from '@/components/common/CalendarSwitcher'
 import { LanguageSwitcher } from '@/components/common/LanguageSwitcher'
-import { User, Settings, LogOut } from 'lucide-react'
+import { User, Settings, LogOut, Menu } from 'lucide-react'
 
-export function Header() {
+interface HeaderProps {
+  onOpenNav?: () => void
+}
+
+export function Header({ onOpenNav }: HeaderProps) {
   const { admin, logout } = useAuth()
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -34,15 +38,23 @@ export function Header() {
   const displayName = admin?.full_name || admin?.username || ''
 
   return (
-    <header className="bg-white border-b px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Logo height={32} />
-          <h2 className="text-lg font-semibold text-gray-800">
+    <header className="bg-white border-b px-4 sm:px-6 py-3 sm:py-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={onOpenNav}
+            aria-label={t('nav.menu')}
+            className="p-2 -ms-2 rounded-md text-gray-600 hover:bg-gray-100 lg:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <Logo height={32} className="hidden sm:inline-flex" />
+          <h2 className="text-base sm:text-lg font-semibold text-gray-800 truncate">
             {t('header.title')}
           </h2>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           <LanguageSwitcher />
           <CalendarSwitcher />
           <DropdownMenu>
@@ -57,7 +69,7 @@ export function Header() {
                   {displayName ? getInitials(displayName) : 'A'}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium text-gray-700">
+              <span className="hidden sm:inline text-sm font-medium text-gray-700">
                 {displayName || t('header.myAccount')}
               </span>
             </DropdownMenuTrigger>

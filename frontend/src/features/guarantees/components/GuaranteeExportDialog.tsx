@@ -201,7 +201,7 @@ export function GuaranteeExportDialog({ open, onOpenChange }: GuaranteeExportDia
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-2">
           <Label>{t('exports.codeFrom', { defaultValue: 'Code from' })}</Label>
           <Input value={codeFrom} onChange={(e) => setCodeFrom(e.target.value)} placeholder="1405..." />

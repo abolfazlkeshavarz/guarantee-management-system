@@ -14,6 +14,9 @@ export const productSchema = z.object({
   // refinement below still demands one for every format that builds a pattern.
   code_prefix: z.string().max(20).regex(/^[A-Z0-9]*$/, 'Letters and digits only').optional(),
   code_format: z.enum(['simple', 'jalali_encoded', 'evinki_vacuum', 'any']),
+  // Only the simple format builds its pattern from this; the others derive
+  // theirs from the prefix, and the API ignores whatever is sent.
+  code_pattern: z.string().max(255).optional(),
   default_guarantee_months: z.number().min(1).max(120),
   golden_guarantee_months: z.number().min(0).max(120),
 }).refine(d => d.golden_guarantee_months <= d.default_guarantee_months, {

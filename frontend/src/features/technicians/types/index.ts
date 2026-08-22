@@ -6,7 +6,6 @@ export interface Technician {
   national_id: string
   address: string
   is_active: boolean
-  is_technical: boolean
   created_at: string
   updated_at: string
 }
@@ -20,7 +19,6 @@ export interface TechnicianCreateData {
   national_id?: string
   address?: string
   is_active?: boolean
-  is_technical?: boolean
 }
 
 export interface TechnicianUpdateData {
@@ -30,7 +28,6 @@ export interface TechnicianUpdateData {
   national_id?: string
   address?: string
   is_active?: boolean
-  is_technical?: boolean
 }
 
 export interface TechnicianListResponse {

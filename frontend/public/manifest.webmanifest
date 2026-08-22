@@ -1,0 +1,44 @@
+{
+  "name": "Evinki System",
+  "short_name": "Evinki",
+  "description": "Guarantee registration, repairs and part requests for Evinki home appliances.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#ec3237",
+  "lang": "fa",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Check guarantee status",
+      "url": "/check-guarantee"
+    },
+    {
+      "name": "Register a guarantee",
+      "url": "/register-guarantee"
+    }
+  ]
+}

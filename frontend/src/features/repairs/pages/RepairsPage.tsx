@@ -72,10 +72,10 @@ export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
     mutationFn: repairService.create,
     onSuccess: () => {
       invalidateAll()
-      toast.success('Repair created successfully')
+      toast.success(t('toasts.repairCreated'))
       setIsFormOpen(false)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create repair'),
+    onError: (error: any) => toast.error(error.response?.data?.message || t('toasts.repairCreateFailed')),
   })
 
   const reviewMutation = useMutation({
@@ -83,33 +83,33 @@ export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
       repairService.review(id, data),
     onSuccess: () => {
       invalidateAll()
-      toast.success('Repair reviewed successfully')
+      toast.success(t('toasts.repairReviewed'))
       setReviewAction(null)
       setSelectedRepair(null)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to review repair'),
+    onError: (error: any) => toast.error(error.response?.data?.message || t('toasts.repairReviewFailed')),
   })
 
   const cancelMutation = useMutation({
     mutationFn: repairService.cancel,
     onSuccess: () => {
       invalidateAll()
-      toast.success('Repair cancelled successfully')
+      toast.success(t('toasts.repairCancelled'))
       setIsCancelOpen(false)
       setSelectedRepair(null)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to cancel repair'),
+    onError: (error: any) => toast.error(error.response?.data?.message || t('toasts.repairCancelFailed')),
   })
 
   const deleteMutation = useMutation({
     mutationFn: repairService.delete,
     onSuccess: () => {
       invalidateAll()
-      toast.success('Repair deleted successfully')
+      toast.success(t('toasts.repairDeleted'))
       setIsDeleteOpen(false)
       setSelectedRepair(null)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to delete repair'),
+    onError: (error: any) => toast.error(error.response?.data?.message || t('toasts.repairDeleteFailed')),
   })
 
   const handleCreate = async (data: any) => {
@@ -167,7 +167,7 @@ export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{t('repairs.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -261,7 +261,7 @@ export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
       />
 
       {data && data.total > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-gray-500">
             {t('common.showingRange', {
               from: Math.min((data.page - 1) * data.limit + 1, data.total),

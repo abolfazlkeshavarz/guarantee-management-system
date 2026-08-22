@@ -14,6 +14,7 @@ import {
 import { Plus, Search, RefreshCw, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { CustomerTable } from '../components/CustomerTable'
+import { CustomerViewDialog } from '../components/CustomerViewDialog'
 import { CustomerForm } from '../components/CustomerForm'
 import { CustomerDeleteDialog } from '../components/CustomerDeleteDialog'
 import { CustomerExportDialog } from '../components/CustomerExportDialog'
@@ -32,6 +33,7 @@ export function CustomersPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isViewOpen, setIsViewOpen] = useState(false)
   const [isExportOpen, setIsExportOpen] = useState(false)
 
   // Debounce search
@@ -56,11 +58,11 @@ export function CustomersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       invalidateDashboard()
-      toast.success('Customer created successfully')
+      toast.success(t('toasts.customerCreated'))
       setIsFormOpen(false)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create customer')
+      toast.error(error.response?.data?.message || t('toasts.customerCreateFailed'))
     },
   })
 
@@ -71,12 +73,12 @@ export function CustomersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       invalidateDashboard()
-      toast.success('Customer updated successfully')
+      toast.success(t('toasts.customerUpdated'))
       setIsFormOpen(false)
       setSelectedCustomer(null)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update customer')
+      toast.error(error.response?.data?.message || t('toasts.customerUpdateFailed'))
     },
   })
 
@@ -86,12 +88,12 @@ export function CustomersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       invalidateDashboard()
-      toast.success('Customer deleted successfully')
+      toast.success(t('toasts.customerDeleted'))
       setIsDeleteOpen(false)
       setSelectedCustomer(null)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete customer')
+      toast.error(error.response?.data?.message || t('toasts.customerDeleteFailed'))
     },
   })
 
@@ -122,13 +124,13 @@ export function CustomersPage() {
   }
 
   const handleView = (customer: Customer) => {
-    // TODO: Implement view details modal/page
-    toast.info(`Viewing customer: ${customer.full_name}`)
+    setSelectedCustomer(customer)
+    setIsViewOpen(true)
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-900">{t('customers.title')}</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setIsExportOpen(true)}>
@@ -144,7 +146,7 @@ export function CustomersPage() {
 
       <CustomerExportDialog open={isExportOpen} onOpenChange={setIsExportOpen} />
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <Input
@@ -185,7 +187,7 @@ export function CustomersPage() {
       />
 
       {data && data.total > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-gray-500">
             Showing {((data.page - 1) * data.limit) + 1} to{' '}
             {Math.min(data.page * data.limit, data.total)} of {data.total} customers
@@ -208,6 +210,12 @@ export function CustomersPage() {
           </div>
         </div>
       )}
+
+      <CustomerViewDialog
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+        customer={selectedCustomer}
+      />
 
       <CustomerForm
         open={isFormOpen}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,6 +37,7 @@ interface RepairCatalogPanelProps {
 export function RepairCatalogPanel({
   service, queryKey, entriesField, addLabel, createTitle, editTitle, namePlaceholder, searchPlaceholder,
 }: RepairCatalogPanelProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -65,32 +67,32 @@ export function RepairCatalogPanel({
     mutationFn: service.create,
     onSuccess: () => {
       invalidateAll()
-      toast.success('Created successfully')
+      toast.success(t('toasts.created'))
       setIsFormOpen(false)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to create'),
+    onError: (error: any) => toast.error(error.response?.data?.message || t('toasts.createFailed')),
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<RepairCatalogFormData> }) => service.update(id, data),
     onSuccess: () => {
       invalidateAll()
-      toast.success('Updated successfully')
+      toast.success(t('toasts.updated'))
       setIsFormOpen(false)
       setSelectedEntry(null)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to update'),
+    onError: (error: any) => toast.error(error.response?.data?.message || t('toasts.updateFailed')),
   })
 
   const deleteMutation = useMutation({
     mutationFn: service.delete,
     onSuccess: () => {
       invalidateAll()
-      toast.success('Deleted successfully')
+      toast.success(t('toasts.deleted'))
       setIsDeleteOpen(false)
       setSelectedEntry(null)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to delete'),
+    onError: (error: any) => toast.error(error.response?.data?.message || t('toasts.deleteFailed')),
   })
 
   const handleCreate = async (formData: RepairCatalogFormData) => { await createMutation.mutateAsync(formData) }
@@ -113,7 +115,7 @@ export function RepairCatalogPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-10" />
@@ -130,7 +132,7 @@ export function RepairCatalogPanel({
       <RepairCatalogTable entries={entries} onEdit={handleEdit} onDelete={handleDeleteClick} isLoading={isLoading} />
 
       {data && data.total > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-gray-500">
             Showing {((data.page - 1) * data.limit) + 1} to {Math.min(data.page * data.limit, data.total)} of {data.total}
           </p>
