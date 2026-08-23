@@ -44,3 +44,5 @@ Thumbs.db
 dist/
 build/
 *.exe
+# Startup script output (scripts/start-stack.ps1)
+logs/
