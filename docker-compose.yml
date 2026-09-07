@@ -30,7 +30,12 @@ services:
 
   # One-shot job: applies pending migrations, then exits. The API waits for it
   # so the schema is always current before the first request lands.
+  #
+  # Same image as `backend` (built once, tagged gms-backend:latest) - only the
+  # command differs. Sharing the tag is what lets scripts/build-images.sh save
+  # two images instead of three and lets the server run --no-build.
   migrate:
+    image: gms-backend:latest
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
@@ -54,6 +59,7 @@ services:
       - gms-network
 
   backend:
+    image: gms-backend:latest
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
@@ -99,14 +105,20 @@ services:
     #   - "127.0.0.1:8080:8080"
 
   frontend:
+    image: gms-frontend:latest
     build:
       context: .
       dockerfile: docker/Dockerfile.frontend
       args:
         VITE_API_URL: ${VITE_API_URL:-/api/v1}
     container_name: gms-frontend
+    # HTTP_PORT carries the whole left-hand side of the mapping, so it can pin
+    # the bind address as well as the port. The default keeps this container off
+    # every public interface: host nginx owns 80/443 and reverse-proxies to it,
+    # exactly like the other projects already on this server (8081, 8083).
+    # Set HTTP_PORT=8082 (no address) only if you deliberately want it exposed.
     ports:
-      - "${HTTP_PORT:-80}:80"
+      - "${HTTP_PORT:-127.0.0.1:8082}:80"
     depends_on:
       backend:
         condition: service_started

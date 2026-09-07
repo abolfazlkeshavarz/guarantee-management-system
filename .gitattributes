@@ -1,0 +1,8 @@
+# Shell scripts must stay LF: they run on the Linux VPS, and a CRLF line
+# ending turns the shebang into "/usr/bin/env bash\r", which fails with a
+# confusing "no such file or directory".
+*.sh            text eol=lf
+scripts/*.sh    text eol=lf
+
+# Windows-only helpers stay CRLF.
+*.ps1           text eol=crlf
