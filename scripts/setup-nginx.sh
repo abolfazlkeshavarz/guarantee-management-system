@@ -42,7 +42,8 @@ if [[ -f .env ]]; then
 fi
 
 # HTTP_PORT is "127.0.0.1:8082" (or just "8082"); the proxy target is the port.
-APP_PORT="${APP_PORT_OVERRIDE:-${HTTP_PORT##*:}}"
+APP_PORT="${APP_PORT_OVERRIDE:-${HTTP_PORT:-}}"
+APP_PORT="${APP_PORT##*:}"
 APP_PORT="${APP_PORT:-8082}"
 
 if [[ -z "${DOMAIN:-}" ]]; then
@@ -159,37 +160,34 @@ ${h2_directive}
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
+    # Proxy settings are identical for every location; only the two login
+    # routes add a rate limit on top. Set once here so every location inherits
+    # them - in particular proxy_http_version 1.1: without it nginx talks
+    # HTTP/1.0 to the upstream, and the frontend container's nginx answers 400
+    # to an HTTP/1.0 POST that carries a body (which is every login request).
+    # Do not add nginx's stock proxy_params include here either: it sets its
+    # own Host header, which together with the explicit one below would be sent
+    # twice and also rejected as a bad request.
+    proxy_http_version 1.1;
+    proxy_set_header Host              \$host;
+    proxy_set_header X-Real-IP         \$remote_addr;
+    proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_read_timeout 300;
+    proxy_send_timeout 300;
+
     location = /api/v1/auth/login {
         limit_req zone=${SITE_NAME}_login burst=5 nodelay;
         proxy_pass http://127.0.0.1:${APP_PORT};
-        include /etc/nginx/proxy_params;
-        proxy_set_header Host              \$host;
-        proxy_set_header X-Real-IP         \$remote_addr;
-        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
     location = /api/v1/technician/login {
         limit_req zone=${SITE_NAME}_login burst=5 nodelay;
         proxy_pass http://127.0.0.1:${APP_PORT};
-        include /etc/nginx/proxy_params;
-        proxy_set_header Host              \$host;
-        proxy_set_header X-Real-IP         \$remote_addr;
-        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
     location / {
         proxy_pass http://127.0.0.1:${APP_PORT};
-        proxy_http_version 1.1;
-
-        proxy_set_header Host              \$host;
-        proxy_set_header X-Real-IP         \$remote_addr;
-        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-
-        proxy_read_timeout 300;
-        proxy_send_timeout 300;
     }
 }
 EOF
@@ -260,17 +258,6 @@ if [[ "${SKIP_CERT:-0}" != "1" ]] && ! command -v certbot >/dev/null 2>&1; then
 fi
 
 mkdir -p "$WEBROOT"
-
-# proxy_params ships with the nginx package, but synthesize a minimal one if a
-# stripped image lacks it, so the `include` above never breaks the config.
-if [[ ! -f /etc/nginx/proxy_params ]]; then
-  cat > /etc/nginx/proxy_params <<'EOF'
-proxy_set_header Host $http_host;
-proxy_set_header X-Real-IP $remote_addr;
-proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-proxy_set_header X-Forwarded-Proto $scheme;
-EOF
-fi
 
 # ----------------------------------------------------- install site helper
 install_site() {
