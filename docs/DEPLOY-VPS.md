@@ -88,10 +88,32 @@ git pull
 ./scripts/deploy.sh
 ```
 
-`deploy.sh` sees the freshly loaded images, runs `docker compose up -d --wait
---no-build`, waits for every healthcheck (and the one-shot `migrate` service
-to exit 0), then prunes the now-dangling old layers. Pending migrations apply
-automatically before the API starts. nginx is not involved in a redeploy.
+`deploy.sh` sees the freshly loaded images, runs `docker compose up -d
+--no-build`, waits for the backend healthcheck, then prunes the now-dangling
+old layers. It recreates only the containers whose image changed. Pending
+migrations apply automatically before the API starts. nginx is not involved
+in a redeploy.
+
+### Full teardown and rebuild
+
+When you want every container recreated from scratch (not just the changed
+ones):
+
+```bash
+./scripts/redeploy.sh            # stop + remove all containers, then deploy.sh
+```
+
+To make a fresh bundle fully replace the old images first:
+
+```bash
+./scripts/redeploy.sh --images  # + delete gms-backend/gms-frontend, then stop
+./scripts/load-images.sh
+./scripts/deploy.sh
+```
+
+Every form above keeps `postgres_data` and `uploads_data`. Only
+`./scripts/redeploy.sh --data` removes them (it asks you to type `gms` to
+confirm) — that starts from an empty database.
 
 ---
 
@@ -103,7 +125,8 @@ automatically before the API starts. nginx is not involved in a redeploy.
 | `load-images.sh` | VPS | `docker load` the bundle, verify architecture matches |
 | `gen-secrets.sh` | VPS | fill `JWT_SECRET` / `DB_PASSWORD` in `.env` (never overwrites a real value) |
 | `bootstrap-vps.sh` | VPS | first-time: Docker + `.env` + port + `up` + first admin + nginx |
-| `deploy.sh` | VPS or dev | `compose up -d --wait`; uses prebuilt images if present, else builds |
+| `deploy.sh` | VPS or dev | `compose up -d`; uses prebuilt images if present, else builds |
+| `redeploy.sh` | VPS or dev | `compose down` then `deploy.sh`; `--images` / `--data` for a deeper wipe |
 | `setup-nginx.sh` | VPS (root) | write the `gms` nginx server block, obtain/renew the certificate |
 | `lib.sh` | — | shared helpers (sourced, not run) |
 
