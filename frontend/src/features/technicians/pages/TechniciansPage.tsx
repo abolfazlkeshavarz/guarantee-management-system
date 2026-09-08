@@ -11,11 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Search, RefreshCw } from 'lucide-react'
+import { Plus, Search, RefreshCw, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { TechnicianTable } from '../components/TechnicianTable'
 import { TechnicianForm } from '../components/TechnicianForm'
 import { TechnicianDeleteDialog } from '../components/TechnicianDeleteDialog'
+import { TechnicianImportDialog } from '../components/TechnicianImportDialog'
 import { technicianService } from '../api/technicians'
 import { Technician } from '../types'
 import { TechnicianFormValues } from '../schemas/technicianSchema'
@@ -32,6 +33,7 @@ export function TechniciansPage() {
   const [selectedTechnician, setSelectedTechnician] = useState<Technician | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -146,10 +148,16 @@ export function TechniciansPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold text-gray-900">{t('technicians.title')}</h1>
-        <Button onClick={() => setIsFormOpen(true)}>
-          <Plus className="me-2 h-4 w-4" />
-          {t('technicians.add')}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+            <Upload className="me-2 h-4 w-4" />
+            {t('technicians.import.button')}
+          </Button>
+          <Button onClick={() => setIsFormOpen(true)}>
+            <Plus className="me-2 h-4 w-4" />
+            {t('technicians.add')}
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 sm:gap-4">
@@ -234,6 +242,15 @@ export function TechniciansPage() {
         technician={selectedTechnician}
         onConfirm={handleDelete}
         isLoading={deleteMutation.isPending}
+      />
+
+      <TechnicianImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        onImported={() => {
+          queryClient.invalidateQueries({ queryKey: ['technicians'] })
+          invalidateDashboard()
+        }}
       />
     </div>
   )

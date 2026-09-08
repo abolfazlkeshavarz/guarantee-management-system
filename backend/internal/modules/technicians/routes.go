@@ -31,6 +31,9 @@ func (m *TechnicianModule) RegisterRoutes(router *gin.RouterGroup) {
 	{
 		technicians.POST("", m.handler.Create)
 		technicians.GET("", m.handler.List)
+		// Static segments before the ":id" wildcard so the router tree accepts them.
+		technicians.GET("/import/template", m.handler.ImportTemplate)
+		technicians.POST("/import", m.handler.ImportFile)
 		technicians.GET("/:id", m.handler.Get)
 		technicians.PUT("/:id", m.handler.Update)
 		technicians.DELETE("/:id", m.handler.Delete)

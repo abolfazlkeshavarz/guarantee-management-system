@@ -1,5 +1,11 @@
 import { api } from '@/api/axios'
-import { Technician, TechnicianCreateData, TechnicianUpdateData, TechnicianListResponse } from '../types'
+import {
+  Technician,
+  TechnicianCreateData,
+  TechnicianUpdateData,
+  TechnicianListResponse,
+  TechnicianImportResult,
+} from '../types'
 
 export const technicianService = {
   async list(page: number = 1, limit: number = 10, search: string = ''): Promise<TechnicianListResponse> {
@@ -30,5 +36,28 @@ export const technicianService = {
 
   async delete(id: number): Promise<void> {
     await api.delete(`/technicians/${id}`)
+  },
+
+  async import(file: File): Promise<TechnicianImportResult> {
+    const form = new FormData()
+    form.append('file', file)
+    const response = await api.post('/technicians/import', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data.data
+  },
+
+  async downloadTemplate(): Promise<void> {
+    const response = await api.get('/technicians/import/template', {
+      responseType: 'blob',
+    })
+    const url = URL.createObjectURL(response.data as Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'technicians-import-template.xlsx'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
   },
 }

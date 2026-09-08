@@ -37,3 +37,15 @@ export interface TechnicianListResponse {
   limit: number
   last_page: number
 }
+
+export interface TechnicianImportRowError {
+  row: number
+  message: string
+}
+
+export interface TechnicianImportResult {
+  total: number
+  created: number
+  skipped: number
+  errors: TechnicianImportRowError[]
+}

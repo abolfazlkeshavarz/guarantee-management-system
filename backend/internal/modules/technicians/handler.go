@@ -1,12 +1,20 @@
 package technicians
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
+
 	"guarantee-management-system/internal/shared/errors"
 	"guarantee-management-system/internal/shared/responses"
+
 	"github.com/gin-gonic/gin"
 )
+
+// maxImportUpload is the hard ceiling on the multipart body for a bulk import.
+// A 2000-row .xlsx is well under 1 MB; 5 MB is generous headroom.
+const maxImportUpload = 5 << 20
 
 type TechnicianHandler struct {
 	service   *TechnicianService
@@ -156,6 +164,65 @@ func (h *TechnicianHandler) GetProfile(c *gin.Context) {
 	}
 
 	responses.Success(c, tech)
+}
+
+// ImportTemplate streams a ready-to-fill .xlsx describing every column.
+func (h *TechnicianHandler) ImportTemplate(c *gin.Context) {
+	data, err := BuildImportTemplate()
+	if err != nil {
+		responses.InternalError(c, err)
+		return
+	}
+	c.Header("Content-Disposition", `attachment; filename="technicians-import-template.xlsx"`)
+	c.Data(http.StatusOK,
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data)
+}
+
+// ImportFile bulk-creates technicians from an uploaded .xlsx or .csv. Rows are
+// independent: invalid rows and existing usernames are reported, the rest are
+// created. Responds 200 with a summary even when some rows failed.
+func (h *TechnicianHandler) ImportFile(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxImportUpload)
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		if err.Error() == "http: request body too large" {
+			responses.Error(c, http.StatusRequestEntityTooLarge,
+				fmt.Sprintf("File is larger than %d MB", maxImportUpload>>20))
+			return
+		}
+		responses.Error(c, http.StatusBadRequest, "Attach the spreadsheet as the \"file\" field")
+		return
+	}
+
+	f, err := fileHeader.Open()
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Could not open the uploaded file")
+		return
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Could not read the uploaded file")
+		return
+	}
+
+	rows, err := ParseImportFile(fileHeader.Filename, data)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	result, err := h.service.Import(rows)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	msg := fmt.Sprintf("%d created, %d skipped, %d failed",
+		result.Created, result.Skipped, len(result.Errors))
+	responses.SuccessWithMessage(c, msg, result)
 }
 
 func handleError(c *gin.Context, err error) {

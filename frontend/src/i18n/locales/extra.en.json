@@ -1,4 +1,23 @@
 {
+  "common": {
+    "close": "Close"
+  },
+  "technicians": {
+    "import": {
+      "button": "Import",
+      "title": "Import technicians",
+      "description": "Upload an Excel (.xlsx) or CSV file to create many technicians at once.",
+      "columnsTitle": "Required columns: full_name, username, password",
+      "columnsHint": "Optional: phone, national_id, address, is_active. The header row may be in any order; Persian headers (نام، نام کاربری، رمز عبور، موبایل، کد ملی، آدرس، وضعیت) work too. Rows whose username already exists are skipped.",
+      "downloadTemplate": "Download template",
+      "action": "Import",
+      "importing": "Importing…",
+      "done": "{{created}} technician(s) imported",
+      "allSkipped": "Every row was skipped — those usernames already exist",
+      "summary": "{{created}} created, {{skipped}} skipped (already exist), {{failed}} failed",
+      "rowError": "Row {{row}}: {{message}}"
+    }
+  },
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your account details and how the system is displayed.",
