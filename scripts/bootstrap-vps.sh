@@ -154,11 +154,18 @@ echo ""
 echo "==> Creating the first administrator (${ADMIN_USERNAME})"
 if docker compose exec -T backend /app/admin create \
       -username="$ADMIN_USERNAME" -password="$ADMIN_PASSWORD" \
-      -fullname="$ADMIN_FULLNAME" -email="$ADMIN_EMAIL" 2>/dev/null; then
+      -fullname="$ADMIN_FULLNAME" -email="$ADMIN_EMAIL" 2>&1 | sed 's/^/    /'; then
   echo "    Created."
+elif docker compose exec -T backend /app/admin reset-password \
+      -username="$ADMIN_USERNAME" -password="$ADMIN_PASSWORD" 2>&1 | sed 's/^/    /'; then
+  # An account with this name already existed (e.g. the placeholder row from an
+  # older schema). Set its password to the one just entered so there is a
+  # working way in rather than a silent "skipped".
+  echo "    An account named ${ADMIN_USERNAME} already existed; its password was set to the one you entered."
 else
-  echo "    Skipped - an account named ${ADMIN_USERNAME} may already exist."
-  echo "    Manage accounts later with: docker compose exec backend /app/admin list"
+  echo "    Could not create or update ${ADMIN_USERNAME}."
+  echo "    Do it by hand:  docker compose exec backend /app/admin create -username=... -password=..."
+  echo "    List accounts:  docker compose exec backend /app/admin list"
 fi
 
 # --------------------------------------------------- reverse proxy + SSL

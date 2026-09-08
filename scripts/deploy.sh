@@ -36,7 +36,31 @@ else
 fi
 
 echo "==> Applying migrations and starting/recreating changed containers"
-compose up -d "${BUILD_ARGS[@]}"
+if ! compose up -d "${BUILD_ARGS[@]}"; then
+  # The most common cause on a redeploy: DB_USER/DB_PASSWORD in .env were
+  # changed after the postgres volume was first created. Postgres only reads
+  # those on first init, so the new credentials never took - and the migrate
+  # container is the first thing to hit the wall.
+  if compose logs migrate 2>/dev/null | grep -qiE 'password authentication failed|role .* does not exist'; then
+    cat >&2 <<'EOF'
+
+!! The database rejected the credentials in .env.
+
+   Postgres bakes DB_USER / DB_PASSWORD in when its data volume is first
+   created and ignores later changes. If you edited them, either:
+
+     - put the ORIGINAL values back in .env and rerun this, or
+     - rotate for real:
+         docker compose up -d postgres
+         docker compose exec postgres psql -U <original-user> \
+           -c "ALTER USER <user> PASSWORD '<new>';"
+         # then set the matching values in .env and rerun this
+     - or start from an empty database (DELETES ALL DATA):
+         ./scripts/redeploy.sh --data
+EOF
+  fi
+  exit 1
+fi
 
 echo "==> Waiting for the backend health check"
 # A manual loop rather than `up --wait`: the one-shot `migrate` container
