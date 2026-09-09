@@ -53,7 +53,7 @@ export function GuaranteeViewDialog({ open, onOpenChange, guarantee }: Guarantee
       <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Guarantee Details</span>
+            <span>{t('guarantees.view.title')}</span>
             <GuaranteeStatusBadge status={guarantee.status} />
           </DialogTitle>
           <DialogDescription>
@@ -136,19 +136,19 @@ export function GuaranteeViewDialog({ open, onOpenChange, guarantee }: Guarantee
 
           {/* Images */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Images</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('guarantees.view.images')}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Invoice</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('guarantees.view.invoice')}</p>
                 {guarantee.invoice_image
-                  ? <ImagePreviewLink url={resolveFileUrl(guarantee.invoice_image)} label="View Invoice" />
-                  : <p className="text-sm text-muted-foreground">No invoice uploaded</p>}
+                  ? <ImagePreviewLink url={resolveFileUrl(guarantee.invoice_image)} label={t('guarantees.view.viewInvoice')} />
+                  : <p className="text-sm text-muted-foreground">{t('guarantees.view.noInvoice')}</p>}
               </div>
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Guarantee Card</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('guarantees.view.card')}</p>
                 {guarantee.guarantee_card_image
-                  ? <ImagePreviewLink url={resolveFileUrl(guarantee.guarantee_card_image)} label="View Card" />
-                  : <p className="text-sm text-muted-foreground">No card uploaded</p>}
+                  ? <ImagePreviewLink url={resolveFileUrl(guarantee.guarantee_card_image)} label={t('guarantees.view.viewCard')} />
+                  : <p className="text-sm text-muted-foreground">{t('guarantees.view.noCard')}</p>}
               </div>
             </div>
           </div>
@@ -165,15 +165,15 @@ export function GuaranteeViewDialog({ open, onOpenChange, guarantee }: Guarantee
               <Separator />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {guarantee.created_by_username && (
-                  <DetailRow label="Created By" value={guarantee.created_by_username} icon={CheckCircle2} />
+                  <DetailRow label={t('guarantees.view.createdBy')} value={guarantee.created_by_username} icon={CheckCircle2} />
                 )}
                 {guarantee.approved_by_username && (
-                  <DetailRow label="Approved By" value={guarantee.approved_by_username} icon={XCircle} />
+                  <DetailRow label={t('guarantees.view.approvedBy')} value={guarantee.approved_by_username} icon={XCircle} />
                 )}
               </div>
               {guarantee.approved_at && (
                 <p className="text-xs text-muted-foreground">
-                  Approved on: <FormattedDate date={guarantee.approved_at} format="full" />
+                  {t('guarantees.view.approvedOn')}: <FormattedDate date={guarantee.approved_at} format="full" />
                 </p>
               )}
             </>

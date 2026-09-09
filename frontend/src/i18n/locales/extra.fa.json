@@ -1,6 +1,7 @@
 {
   "common": {
-    "close": "بستن"
+    "close": "بستن",
+    "openMenu": "باز کردن منو"
   },
   "technicians": {
     "import": {
@@ -77,5 +78,85 @@
     "phone": "شماره تلفن معتبر وارد کنید",
     "nationalId": "کد ملی معتبر وارد کنید",
     "selectPeriod": "مدت گارانتی را انتخاب کنید"
+  },
+  "exports": {
+    "techniciansTitle": "خروجی تکنسین‌ها"
+  },
+  "customers": {
+    "form": {
+      "editTitle": "ویرایش مشتری",
+      "createTitle": "افزودن مشتری جدید",
+      "editDescription": "اطلاعات مشتری را به‌روزرسانی کنید.",
+      "createDescription": "برای افزودن مشتری جدید، اطلاعات را وارد کنید.",
+      "fullName": "نام کامل",
+      "fullNamePlaceholder": "نام کامل را وارد کنید",
+      "phone": "تلفن",
+      "phonePlaceholder": "۰۹۱۲۳۴۵۶۷۸۹",
+      "nationalId": "کد ملی",
+      "nationalIdPlaceholder": "کد ملی را وارد کنید",
+      "province": "استان",
+      "provincePlaceholder": "استان را وارد کنید",
+      "city": "شهر",
+      "cityPlaceholder": "شهر را وارد کنید",
+      "address": "آدرس",
+      "addressPlaceholder": "آدرس را وارد کنید",
+      "required": "اجباری"
+    },
+    "deleteTitle": "مطمئن هستید؟",
+    "deleteDesc": "مشتری «{{name}}» برای همیشه حذف می‌شود. این عمل قابل بازگشت نیست.",
+    "entity": "مشتری"
+  },
+  "guarantees": {
+    "deleteConfirm": "حذف گارانتی",
+    "view": {
+      "title": "جزئیات گارانتی",
+      "images": "تصاویر",
+      "invoice": "فاکتور",
+      "viewInvoice": "مشاهده فاکتور",
+      "noInvoice": "فاکتوری بارگذاری نشده",
+      "card": "کارت گارانتی",
+      "viewCard": "مشاهده کارت",
+      "noCard": "کارتی بارگذاری نشده",
+      "createdBy": "ایجاد شده توسط",
+      "approvedBy": "بررسی شده توسط",
+      "approvedOn": "بررسی شده در"
+    },
+    "approve": {
+      "approveTitle": "تایید گارانتی",
+      "rejectTitle": "رد گارانتی",
+      "approveDesc": "تایید این گارانتی را تایید کنید. وضعیت آن به فعال و معتبر تغییر می‌کند.",
+      "rejectDesc": "رد این گارانتی را تایید کنید. وضعیت آن به رد شده تغییر می‌کند.",
+      "action": "عملیات",
+      "approveOption": "تایید",
+      "rejectOption": "رد"
+    },
+    "adminForm": {
+      "title": "ایجاد گارانتی (مدیر)",
+      "description": "کد گارانتی را وارد کنید تا محصول به‌طور خودکار شناسایی شود.",
+      "approvedByDefault": "گارانتی‌هایی که مدیر ایجاد می‌کند به‌طور پیش‌فرض تایید شده‌اند (مگر روی «در انتظار» تنظیم شود).",
+      "existingCustomer": "مشتری موجود",
+      "newCustomer": "مشتری جدید",
+      "selectCustomer": "انتخاب مشتری",
+      "selectCustomerPlaceholder": "یک مشتری انتخاب کنید",
+      "newCustomerRequired": "برای ثبت مشتری جدید، نام کامل، تلفن و کد ملی الزامی است.",
+      "fullNamePlaceholder": "علی رضایی",
+      "addressPlaceholder": "خیابان، پلاک، واحد…",
+      "guaranteeInfo": "اطلاعات گارانتی",
+      "codeLabel": "کد گارانتی (چاپ‌شده روی محصول)",
+      "codePlaceholder": "کد روی محصول را وارد کنید",
+      "checkingCode": "در حال بررسی کد…",
+      "productMatched": "✓ محصول شناسایی شد:",
+      "statusApproved": "تایید شده (پیش‌فرض)",
+      "selectPurchaseDate": "تاریخ خرید را انتخاب کنید",
+      "selectExpiryDate": "تاریخ انقضا را انتخاب کنید",
+      "invoiceImage": "تصویر فاکتور",
+      "cardImage": "تصویر کارت گارانتی",
+      "clickUploadInvoice": "برای بارگذاری فاکتور کلیک کنید",
+      "clickUploadCard": "برای بارگذاری کارت کلیک کنید",
+      "uploadHint": "JPEG، PNG، PDF (حداکثر ۱۰ مگابایت)",
+      "notesPlaceholder": "توضیحات بیشتر درباره این گارانتی",
+      "creating": "در حال ایجاد…",
+      "submit": "ایجاد گارانتی"
+    }
   }
 }

@@ -189,8 +189,12 @@ export function CustomersPage() {
       {data && data.total > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-gray-500">
-            Showing {((data.page - 1) * data.limit) + 1} to{' '}
-            {Math.min(data.page * data.limit, data.total)} of {data.total} customers
+            {t('common.showingRange', {
+              from: ((data.page - 1) * data.limit) + 1,
+              to: Math.min(data.page * data.limit, data.total),
+              total: data.total,
+              entity: t('customers.title'),
+            })}
           </p>
           <div className="flex gap-2">
             <Button
@@ -198,14 +202,14 @@ export function CustomersPage() {
               disabled={data.page <= 1}
               onClick={() => setPage(data.page - 1)}
             >
-              Previous
+              {t('common.previous')}
             </Button>
             <Button
               variant="outline"
               disabled={data.page >= data.last_page}
               onClick={() => setPage(data.page + 1)}
             >
-              Next
+              {t('common.next')}
             </Button>
           </div>
         </div>

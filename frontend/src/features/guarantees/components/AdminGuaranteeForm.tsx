@@ -299,7 +299,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
       if (!data.customer_full_name || !data.customer_phone || !data.customer_national_id) {
         form.setError('customer_full_name', {
           type: 'manual',
-          message: 'Full name, phone, and national ID are required for new customer registration'
+          message: t('guarantees.adminForm.newCustomerRequired')
         })
         return
       }
@@ -330,12 +330,12 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Guarantee (Admin)</DialogTitle>
+          <DialogTitle>{t('guarantees.adminForm.title')}</DialogTitle>
           <DialogDescription>
-            Enter the guarantee code to automatically resolve the product.
+            {t('guarantees.adminForm.description')}
             <br />
             <span className="text-sm font-medium text-blue-600">
-              Guarantees created by admin are approved by default (unless set to Pending).
+              {t('guarantees.adminForm.approvedByDefault')}
             </span>
           </DialogDescription>
         </DialogHeader>
@@ -349,8 +349,8 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'existing' | 'new')} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="existing">Existing Customer</TabsTrigger>
-                  <TabsTrigger value="new">New Customer</TabsTrigger>
+                  <TabsTrigger value="existing">{t('guarantees.adminForm.existingCustomer')}</TabsTrigger>
+                  <TabsTrigger value="new">{t('guarantees.adminForm.newCustomer')}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="existing" className="space-y-4 mt-4">
@@ -359,7 +359,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                     name="customer_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Select Customer *</FormLabel>
+                        <FormLabel>{t('guarantees.adminForm.selectCustomer')} *</FormLabel>
                         <Select
                           items={customers.map((c) => ({ value: String(c.id), label: `${c.full_name} - ${c.phone}` }))}
                           value={field.value || ''}
@@ -373,7 +373,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                           }}
                         >
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a customer" />
+                            <SelectValue placeholder={t('guarantees.adminForm.selectCustomerPlaceholder')} />
                           </SelectTrigger>
                           <SelectContent>
                             {customers.map((c) => (
@@ -396,9 +396,9 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       name="customer_full_name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Full Name *</FormLabel>
+                          <FormLabel>{t('customers.form.fullName')} *</FormLabel>
                           <FormControl>
-                            <Input placeholder="John Doe" {...field} />
+                            <Input placeholder={t('guarantees.adminForm.fullNamePlaceholder')} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -409,9 +409,9 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       name="customer_phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Phone *</FormLabel>
+                          <FormLabel>{t('customers.form.phone')} *</FormLabel>
                           <FormControl>
-                            <Input placeholder="+1234567890" {...field} />
+                            <Input placeholder={t('customers.form.phonePlaceholder')} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -422,9 +422,9 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       name="customer_national_id"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>National ID *</FormLabel>
+                          <FormLabel>{t('customers.form.nationalId')} *</FormLabel>
                           <FormControl>
-                            <Input placeholder="123456789" {...field} />
+                            <Input placeholder={t('customers.form.nationalIdPlaceholder')} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -435,9 +435,9 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       name="customer_province"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Province</FormLabel>
+                          <FormLabel>{t('customers.form.province')}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Province" {...field} />
+                            <Input placeholder={t('customers.form.provincePlaceholder')} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -448,9 +448,9 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       name="customer_city"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>City</FormLabel>
+                          <FormLabel>{t('customers.form.city')}</FormLabel>
                           <FormControl>
-                            <Input placeholder="City" {...field} />
+                            <Input placeholder={t('customers.form.cityPlaceholder')} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -462,10 +462,10 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                     name="customer_address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Address</FormLabel>
+                        <FormLabel>{t('customers.form.address')}</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Street, Building, Apartment..."
+                            placeholder={t('guarantees.adminForm.addressPlaceholder')}
                             className="resize-none min-h-[60px]"
                             {...field}
                           />
@@ -481,7 +481,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
 
               {/* Guarantee Information */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Guarantee Information</h3>
+                <h3 className="text-lg font-semibold">{t('guarantees.adminForm.guaranteeInfo')}</h3>
 
                 {/* Guarantee Code with Product Lookup */}
                 <FormField
@@ -489,11 +489,11 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                   name="guarantee_code"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Guarantee Code (Printed on Product) *</FormLabel>
+                      <FormLabel>{t('guarantees.adminForm.codeLabel')} *</FormLabel>
                       <FormControl>
                         <div className="space-y-2">
                           <Input
-                            placeholder="Enter the code from the product"
+                            placeholder={t('guarantees.adminForm.codePlaceholder')}
                             {...field}
                             onChange={(e) => {
                               field.onChange(e.target.value.toUpperCase())
@@ -502,12 +502,12 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                           {isLookupLoading && (
                             <p className="text-xs text-muted-foreground flex items-center gap-2">
                               <Loader2 className="h-3 w-3 animate-spin" />
-                              Checking code...
+                              {t('guarantees.adminForm.checkingCode')}
                             </p>
                           )}
                           {lookupResult && !lookupError && (
                             <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800">
-                              <p className="font-medium">✓ Product Matched:</p>
+                              <p className="font-medium">{t('guarantees.adminForm.productMatched')}</p>
                               <p>{lookupResult.name}</p>
                               <p className="text-xs text-green-600">{lookupResult.category_name}</p>
                               {lookupResult.warranty && (
@@ -533,8 +533,12 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                     name="status"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Status</FormLabel>
+                        <FormLabel>{t('common.status')}</FormLabel>
                         <Select
+                          items={[
+                            { value: 'Approved', label: t('guarantees.adminForm.statusApproved') },
+                            { value: 'Pending', label: t('status.Pending') },
+                          ]}
                           value={field.value}
                           onValueChange={(value) => field.onChange(value as 'Pending' | 'Approved')}
                         >
@@ -542,8 +546,8 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Approved">Approved (Default)</SelectItem>
-                            <SelectItem value="Pending">Pending</SelectItem>
+                            <SelectItem value="Approved">{t('guarantees.adminForm.statusApproved')}</SelectItem>
+                            <SelectItem value="Pending">{t('status.Pending')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -557,12 +561,12 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                     name="purchase_date"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Purchase Date *</FormLabel>
+                        <FormLabel>{t('guarantees.table.purchaseDate')} *</FormLabel>
                         <FormControl>
                           <DatePicker
                             value={field.value}
                             onChange={field.onChange}
-                            placeholder="Select purchase date"
+                            placeholder={t('guarantees.adminForm.selectPurchaseDate')}
                             className="w-full"
                           />
                         </FormControl>
@@ -576,12 +580,12 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                     name="expiry_date"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Expiry Date *</FormLabel>
+                        <FormLabel>{t('guarantees.table.expiryDate')} *</FormLabel>
                         <FormControl>
                           <DatePicker
                             value={field.value}
                             onChange={field.onChange}
-                            placeholder="Select expiry date"
+                            placeholder={t('guarantees.adminForm.selectExpiryDate')}
                             className="w-full"
                           />
                         </FormControl>
@@ -594,7 +598,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Invoice Upload */}
                   <div>
-                    <FormLabel>Invoice Image</FormLabel>
+                    <FormLabel>{t('guarantees.adminForm.invoiceImage')}</FormLabel>
                     <div className="mt-1">
                       {invoicePreview ? (
                         <div className="relative">
@@ -632,8 +636,8 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                           onClick={() => invoiceInputRef.current?.click()}
                         >
                           <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                          <p className="text-sm text-muted-foreground">Click to upload invoice</p>
-                          <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
+                          <p className="text-sm text-muted-foreground">{t('guarantees.adminForm.clickUploadInvoice')}</p>
+                          <p className="text-xs text-muted-foreground">{t('guarantees.adminForm.uploadHint')}</p>
                         </div>
                       )}
                       <input
@@ -648,7 +652,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
 
                   {/* Guarantee Card Upload */}
                   <div>
-                    <FormLabel>Guarantee Card Image</FormLabel>
+                    <FormLabel>{t('guarantees.adminForm.cardImage')}</FormLabel>
                     <div className="mt-1">
                       {cardPreview ? (
                         <div className="relative">
@@ -686,8 +690,8 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                           onClick={() => cardInputRef.current?.click()}
                         >
                           <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                          <p className="text-sm text-muted-foreground">Click to upload card</p>
-                          <p className="text-xs text-muted-foreground">JPEG, PNG, PDF (max 10MB)</p>
+                          <p className="text-sm text-muted-foreground">{t('guarantees.adminForm.clickUploadCard')}</p>
+                          <p className="text-xs text-muted-foreground">{t('guarantees.adminForm.uploadHint')}</p>
                         </div>
                       )}
                       <input
@@ -706,10 +710,10 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notes</FormLabel>
+                      <FormLabel>{t('common.notes')}</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Additional notes about this guarantee"
+                          placeholder={t('guarantees.adminForm.notesPlaceholder')}
                           className="resize-none min-h-[80px]"
                           {...field}
                         />
@@ -722,10 +726,10 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button type="submit" disabled={isLoading || isUploading || !lookupResult} className="bg-blue-600 hover:bg-blue-700">
-                  {isLoading ? 'Creating...' : 'Create Guarantee'}
+                  {isLoading ? t('guarantees.adminForm.creating') : t('guarantees.adminForm.submit')}
                 </Button>
               </DialogFooter>
             </form>

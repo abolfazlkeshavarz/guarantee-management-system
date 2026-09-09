@@ -86,7 +86,7 @@ export function TechnicianTable({
                   <DropdownMenuTrigger
                     render={<Button variant="ghost" className="h-8 w-8 p-0" />}
                   >
-                    <span className="sr-only">Open menu</span>
+                    <span className="sr-only">{t('common.openMenu')}</span>
                     <MoreHorizontal className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

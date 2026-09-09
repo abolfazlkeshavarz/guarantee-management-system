@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,26 +26,28 @@ export function GuaranteeDeleteDialog({
   onConfirm,
   isLoading,
 }: GuaranteeDeleteDialogProps) {
+  const { t } = useTranslation()
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>{t('common.confirmDelete')}</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete the guarantee <span className="font-semibold">{guarantee?.code}</span> 
-            {' '}for customer <span className="font-semibold">{guarantee?.customer_name}</span>.
-            <br /><br />
-            <span className="text-destructive font-medium">This action cannot be undone.</span>
+            {t('guarantees.deleteDesc', {
+              code: guarantee?.code,
+              customer: guarantee?.customer_name,
+            })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isLoading}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isLoading ? 'Deleting...' : 'Delete Guarantee'}
+            {isLoading ? t('common.deleting') : t('guarantees.deleteConfirm')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -84,17 +84,17 @@ export function CustomerTable({
               <TableCell className="text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
-                    <span className="sr-only">Open menu</span>
+                    <span className="sr-only">{t('common.openMenu')}</span>
                     <MoreHorizontal className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onView(customer)}>
                       <Eye className="me-2 h-4 w-4" />
-                      View
+                      {t('common.view')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onEdit(customer)}>
                       <Edit className="me-2 h-4 w-4" />
-                      Edit
+                      {t('common.edit')}
                     </DropdownMenuItem>
                     {onDelete && (
 <DropdownMenuItem
@@ -102,7 +102,7 @@ export function CustomerTable({
                       className="text-destructive"
                     >
                       <Trash2 className="me-2 h-4 w-4" />
-                      Delete
+                      {t('common.delete')}
                     </DropdownMenuItem>
 )}
                   </DropdownMenuContent>

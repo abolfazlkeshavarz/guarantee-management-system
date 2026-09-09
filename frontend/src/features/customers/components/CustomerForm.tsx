@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -38,6 +39,8 @@ export function CustomerForm({
   onSubmit,
   isLoading,
 }: CustomerFormProps) {
+  const { t } = useTranslation()
+
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
@@ -80,17 +83,19 @@ export function CustomerForm({
     }
   }
 
+  const req = ` *`
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {customer ? 'Edit Customer' : 'Add New Customer'}
+            {customer ? t('customers.form.editTitle') : t('customers.form.createTitle')}
           </DialogTitle>
           <DialogDescription>
             {customer
-              ? 'Update the customer information below.'
-              : 'Fill in the details to add a new customer.'}
+              ? t('customers.form.editDescription')
+              : t('customers.form.createDescription')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -100,9 +105,9 @@ export function CustomerForm({
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name *</FormLabel>
+                  <FormLabel>{t('customers.form.fullName')}{req}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter full name" {...field} />
+                    <Input placeholder={t('customers.form.fullNamePlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -114,9 +119,9 @@ export function CustomerForm({
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone *</FormLabel>
+                    <FormLabel>{t('customers.form.phone')}{req}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter phone number" {...field} />
+                      <Input placeholder={t('customers.form.phonePlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -127,9 +132,9 @@ export function CustomerForm({
                 name="national_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>National ID *</FormLabel>
+                    <FormLabel>{t('customers.form.nationalId')}{req}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter national ID" {...field} />
+                      <Input placeholder={t('customers.form.nationalIdPlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -142,9 +147,9 @@ export function CustomerForm({
                 name="province"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Province</FormLabel>
+                    <FormLabel>{t('customers.form.province')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter province" {...field} />
+                      <Input placeholder={t('customers.form.provincePlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -155,9 +160,9 @@ export function CustomerForm({
                 name="city"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>City</FormLabel>
+                    <FormLabel>{t('customers.form.city')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter city" {...field} />
+                      <Input placeholder={t('customers.form.cityPlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -169,10 +174,10 @@ export function CustomerForm({
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Address</FormLabel>
+                  <FormLabel>{t('customers.form.address')}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Enter address"
+                      placeholder={t('customers.form.addressPlaceholder')}
                       className="resize-none"
                       {...field}
                     />
@@ -187,10 +192,14 @@ export function CustomerForm({
                 variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Saving...' : customer ? 'Update' : 'Create'}
+                {isLoading
+                  ? t('common.saving')
+                  : customer
+                    ? t('common.update')
+                    : t('common.create')}
               </Button>
             </DialogFooter>
           </form>

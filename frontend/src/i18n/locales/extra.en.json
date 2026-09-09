@@ -1,6 +1,7 @@
 {
   "common": {
-    "close": "Close"
+    "close": "Close",
+    "openMenu": "Open menu"
   },
   "technicians": {
     "import": {
@@ -77,5 +78,85 @@
     "phone": "Enter a valid phone number",
     "nationalId": "Enter a valid national ID",
     "selectPeriod": "Select a guarantee period"
+  },
+  "exports": {
+    "techniciansTitle": "Export technicians"
+  },
+  "customers": {
+    "form": {
+      "editTitle": "Edit Customer",
+      "createTitle": "Add New Customer",
+      "editDescription": "Update the customer information below.",
+      "createDescription": "Fill in the details to add a new customer.",
+      "fullName": "Full name",
+      "fullNamePlaceholder": "Enter full name",
+      "phone": "Phone",
+      "phonePlaceholder": "09123456789",
+      "nationalId": "National ID",
+      "nationalIdPlaceholder": "Enter national ID",
+      "province": "Province",
+      "provincePlaceholder": "Enter province",
+      "city": "City",
+      "cityPlaceholder": "Enter city",
+      "address": "Address",
+      "addressPlaceholder": "Enter address",
+      "required": "Required"
+    },
+    "deleteTitle": "Are you sure?",
+    "deleteDesc": "This will permanently delete the customer \"{{name}}\". This action cannot be undone.",
+    "entity": "customer"
+  },
+  "guarantees": {
+    "deleteConfirm": "Delete Guarantee",
+    "view": {
+      "title": "Guarantee Details",
+      "images": "Images",
+      "invoice": "Invoice",
+      "viewInvoice": "View invoice",
+      "noInvoice": "No invoice uploaded",
+      "card": "Guarantee card",
+      "viewCard": "View card",
+      "noCard": "No card uploaded",
+      "createdBy": "Created by",
+      "approvedBy": "Reviewed by",
+      "approvedOn": "Reviewed on"
+    },
+    "approve": {
+      "approveTitle": "Approve Guarantee",
+      "rejectTitle": "Reject Guarantee",
+      "approveDesc": "Confirm the approval of this guarantee. This will mark it as active and valid.",
+      "rejectDesc": "Confirm the rejection of this guarantee. This will mark it as rejected.",
+      "action": "Action",
+      "approveOption": "Approve",
+      "rejectOption": "Reject"
+    },
+    "adminForm": {
+      "title": "Create Guarantee (Admin)",
+      "description": "Enter the guarantee code to automatically resolve the product.",
+      "approvedByDefault": "Guarantees created by an admin are approved by default (unless set to Pending).",
+      "existingCustomer": "Existing Customer",
+      "newCustomer": "New Customer",
+      "selectCustomer": "Select Customer",
+      "selectCustomerPlaceholder": "Select a customer",
+      "newCustomerRequired": "Full name, phone and national ID are required to register a new customer.",
+      "fullNamePlaceholder": "Ali Rezaei",
+      "addressPlaceholder": "Street, building, unit…",
+      "guaranteeInfo": "Guarantee Information",
+      "codeLabel": "Guarantee code (printed on the product)",
+      "codePlaceholder": "Enter the code from the product",
+      "checkingCode": "Checking code…",
+      "productMatched": "✓ Product matched:",
+      "statusApproved": "Approved (default)",
+      "selectPurchaseDate": "Select purchase date",
+      "selectExpiryDate": "Select expiry date",
+      "invoiceImage": "Invoice image",
+      "cardImage": "Guarantee card image",
+      "clickUploadInvoice": "Click to upload the invoice",
+      "clickUploadCard": "Click to upload the card",
+      "uploadHint": "JPEG, PNG, PDF (max 10 MB)",
+      "notesPlaceholder": "Additional notes about this guarantee",
+      "creating": "Creating…",
+      "submit": "Create Guarantee"
+    }
   }
 }

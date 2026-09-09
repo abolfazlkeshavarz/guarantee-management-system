@@ -185,14 +185,14 @@ export function GuaranteesPage() {
         </div>
 
         <Select
-          items={[{ value: 'all', label: t('guarantees.allStatus') }, ...GUARANTEE_STATUSES.map(s => ({ value: s, label: s }))]}
+          items={[{ value: 'all', label: t('guarantees.allStatus') }, ...GUARANTEE_STATUSES.map(s => ({ value: s, label: t(`status.${s}`, { defaultValue: s }) }))]}
           value={statusFilter}
           onValueChange={(v) => { setStatusFilter(v ?? 'all'); setPage(1) }}
         >
           <SelectTrigger className="w-[150px]"><SelectValue placeholder={t('common.status')} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('guarantees.allStatus')}</SelectItem>
-            {GUARANTEE_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            {GUARANTEE_STATUSES.map(s => <SelectItem key={s} value={s}>{t(`status.${s}`, { defaultValue: s })}</SelectItem>)}
           </SelectContent>
         </Select>
 

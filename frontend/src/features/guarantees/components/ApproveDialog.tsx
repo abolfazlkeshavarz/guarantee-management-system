@@ -1,5 +1,6 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,8 @@ export function ApproveDialog({
   onConfirm,
   isLoading,
 }: ApproveDialogProps) {
+  const { t } = useTranslation()
+
   const form = useForm<ApproveFormValues>({
     resolver: zodResolver(approveSchema),
     defaultValues: {
@@ -61,14 +64,21 @@ export function ApproveDialog({
     }
   }
 
-  const title = action === 'approve' ? 'Approve Guarantee' : 'Reject Guarantee'
+  const title =
+    action === 'approve'
+      ? t('guarantees.approve.approveTitle')
+      : t('guarantees.approve.rejectTitle')
   const description =
     action === 'approve'
-      ? 'Confirm the approval of this guarantee. This will mark it as active and valid.'
-      : 'Confirm the rejection of this guarantee. This will mark it as rejected.'
-  const buttonClass = action === 'approve' 
-    ? 'bg-green-600 hover:bg-green-700' 
-    : 'bg-red-600 hover:bg-red-700'
+      ? t('guarantees.approve.approveDesc')
+      : t('guarantees.approve.rejectDesc')
+  const buttonClass =
+    action === 'approve'
+      ? 'bg-green-600 hover:bg-green-700'
+      : 'bg-red-600 hover:bg-red-700'
+
+  const approveOption = `✅ ${t('guarantees.approve.approveOption')}`
+  const rejectOption = `❌ ${t('guarantees.approve.rejectOption')}`
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -78,7 +88,9 @@ export function ApproveDialog({
           <DialogDescription>
             {description}
             <br />
-            <span className="font-semibold">Guarantee: {guarantee?.code}</span>
+            <span className="font-semibold">
+              {t('guarantees.renewGuaranteeLabel')}: {guarantee?.code}
+            </span>
             {' - '}
             <span className="text-muted-foreground">{guarantee?.customer_name}</span>
           </DialogDescription>
@@ -90,9 +102,12 @@ export function ApproveDialog({
               name="status"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Action *</FormLabel>
+                  <FormLabel>{t('guarantees.approve.action')} *</FormLabel>
                   <Select
-                    items={[{ value: 'Approved', label: '✅ Approve' }, { value: 'Rejected', label: '❌ Reject' }]}
+                    items={[
+                      { value: 'Approved', label: approveOption },
+                      { value: 'Rejected', label: rejectOption },
+                    ]}
                     value={field.value}
                     onValueChange={field.onChange}
                     disabled
@@ -103,8 +118,8 @@ export function ApproveDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Approved">✅ Approve</SelectItem>
-                      <SelectItem value="Rejected">❌ Reject</SelectItem>
+                      <SelectItem value="Approved">{approveOption}</SelectItem>
+                      <SelectItem value="Rejected">{rejectOption}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -116,10 +131,12 @@ export function ApproveDialog({
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
+                  <FormLabel>
+                    {t('common.notes')} ({t('forms.optional')})
+                  </FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Add notes about this decision..."
+                      placeholder={t('common.notesPlaceholder')}
                       className="resize-none min-h-[80px]"
                       {...field}
                     />
@@ -130,10 +147,10 @@ export function ApproveDialog({
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading} className={buttonClass}>
-                {isLoading ? 'Processing...' : title}
+                {isLoading ? t('guarantees.processing') : title}
               </Button>
             </DialogFooter>
           </form>
