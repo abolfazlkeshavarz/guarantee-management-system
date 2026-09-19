@@ -3,13 +3,24 @@ import { useTranslation } from 'react-i18next'
 import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { LogOut, Wrench, Home, User, PackagePlus } from 'lucide-react'
+import { LogOut, Wrench, Home, User, PackagePlus, Truck } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { technicianPartShipmentService } from '@/features/partShipments/api/partShipments'
 import { Logo } from '@/components/common/Logo'
 
 export function TechnicianLayout() {
   const { technician, logout } = useTechnicianAuth()
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'fa'
+
+  // Replaced parts the technician still has to send back -- shown as a badge on
+  // the nav so the obligation is visible from every screen.
+  const { data: shipmentSummary } = useQuery({
+    queryKey: ['my-part-shipments-summary'],
+    queryFn: () => technicianPartShipmentService.summary(),
+    refetchInterval: 60_000,
+  })
+  const awaitingParts = shipmentSummary?.awaiting_count ?? 0
 
   const getInitials = (name: string) => {
     return name
@@ -67,6 +78,17 @@ export function TechnicianLayout() {
             <Button variant="ghost" size="sm" className={`gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <PackagePlus className="h-4 w-4" />
               {t('partRequests.navLabel')}
+            </Button>
+          </Link>
+          <Link to="/technician/part-shipments">
+            <Button variant="ghost" size="sm" className={`gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <Truck className="h-4 w-4" />
+              {t('partShipments.navLabel')}
+              {awaitingParts > 0 && (
+                <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 text-white">
+                  {awaitingParts}
+                </span>
+              )}
             </Button>
           </Link>
           <Link to="/technician/profile">

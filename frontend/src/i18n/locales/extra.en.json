@@ -158,5 +158,135 @@
       "creating": "Creating…",
       "submit": "Create Guarantee"
     }
+  },
+  "nav": {
+    "partShipments": "Part Shipments"
+  },
+  "partShipments": {
+    "navLabel": "Send Parts",
+    "currency": "Toman",
+    "entity": "shipment",
+    "title": "Part Shipments",
+    "subtitle": "Parts technicians send back after a repair: receive them, price them, pay the technician.",
+    "searchPlaceholder": "Search by tracking code, technician or guarantee code...",
+    "allTechnicians": "All technicians",
+    "allStatuses": "All statuses",
+    "payableTotal": "Payable to technicians",
+    "payableHint": "Invoiced, not yet paid",
+    "paidTotal": "Paid so far",
+    "emptyTitle": "No shipments",
+    "emptyDesc": "Nothing matches these filters yet.",
+    "viewTitle": "Shipment details",
+    "deleteDesc": "This will permanently delete shipment #{{id}}. The parts in it become available to send again.",
+    "deleteSuccess": "Shipment deleted",
+    "partsTitle": "Parts in this shipment ({{count}})",
+    "arrived": "Arrived",
+    "notArrived": "Did not arrive",
+    "invoiceTotal": "Invoice total",
+    "status": {
+      "Sent": "Sent",
+      "Received": "Received",
+      "Invoiced": "Invoiced",
+      "Paid": "Paid",
+      "Rejected": "Rejected",
+      "Cancelled": "Cancelled"
+    },
+    "method": {
+      "post": "Post",
+      "courier": "Courier",
+      "in_person": "Handed in person",
+      "other": "Other"
+    },
+    "table": {
+      "technician": "Technician",
+      "parts": "Parts",
+      "method": "Shipping",
+      "sentOn": "Sent on",
+      "amount": "Amount"
+    },
+    "action": {
+      "receive": "Receive",
+      "invoice": "Invoice",
+      "pay": "Pay",
+      "reject": "Reject",
+      "cancel": "Cancel shipment"
+    },
+    "timeline": {
+      "received": "Received by {{name}}",
+      "arrivedCount": "{{arrived}} of {{total}} parts arrived",
+      "invoiced": "Invoiced by {{name}}",
+      "paid": "Paid by {{name}}"
+    },
+    "receive": {
+      "title": "Receive shipment",
+      "description": "Shipment #{{id}} from {{name}}. Tick every part that is actually in the parcel.",
+      "summary": "{{arrived}} of {{total}} parts arrived",
+      "notesPlaceholder": "e.g. one board arrived cracked",
+      "confirm": "Confirm receipt",
+      "success": "Shipment received"
+    },
+    "invoice": {
+      "title": "Invoice shipment",
+      "description": "Shipment #{{id}} from {{name}}. Give a price for each part that arrived.",
+      "unitPrice": "Price",
+      "confirm": "Create invoice",
+      "success": "Invoice created"
+    },
+    "pay": {
+      "title": "Pay technician",
+      "description": "Shipment #{{id}}. Record the payment made to {{name}}.",
+      "amountDue": "Amount due",
+      "reference": "Payment reference",
+      "referencePlaceholder": "Bank tracking number, receipt no. ...",
+      "confirm": "Mark as paid",
+      "success": "Payment recorded"
+    },
+    "reject": {
+      "title": "Reject shipment",
+      "description": "Shipment #{{id}} from {{name}}: nothing usable arrived. The parts become available to send again.",
+      "reason": "Reason",
+      "reasonPlaceholder": "Why is this shipment being rejected?",
+      "confirm": "Reject shipment",
+      "success": "Shipment rejected"
+    },
+    "myTitle": "Send Parts",
+    "mySubtitle": "Send the parts you replaced back to the company, and follow your payment.",
+    "myTableTitle": "My shipments",
+    "newShipment": "Send parts",
+    "sendNow": "Send now",
+    "awaitingTitle": "{{count}} replaced part(s) still have to be sent back",
+    "awaitingDesc": "After you file a repair report, the old components must be sent to the company. Payment is calculated once they arrive.",
+    "cancelConfirm": "Cancel shipment #{{id}}? The parts will be listed as waiting to be sent again.",
+    "cancelSuccess": "Shipment cancelled",
+    "remindAfterRepair": "Remember to send the replaced parts back.",
+    "remindAction": "Send parts",
+    "stats": {
+      "awaiting": "Waiting to be sent",
+      "inTransit": "Sent, not received yet",
+      "payable": "Waiting for payment",
+      "paid": "Paid to me"
+    },
+    "form": {
+      "title": "Send replaced parts",
+      "description": "Choose the old components you are sending in this parcel and tell us how they are travelling.",
+      "nothingTitle": "Nothing to send",
+      "nothingDesc": "Every part from your repair reports has already been sent.",
+      "partsLabel": "Parts in this parcel",
+      "selectAll": "Select all",
+      "clearAll": "Clear",
+      "fromRepair": "Repair #{{id}} · {{code}}",
+      "conditionPlaceholder": "Condition of the part (e.g. burnt, cracked) - optional",
+      "condition": "Condition",
+      "selectedCount": "{{selected}} of {{total}} selected",
+      "method": "Shipping method",
+      "trackingCode": "Tracking code",
+      "trackingPlaceholder": "Postal / courier tracking number",
+      "sentOn": "Send date",
+      "notes": "Notes",
+      "notesPlaceholder": "Anything the office should know about this parcel",
+      "submit": "Send {{count}} part(s)",
+      "submitting": "Sending...",
+      "success": "Shipment submitted. You will be paid once the company receives and invoices it."
+    }
   }
 }

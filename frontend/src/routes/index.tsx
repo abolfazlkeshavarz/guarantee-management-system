@@ -11,6 +11,7 @@ import { TechniciansPage } from '@/features/technicians/pages/TechniciansPage'
 import { RepairsPage } from '@/features/repairs/pages/RepairsPage'
 import { RepairCatalogPage } from '@/features/repairCatalog/pages/RepairCatalogPage'
 import { PartRequestsPage } from '@/features/partRequests/pages/PartRequestsPage'
+import { PartShipmentsPage } from '@/features/partShipments/pages/PartShipmentsPage'
 // Pages
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -28,6 +29,7 @@ import { TechnicianLayout } from '@/features/technicianPortal/components/Technic
 import { TechnicianLoginPage } from '@/features/technicianPortal/pages/TechnicianLoginPage'
 import { TechnicianDashboardPage } from '@/features/technicianPortal/pages/TechnicianDashboardPage'
 import { TechnicianPartRequestsPage } from '@/features/technicianPortal/pages/TechnicianPartRequestsPage'
+import { TechnicianPartShipmentsPage } from '@/features/technicianPortal/pages/TechnicianPartShipmentsPage'
 import { TechnicianProfilePage } from '@/features/technicianPortal/pages/TechnicianProfilePage'
 
 export function AppRoutes() {
@@ -69,6 +71,7 @@ export function AppRoutes() {
         <Route path="technicians" element={<TechniciansPage />} />
         <Route path="repairs" element={<RepairsPage />} />
         <Route path="part-requests" element={<PartRequestsPage />} />
+        <Route path="part-shipments" element={<PartShipmentsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="audit-log" element={<AuditLogPage />} />
       </Route>
@@ -85,6 +88,7 @@ export function AppRoutes() {
         <Route index element={<Navigate to="/technician/dashboard" replace />} />
         <Route path="dashboard" element={<TechnicianDashboardPage />} />
         <Route path="part-requests" element={<TechnicianPartRequestsPage />} />
+        <Route path="part-shipments" element={<TechnicianPartShipmentsPage />} />
         <Route path="profile" element={<TechnicianProfilePage />} />
       </Route>
 

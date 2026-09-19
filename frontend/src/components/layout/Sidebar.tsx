@@ -15,6 +15,7 @@ import {
   ListChecks,
   ScrollText,
   PackagePlus,
+  Truck,
   X,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
@@ -35,6 +36,7 @@ const bottomNav = [
   { key: 'technicians', href: '/technicians', icon: Wrench },
   { key: 'repairs', href: '/repairs', icon: ClipboardList },
   { key: 'partRequests', href: '/part-requests', icon: PackagePlus },
+  { key: 'partShipments', href: '/part-shipments', icon: Truck },
   { key: 'auditLog', href: '/audit-log', icon: ScrollText },
   { key: 'settings', href: '/settings', icon: Settings },
 ]

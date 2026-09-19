@@ -19,6 +19,7 @@ import (
 	"guarantee-management-system/internal/modules/dashboard"
 	"guarantee-management-system/internal/modules/guarantees"
 	"guarantee-management-system/internal/modules/partrequests"
+	"guarantee-management-system/internal/modules/partshipments"
 	"guarantee-management-system/internal/modules/products"
 	"guarantee-management-system/internal/modules/repaircatalog"
 	"guarantee-management-system/internal/modules/repairs"
@@ -147,6 +148,11 @@ func main() {
 		// Initialize part requests module (technician -> admin part/service requests)
 		partRequestsModule := partrequests.NewPartRequestModule(database.GetDB())
 		partRequestsModule.RegisterRoutes(v1)
+
+		// Initialize part shipments module (technician sends replaced parts back;
+		// the company receives, invoices and pays)
+		partShipmentsModule := partshipments.NewPartShipmentModule(database.GetDB())
+		partShipmentsModule.RegisterRoutes(v1)
 
 		// Global display settings (language/calendar) -- admin writes, everyone reads
 		settingsModule := settings.NewSettingsModule(database.GetDB())

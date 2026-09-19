@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -43,6 +44,8 @@ export function NewRepairDialog() {
   const [checkError, setCheckError] = useState<string | null>(null)
 
   const queryClient = useQueryClient()
+
+  const navigate = useNavigate()
 
   const { data: components = [] } = useQuery({
     queryKey: ['repair-components-active'],
@@ -117,7 +120,18 @@ export function NewRepairDialog() {
     mutationFn: (data: RepairFormValues) => technicianAuthService.createRepair(data as any),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-repairs'] })
+      // The report says parts were replaced, so the old ones now have to be sent
+      // back. Refresh the count behind the nav badge and remind the technician.
+      queryClient.invalidateQueries({ queryKey: ['my-part-shipments-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['shippable-parts'] })
       toast.success(t('technicianPortal.submitSuccess'))
+      toast(t('partShipments.remindAfterRepair'), {
+        duration: 10000,
+        action: {
+          label: t('partShipments.remindAction'),
+          onClick: () => navigate('/technician/part-shipments'),
+        },
+      })
       handleOpenChange(false)
     },
     onError: (err: any) => toast.error(err.response?.data?.message || t('technicianPortal.submitError')),
