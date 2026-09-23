@@ -91,6 +91,29 @@ export interface ShippableItem {
   repair_created_at: string
 }
 
+/** What the company owes one technician, and what it has already paid. */
+export interface TechnicianBalance {
+  technician_id: number
+  technician_name: string
+  /** Received but not yet priced. */
+  awaiting_invoice: number
+  /** Invoiced and not yet paid - the actual debt. */
+  payable: number
+  paid_total: number
+  /** When the oldest unpaid invoice was raised. */
+  oldest_invoice_at?: string
+}
+
+/** Everything the finance screen needs in one call. */
+export interface FinanceSummary {
+  awaiting_invoice_count: number
+  payable_count: number
+  payable_total: number
+  paid_count: number
+  paid_total: number
+  technicians: TechnicianBalance[]
+}
+
 export interface PartShipmentSummary {
   counts: Record<string, number>
   /** Invoiced but not yet paid. */

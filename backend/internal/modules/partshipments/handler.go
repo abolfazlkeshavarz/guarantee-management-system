@@ -83,6 +83,17 @@ func (h *PartShipmentHandler) Summary(c *gin.Context) {
 	responses.Success(c, summary)
 }
 
+// Finance is the money side: what is waiting to be priced, what is owed, and
+// the per-technician breakdown.
+func (h *PartShipmentHandler) Finance(c *gin.Context) {
+	summary, err := h.service.Finance()
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.Success(c, summary)
+}
+
 func (h *PartShipmentHandler) Get(c *gin.Context) {
 	id, ok := paramID(c)
 	if !ok {

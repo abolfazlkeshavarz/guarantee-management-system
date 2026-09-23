@@ -28,6 +28,7 @@ func (m *PartShipmentModule) RegisterRoutes(router *gin.RouterGroup) {
 	{
 		staff.GET("", m.handler.List)
 		staff.GET("/summary", m.handler.Summary)
+		staff.GET("/finance", m.handler.Finance)
 		staff.GET("/:id", m.handler.Get)
 		staff.POST("/:id/receive", m.handler.Receive)
 		staff.POST("/:id/invoice", m.handler.Invoice)

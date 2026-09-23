@@ -320,6 +320,80 @@ func (s *PartShipmentService) Summary(technicianID *uint) (*Summary, error) {
 	return out, nil
 }
 
+// Finance gathers the money side in one call: how much is waiting to be
+// priced, how much is owed, how much has been paid, and the per-technician
+// breakdown behind those totals.
+func (s *PartShipmentService) Finance() (*FinanceSummary, error) {
+	out := &FinanceSummary{Technicians: []TechnicianBalance{}}
+
+	type headline struct {
+		Status string
+		Count  int64
+		Total  int64
+	}
+	var rows []headline
+	if err := s.db.Model(&PartShipment{}).
+		Select("status, count(*) as count, COALESCE(SUM(invoice_total), 0) as total").
+		Where("status IN ?", []string{StatusReceived, StatusInvoiced, StatusPaid}).
+		Group("status").Scan(&rows).Error; err != nil {
+		return nil, internalErr("Failed to total the finance figures")
+	}
+	for _, r := range rows {
+		switch r.Status {
+		case StatusReceived:
+			out.AwaitingInvoiceCount = r.Count
+		case StatusInvoiced:
+			out.PayableCount, out.PayableTotal = r.Count, r.Total
+		case StatusPaid:
+			out.PaidCount, out.PaidTotal = r.Count, r.Total
+		}
+	}
+
+	// One row per technician who has anything in flight or already settled.
+	type balance struct {
+		TechnicianID    uint
+		TechnicianName  string
+		AwaitingInvoice int64
+		Payable         int64
+		PaidTotal       int64
+		OldestInvoiceAt *time.Time
+	}
+	var balances []balance
+	if err := s.db.Raw(`
+		SELECT ps.technician_id,
+		       COALESCE(t.full_name, '') AS technician_name,
+		       COUNT(*) FILTER (WHERE ps.status = 'Received')                        AS awaiting_invoice,
+		       COALESCE(SUM(ps.invoice_total) FILTER (WHERE ps.status = 'Invoiced'), 0) AS payable,
+		       COALESCE(SUM(ps.invoice_total) FILTER (WHERE ps.status = 'Paid'), 0)     AS paid_total,
+		       MIN(ps.invoiced_at) FILTER (WHERE ps.status = 'Invoiced')             AS oldest_invoice_at
+		  FROM part_shipments ps
+		  LEFT JOIN technicians t ON t.id = ps.technician_id
+		 WHERE ps.deleted_at IS NULL
+		   AND ps.status IN ('Received', 'Invoiced', 'Paid')
+		 GROUP BY ps.technician_id, t.full_name
+		 -- Whoever is owed most, and has waited longest, first.
+		 ORDER BY payable DESC, oldest_invoice_at ASC NULLS LAST`).
+		Scan(&balances).Error; err != nil {
+		return nil, internalErr("Failed to load technician balances")
+	}
+	for _, b := range balances {
+		row := TechnicianBalance{
+			TechnicianID:    b.TechnicianID,
+			TechnicianName:  b.TechnicianName,
+			AwaitingInvoice: b.AwaitingInvoice,
+			Payable:         b.Payable,
+			PaidTotal:       b.PaidTotal,
+		}
+		if b.OldestInvoiceAt != nil {
+			f := b.OldestInvoiceAt.Format(time.RFC3339)
+			row.OldestInvoiceAt = &f
+		}
+		out.Technicians = append(out.Technicians, row)
+	}
+
+	return out, nil
+}
+
 // ─── Company: receive, invoice, pay ──────────────────────────────────────────
 
 func (s *PartShipmentService) Receive(id uint, req *ReceiveRequest, adminID uint) (*PartShipmentDTO, error) {

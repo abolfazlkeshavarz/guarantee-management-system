@@ -88,6 +88,33 @@ type Summary struct {
 	AwaitingCount int64 `json:"awaiting_count"`
 }
 
+// TechnicianBalance is what the company owes one technician, and what it has
+// already paid them. Drives the finance screen's "who are we behind with"
+// list.
+type TechnicianBalance struct {
+	TechnicianID   uint   `json:"technician_id"`
+	TechnicianName string `json:"technician_name"`
+	// Received but not yet priced.
+	AwaitingInvoice int64 `json:"awaiting_invoice"`
+	// Invoiced and not yet paid - the actual debt.
+	Payable   int64 `json:"payable"`
+	PaidTotal int64 `json:"paid_total"`
+	// When the oldest unpaid invoice was raised, so the list can lead with
+	// whoever has been waiting longest.
+	OldestInvoiceAt *string `json:"oldest_invoice_at,omitempty"`
+}
+
+// FinanceSummary is everything the finance screen needs in one call.
+type FinanceSummary struct {
+	AwaitingInvoiceCount int64 `json:"awaiting_invoice_count"`
+	PayableCount         int64 `json:"payable_count"`
+	PayableTotal         int64 `json:"payable_total"`
+	PaidCount            int64 `json:"paid_count"`
+	PaidTotal            int64 `json:"paid_total"`
+
+	Technicians []TechnicianBalance `json:"technicians"`
+}
+
 // ─── Requests ────────────────────────────────────────────────────────────────
 
 type CreateShipmentItemInput struct {

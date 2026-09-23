@@ -1,6 +1,7 @@
 import { api } from '@/api/axios'
 import {
   CreatePartShipmentData,
+  FinanceSummary,
   InvoicePartShipmentData,
   PartShipment,
   PartShipmentListResponse,
@@ -43,6 +44,12 @@ export const partShipmentService = {
 
   async summary(): Promise<PartShipmentSummary> {
     const response = await api.get('/part-shipments/summary')
+    return response.data.data
+  },
+
+  /** The money side: what is waiting to be priced, owed, and paid. */
+  async finance(): Promise<FinanceSummary> {
+    const response = await api.get('/part-shipments/finance')
     return response.data.data
   },
 

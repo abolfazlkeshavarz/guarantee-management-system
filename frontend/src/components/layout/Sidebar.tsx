@@ -17,6 +17,7 @@ import {
   PackagePlus,
   Truck,
   MessageSquare,
+  Wallet,
   X,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
@@ -38,6 +39,7 @@ const bottomNav = [
   { key: 'repairs', href: '/repairs', icon: ClipboardList },
   { key: 'partRequests', href: '/part-requests', icon: PackagePlus },
   { key: 'partShipments', href: '/part-shipments', icon: Truck },
+  { key: 'finance', href: '/finance', icon: Wallet },
   { key: 'smsPatterns', href: '/sms-patterns', icon: MessageSquare },
   { key: 'auditLog', href: '/audit-log', icon: ScrollText },
   { key: 'settings', href: '/settings', icon: Settings },

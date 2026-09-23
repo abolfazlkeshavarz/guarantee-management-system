@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { usePermissions } from '@/features/auth/hooks/usePermissions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,8 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Search, RefreshCw, Filter, Receipt, Wallet } from 'lucide-react'
+import { Search, RefreshCw, Filter, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { technicianService } from '@/features/technicians/api/technicians'
 import { partShipmentService } from '../api/partShipments'
@@ -22,23 +22,20 @@ import { PART_SHIPMENT_STATUSES, PartShipment } from '../types'
 import { PartShipmentTable } from '../components/PartShipmentTable'
 import { PartShipmentViewDialog } from '../components/PartShipmentViewDialog'
 import { PartShipmentReceiveDialog } from '../components/PartShipmentReceiveDialog'
-import { PartShipmentInvoiceDialog } from '../components/PartShipmentInvoiceDialog'
-import { PartShipmentPayDialog } from '../components/PartShipmentPayDialog'
 import { PartShipmentRejectDialog } from '../components/PartShipmentRejectDialog'
 import { PartShipmentDeleteDialog } from '../components/PartShipmentDeleteDialog'
-import { useMoney } from '../hooks/useMoney'
 
-type ActiveDialog = 'view' | 'receive' | 'invoice' | 'pay' | 'reject' | 'delete' | null
+type ActiveDialog = 'view' | 'receive' | 'reject' | 'delete' | null
 
 /**
- * The company's side of "ارسال قطعه": open the parcel, price what arrived,
- * pay the technician.
+ * The parcel's journey: what technicians sent, what arrived, what was turned
+ * away. Pricing and payment live on the Finance screen - a warehouse decision
+ * and a money decision are made by different people at different moments.
  */
 export function PartShipmentsPage() {
   const { t } = useTranslation()
   const { canDelete } = usePermissions()
   const queryClient = useQueryClient()
-  const money = useMoney()
 
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
@@ -83,44 +80,22 @@ export function PartShipmentsPage() {
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['part-shipments'] })
     queryClient.invalidateQueries({ queryKey: ['part-shipments-summary'] })
+    // Receiving a parcel creates work for finance, so its figures move too.
+    queryClient.invalidateQueries({ queryKey: ['part-shipments-finance'] })
   }
 
   const close = () => {
     setDialog(null)
     setSelected(null)
   }
-
-  const onError = (error: any) =>
-    toast.error(error.response?.data?.message || t('common.error'))
+  const onError = (error: any) => toast.error(error.response?.data?.message || t('common.error'))
 
   const receiveMutation = useMutation({
-    mutationFn: (data: Parameters<typeof partShipmentService.receive>[1]) =>
-      partShipmentService.receive(selected!.id, data),
+    mutationFn: (payload: Parameters<typeof partShipmentService.receive>[1]) =>
+      partShipmentService.receive(selected!.id, payload),
     onSuccess: () => {
       invalidateAll()
       toast.success(t('partShipments.receive.success'))
-      close()
-    },
-    onError,
-  })
-
-  const invoiceMutation = useMutation({
-    mutationFn: (data: Parameters<typeof partShipmentService.invoice>[1]) =>
-      partShipmentService.invoice(selected!.id, data),
-    onSuccess: () => {
-      invalidateAll()
-      toast.success(t('partShipments.invoice.success'))
-      close()
-    },
-    onError,
-  })
-
-  const payMutation = useMutation({
-    mutationFn: (data: Parameters<typeof partShipmentService.pay>[1]) =>
-      partShipmentService.pay(selected!.id, data),
-    onSuccess: () => {
-      invalidateAll()
-      toast.success(t('partShipments.pay.success'))
       close()
     },
     onError,
@@ -159,6 +134,7 @@ export function PartShipmentsPage() {
   }
 
   const counts = summary?.counts
+  const awaitingInvoice = counts?.Received ?? 0
 
   return (
     <div className="space-y-6">
@@ -167,31 +143,22 @@ export function PartShipmentsPage() {
         <p className="text-sm text-muted-foreground mt-1">{t('partShipments.subtitle')}</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              {t('partShipments.payableTotal')}
-            </CardTitle>
-            <Receipt className="h-5 w-5 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{money.withUnit(summary?.payable_total ?? 0)}</div>
-            <p className="text-xs text-muted-foreground mt-1">{t('partShipments.payableHint')}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              {t('partShipments.paidTotal')}
-            </CardTitle>
-            <Wallet className="h-5 w-5 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{money.withUnit(summary?.paid_total ?? 0)}</div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* A received parcel is finance's problem from here on, so point at that
+          screen rather than duplicating the invoice action here. */}
+      {awaitingInvoice > 0 && (
+        <Link
+          to="/finance"
+          className="flex items-center justify-between gap-4 rounded-lg border border-purple-300 bg-purple-50 p-4 hover:bg-purple-100 transition-colors"
+        >
+          <p className="text-sm font-medium text-purple-900">
+            {t('partShipments.awaitingInvoiceHint', { count: awaitingInvoice })}
+          </p>
+          <span className="flex items-center gap-1 text-sm font-medium text-purple-700 shrink-0">
+            {t('finance.goToFinance')}
+            <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+          </span>
+        </Link>
+      )}
 
       <Tabs
         value={statusFilter}
@@ -280,8 +247,6 @@ export function PartShipmentsPage() {
         shipments={data?.shipments || []}
         onView={(s) => open(s, 'view')}
         onReceive={(s) => open(s, 'receive')}
-        onInvoice={(s) => open(s, 'invoice')}
-        onPay={(s) => open(s, 'pay')}
         onReject={(s) => open(s, 'reject')}
         onDelete={canDelete ? (s) => open(s, 'delete') : undefined}
         isLoading={isLoading}
@@ -329,24 +294,6 @@ export function PartShipmentsPage() {
           await receiveMutation.mutateAsync(d).catch(() => undefined)
         }}
         isLoading={receiveMutation.isPending}
-      />
-      <PartShipmentInvoiceDialog
-        open={dialog === 'invoice'}
-        onOpenChange={(o) => !o && close()}
-        shipment={selected}
-        onConfirm={async (d) => {
-          await invoiceMutation.mutateAsync(d).catch(() => undefined)
-        }}
-        isLoading={invoiceMutation.isPending}
-      />
-      <PartShipmentPayDialog
-        open={dialog === 'pay'}
-        onOpenChange={(o) => !o && close()}
-        shipment={selected}
-        onConfirm={async (d) => {
-          await payMutation.mutateAsync(d).catch(() => undefined)
-        }}
-        isLoading={payMutation.isPending}
       />
       <PartShipmentRejectDialog
         open={dialog === 'reject'}

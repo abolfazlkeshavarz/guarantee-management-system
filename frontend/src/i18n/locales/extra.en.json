@@ -180,7 +180,8 @@
   },
   "nav": {
     "partShipments": "Part Shipments",
-    "smsPatterns": "SMS Patterns"
+    "smsPatterns": "SMS Patterns",
+    "finance": "Finance"
   },
   "partShipments": {
     "navLabel": "Send Parts",
@@ -307,7 +308,8 @@
       "submit": "Send {{count}} part(s)",
       "submitting": "Sending...",
       "success": "Shipment submitted. You will be paid once the company receives and invoices it."
-    }
+    },
+    "awaitingInvoiceHint": "{{count}} received parcel(s) are waiting to be priced"
   },
   "smsTemplates": {
     "title": "SMS Patterns",
@@ -382,5 +384,25 @@
       "successDesc": "Our team will review your details. You will be able to sign in once your account is approved.",
       "goToLogin": "Go to sign in"
     }
+  },
+  "finance": {
+    "title": "Finance",
+    "subtitle": "Price the parts that came back, pay the technicians, and see who is still owed.",
+    "goToFinance": "Go to Finance",
+    "awaitingInvoice": "Waiting to be priced",
+    "awaitingInvoiceHint": "Received parcels with no invoice yet",
+    "payable": "Owed to technicians",
+    "payableHint": "Across {{count}} invoice(s)",
+    "paid": "Paid to date",
+    "paidHint": "Across {{count}} payment(s)",
+    "stage": {
+      "toInvoice": "To invoice",
+      "toPay": "To pay",
+      "paid": "Paid"
+    },
+    "balancesTitle": "Technician balances",
+    "nothingOwed": "Nothing is owed right now.",
+    "waitingSince": "Waiting since",
+    "paidToDate": "Paid to date"
   }
 }
