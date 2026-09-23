@@ -12,6 +12,7 @@ import { RepairsPage } from '@/features/repairs/pages/RepairsPage'
 import { RepairCatalogPage } from '@/features/repairCatalog/pages/RepairCatalogPage'
 import { PartRequestsPage } from '@/features/partRequests/pages/PartRequestsPage'
 import { PartShipmentsPage } from '@/features/partShipments/pages/PartShipmentsPage'
+import { SmsTemplatesPage } from '@/features/smsTemplates/pages/SmsTemplatesPage'
 // Pages
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -73,6 +74,7 @@ export function AppRoutes() {
         <Route path="part-requests" element={<PartRequestsPage />} />
         <Route path="part-shipments" element={<PartShipmentsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="sms-patterns" element={<SmsTemplatesPage />} />
         <Route path="audit-log" element={<AuditLogPage />} />
       </Route>
 

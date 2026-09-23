@@ -160,7 +160,8 @@
     }
   },
   "nav": {
-    "partShipments": "Part Shipments"
+    "partShipments": "Part Shipments",
+    "smsPatterns": "SMS Patterns"
   },
   "partShipments": {
     "navLabel": "Send Parts",
@@ -287,6 +288,51 @@
       "submit": "Send {{count}} part(s)",
       "submitting": "Sending...",
       "success": "Shipment submitted. You will be paid once the company receives and invoices it."
+    }
+  },
+  "smsTemplates": {
+    "title": "SMS Patterns",
+    "subtitle": "The approved Melli Payamak patterns this system sends against. Register a pattern in the panel, then put its body id here.",
+    "add": "Add pattern",
+    "builtin": "Built-in",
+    "notSet": "Not set",
+    "createSuccess": "SMS pattern created",
+    "updateSuccess": "SMS pattern updated",
+    "deleteSuccess": "SMS pattern deleted",
+    "deleteDesc": "This will permanently delete the pattern \"{{name}}\". Anything set to send with it will stop sending.",
+    "unconfiguredTitle": "{{count}} built-in pattern(s) have no body id yet",
+    "unconfiguredDesc": "Those messages will not be sent until you enter the body id registered in your Melli Payamak panel.",
+    "table": {
+      "name": "Pattern",
+      "key": "Key",
+      "bodyId": "Body id"
+    },
+    "form": {
+      "createTitle": "Add SMS pattern",
+      "editTitle": "Edit SMS pattern",
+      "description": "The body id comes from the pattern you registered in the Melli Payamak panel.",
+      "key": "Key",
+      "keyHint": "Used to refer to this pattern. Letters, numbers and underscores.",
+      "keyLocked": "The key cannot be changed once the pattern exists.",
+      "name": "Name",
+      "bodyId": "Body id",
+      "bodyIdHint": "The numeric bodyId shown next to the pattern in the Melli Payamak panel. Leave empty until you have it.",
+      "sampleText": "Approved pattern text",
+      "sampleTextPlaceholder": "Paste the text you registered, so you can see what will be delivered",
+      "sampleTextHint": "For reference only. The provider holds the real copy; the system only supplies the values.",
+      "notes": "Notes"
+    },
+    "test": {
+      "action": "Send test",
+      "title": "Send a test message",
+      "description": "Sends one real SMS using \"{{name}}\" (body id {{bodyId}}).",
+      "to": "Phone number",
+      "text": "Value",
+      "textHint": "This fills the placeholder in the approved pattern.",
+      "defaultText": "تست",
+      "confirm": "Send",
+      "sending": "Sending...",
+      "success": "Test SMS sent"
     }
   }
 }

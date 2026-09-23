@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"guarantee-management-system/internal/config"
@@ -22,6 +23,22 @@ import (
 
 const sendURL = "http://api.payamak-panel.com/post/Send.asmx/SendByBaseNumber2"
 
+// Template keys the code sends against. Each one is a row in sms_templates
+// that an admin points at a bodyId registered in the Melli Payamak panel.
+const (
+	KeyGuaranteeApproved = "guarantee_approved"
+	KeyGuaranteeRenewed  = "guarantee_renewed"
+	KeyPartRequest       = "part_request"
+	KeyRepairReport      = "repair_report"
+	KeyTest              = "test"
+)
+
+// Resolver answers "which bodyId is this template key, and is it switched on?"
+// The smstemplates module installs one at boot; until then (and if a key is
+// missing) the environment defaults below are used, so an upgrade of an
+// existing deployment keeps sending while the rows are still empty.
+type Resolver func(key string) (bodyID int, active bool)
+
 var (
 	enabled  bool
 	username string
@@ -29,11 +46,11 @@ var (
 
 	adminPhone string
 
-	bodyIDApproved     int
-	bodyIDRenewed      int
-	bodyIDPartRequest  int
-	bodyIDRepairReport int
-	bodyIDTest         int
+	// Fallbacks from .env, used only when no template row answers.
+	envBodyIDs = map[string]int{}
+
+	resolverMu sync.RWMutex
+	resolver   Resolver
 
 	httpClient = &http.Client{Timeout: 10 * time.Second}
 )
@@ -43,15 +60,63 @@ func Initialize(cfg *config.Config) {
 	username = cfg.SMSUsername
 	password = cfg.SMSPassword
 	adminPhone = cfg.SMSAdminPhone
-	bodyIDApproved = cfg.SMSBodyIDApproved
-	bodyIDRenewed = cfg.SMSBodyIDRenewed
-	bodyIDPartRequest = cfg.SMSBodyIDPartRequest
-	bodyIDRepairReport = cfg.SMSBodyIDRepairReport
-	bodyIDTest = cfg.SMSBodyIDTest
+	envBodyIDs = map[string]int{
+		KeyGuaranteeApproved: cfg.SMSBodyIDApproved,
+		KeyGuaranteeRenewed:  cfg.SMSBodyIDRenewed,
+		KeyPartRequest:       cfg.SMSBodyIDPartRequest,
+		KeyRepairReport:      cfg.SMSBodyIDRepairReport,
+		KeyTest:              cfg.SMSBodyIDTest,
+	}
 
 	if enabled && (username == "" || password == "") {
 		log.Println("⚠️  SMS_ENABLED is true but SMS_USERNAME/SMS_PASSWORD are not set — SMS sending will fail")
 	}
+}
+
+// SetResolver installs the database-backed template lookup.
+func SetResolver(r Resolver) {
+	resolverMu.Lock()
+	defer resolverMu.Unlock()
+	resolver = r
+}
+
+// EnvBodyIDs exposes the .env values so the templates module can seed rows
+// that have never been configured, rather than losing a working setup.
+func EnvBodyIDs() map[string]int {
+	out := make(map[string]int, len(envBodyIDs))
+	for k, v := range envBodyIDs {
+		out[k] = v
+	}
+	return out
+}
+
+// bodyIDFor resolves a template key to a bodyId. An inactive template, or one
+// whose bodyId has never been set, reports ok=false and nothing is sent -
+// silence is better than firing a message against the wrong pattern.
+func bodyIDFor(key string) (int, bool) {
+	resolverMu.RLock()
+	r := resolver
+	resolverMu.RUnlock()
+
+	if r != nil {
+		if id, active := r(key); !active {
+			return 0, false
+		} else if id > 0 {
+			return id, true
+		} else {
+			// Row exists and is active but has no bodyId yet: fall through to
+			// the environment default so an upgrade keeps working.
+			if envID, hasEnv := envBodyIDs[key]; hasEnv && envID > 0 {
+				return envID, true
+			}
+			return 0, false
+		}
+	}
+
+	if id, ok := envBodyIDs[key]; ok && id > 0 {
+		return id, true
+	}
+	return 0, false
 }
 
 var nonDigits = regexp.MustCompile(`\D`)
@@ -112,12 +177,17 @@ var resultMessages = map[int64]string{
 // technically positive - checking only "<= 0" would silently treat error
 // codes like 2 (insufficient credit) as a successful send.
 const successThreshold = 1000
-func send(bodyID int, text, to string) error {
+
+func send(key, text, to string) error {
 	if !enabled {
 		return fmt.Errorf("sms sending is disabled (SMS_ENABLED=false)")
 	}
 	if username == "" || password == "" {
 		return fmt.Errorf("sms credentials not configured")
+	}
+	bodyID, ok := bodyIDFor(key)
+	if !ok {
+		return fmt.Errorf("sms pattern %q has no bodyId configured (set it in Settings > SMS patterns)", key)
 	}
 
 	to = normalizePhone(to)
@@ -164,10 +234,10 @@ func send(bodyID int, text, to string) error {
 // for the three business-flow notifications, which must never make the
 // guarantee-approval / part-request / repair-report action itself fail or
 // wait on an SMS gateway's network latency.
-func sendAsync(kind string, bodyID int, text, to string) {
+func sendAsync(key, text, to string) {
 	go func() {
-		if err := send(bodyID, text, to); err != nil {
-			log.Printf("⚠️  SMS (%s) to %s failed: %v", kind, to, err)
+		if err := send(key, text, to); err != nil {
+			log.Printf("⚠️  SMS (%s) to %s failed: %v", key, to, err)
 		}
 	}()
 }
@@ -223,7 +293,7 @@ func AdminPhone() string { return adminPhone }
 func NotifyRepairReport(recipients []string, technicianName, guaranteeCode string, filedAt time.Time) {
 	text := fmt.Sprintf("گزارش تعمیر جدید از تعمیرکار %s برای گارانتی %s در تاریخ %s ثبت شد.",
 		sanitize(technicianName), sanitize(guaranteeCode), jalaliDate(filedAt))
-	broadcast("repair-report", bodyIDRepairReport, text, recipients)
+	broadcast(KeyRepairReport, text, recipients)
 }
 
 // NotifyPartRequest tells reviewers a technician requested a part or service.
@@ -231,7 +301,7 @@ func NotifyRepairReport(recipients []string, technicianName, guaranteeCode strin
 func NotifyPartRequest(recipients []string, technicianName, itemName string, requestedAt time.Time) {
 	text := fmt.Sprintf("درخواست قطعه %s از تعمیرکار %s در تاریخ %s ثبت شد.",
 		sanitize(itemName), sanitize(technicianName), jalaliDate(requestedAt))
-	broadcast("part-request", bodyIDPartRequest, text, recipients)
+	broadcast(KeyPartRequest, text, recipients)
 }
 
 // NotifyGuaranteeApproved tells the customer their guarantee was approved.
@@ -242,7 +312,7 @@ func NotifyGuaranteeApproved(customerPhone, customerName, guaranteeCode string, 
 	}
 	text := fmt.Sprintf("%s عزیز، گارانتی %s تایید شد. تاریخ انقضا %s",
 		sanitize(customerName), sanitize(guaranteeCode), jalaliDate(expiryDate))
-	sendAsync("guarantee-approved", bodyIDApproved, text, customerPhone)
+	sendAsync(KeyGuaranteeApproved, text, customerPhone)
 }
 
 // NotifyGuaranteeRenewed tells the customer their guarantee was extended.
@@ -254,12 +324,12 @@ func NotifyGuaranteeRenewed(customerPhone, customerName, guaranteeCode string, n
 	}
 	text := fmt.Sprintf("%s عزیز، گارانتی %s تمدید شد. تاریخ انقضای جدید %s",
 		sanitize(customerName), sanitize(guaranteeCode), jalaliDate(newExpiryDate))
-	sendAsync("guarantee-renewed", bodyIDRenewed, text, customerPhone)
+	sendAsync(KeyGuaranteeRenewed, text, customerPhone)
 }
 
 // broadcast fans one message out to several recipients, skipping blanks and
 // duplicates so an admin who is also a technical user is not texted twice.
-func broadcast(kind string, bodyID int, text string, recipients []string) {
+func broadcast(key, text string, recipients []string) {
 	seen := make(map[string]bool, len(recipients))
 	for _, phone := range recipients {
 		normalized := normalizePhone(phone)
@@ -267,12 +337,22 @@ func broadcast(kind string, bodyID int, text string, recipients []string) {
 			continue
 		}
 		seen[normalized] = true
-		sendAsync(kind, bodyID, text, normalized)
+		sendAsync(key, text, normalized)
 	}
 }
 
 // SendTest sends synchronously (unlike the Notify* functions) so the caller
 // gets a real pass/fail result back immediately.
 func SendTest(to, text string) error {
-	return send(bodyIDTest, text, to)
+	return send(KeyTest, text, to)
 }
+
+// Send delivers one value against an arbitrary template key, synchronously so
+// the caller learns whether it worked. Used by campaigns (poll invitations,
+// offers), which need a per-recipient result rather than fire-and-forget.
+func Send(key, text, to string) error {
+	return send(key, sanitize(text), to)
+}
+
+// Enabled reports whether sending is switched on at all.
+func Enabled() bool { return enabled }
