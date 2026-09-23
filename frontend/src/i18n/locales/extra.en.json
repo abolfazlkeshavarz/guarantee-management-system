@@ -181,7 +181,8 @@
   "nav": {
     "partShipments": "Part Shipments",
     "smsPatterns": "SMS Patterns",
-    "finance": "Finance"
+    "finance": "Finance",
+    "pipeline": "Service Pipeline"
   },
   "partShipments": {
     "navLabel": "Send Parts",
@@ -404,5 +405,57 @@
     "nothingOwed": "Nothing is owed right now.",
     "waitingSince": "Waiting since",
     "paidToDate": "Paid to date"
+  },
+  "pipeline": {
+    "title": "Service Pipeline",
+    "subtitle": "Every job and what it is waiting on, from the repair report through to the technician being paid.",
+    "entity": "case",
+    "openCases": "Open",
+    "allTechnicians": "All technicians",
+    "searchPlaceholder": "Search by guarantee code, customer, phone, product or technician...",
+    "stalledTitle": "{{count}} case(s) have not moved in a week",
+    "stalledDesc": "Something is waiting on someone. Open them to see what.",
+    "showThem": "Show them",
+    "stalledOnly": "Stalled only",
+    "daysInStage": "{{count}} day(s)",
+    "waitingOnTechnician": "With the technician",
+    "outOfWarranty": "Out of warranty",
+    "emptyTitle": "Nothing here",
+    "emptyDesc": "No case matches these filters.",
+    "table": {
+      "case": "Case",
+      "customer": "Customer",
+      "stage": "Stage",
+      "waiting": "Waiting",
+      "next": "Next step"
+    },
+    "stage": {
+      "AwaitingReview": "Report to review",
+      "PartsToApprove": "Parts to approve",
+      "PartsInTransit": "Parts on the way",
+      "PartsToReturn": "Old parts to come back",
+      "ParcelInTransit": "Parcel on the way",
+      "AwaitingInvoice": "To invoice",
+      "AwaitingPayment": "To pay",
+      "Complete": "Complete",
+      "Closed": "Closed"
+    },
+    "blocker": {
+      "awaitingReview": "Nobody has read the report yet",
+      "partsToApprove": "{{count}} request(s) undecided",
+      "partsInTransit": "{{count}} request(s) not delivered",
+      "partsToReturn": "{{count}} replaced part(s) not sent back",
+      "parcelInTransit": "{{count}} parcel(s) not arrived",
+      "awaitingInvoice": "{{count}} parcel(s) not priced",
+      "awaitingPayment": "{{count}} invoice(s) unpaid"
+    },
+    "action": {
+      "AwaitingReview": "Review",
+      "PartsToApprove": "Decide",
+      "PartsInTransit": "Track",
+      "ParcelInTransit": "Receive",
+      "AwaitingInvoice": "Invoice",
+      "AwaitingPayment": "Pay"
+    }
   }
 }

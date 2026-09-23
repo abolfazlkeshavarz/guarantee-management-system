@@ -14,6 +14,7 @@ import { PartRequestsPage } from '@/features/partRequests/pages/PartRequestsPage
 import { PartShipmentsPage } from '@/features/partShipments/pages/PartShipmentsPage'
 import { SmsTemplatesPage } from '@/features/smsTemplates/pages/SmsTemplatesPage'
 import { FinancePage } from '@/features/finance/pages/FinancePage'
+import { PipelinePage } from '@/features/pipeline/pages/PipelinePage'
 // Pages
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -67,6 +68,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="pipeline" element={<PipelinePage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="catalog/categories" element={<CategoriesPage />} />
         <Route path="catalog/products" element={<ProductsPage />} />

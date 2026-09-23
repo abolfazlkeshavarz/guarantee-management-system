@@ -181,7 +181,8 @@
   "nav": {
     "partShipments": "ارسال قطعه",
     "smsPatterns": "الگوهای پیامک",
-    "finance": "امور مالی"
+    "finance": "امور مالی",
+    "pipeline": "روند خدمات"
   },
   "partShipments": {
     "navLabel": "ارسال قطعه",
@@ -404,5 +405,57 @@
     "nothingOwed": "در حال حاضر بدهی‌ای وجود ندارد.",
     "waitingSince": "در انتظار از",
     "paidToDate": "پرداخت‌شده تاکنون"
+  },
+  "pipeline": {
+    "title": "روند خدمات",
+    "subtitle": "هر کار و اینکه منتظر چیست؛ از گزارش تعمیر تا پرداخت به تکنسین.",
+    "entity": "پرونده",
+    "openCases": "باز",
+    "allTechnicians": "همه تکنسین‌ها",
+    "searchPlaceholder": "جستجو بر اساس کد گارانتی، مشتری، تلفن، محصول یا تکنسین...",
+    "stalledTitle": "{{count}} پرونده یک هفته است تغییری نکرده",
+    "stalledDesc": "کاری روی زمین مانده است. برای دیدن جزئیات باز کنید.",
+    "showThem": "نمایش بده",
+    "stalledOnly": "فقط راکدها",
+    "daysInStage": "{{count}} روز",
+    "waitingOnTechnician": "نزد تکنسین",
+    "outOfWarranty": "خارج از گارانتی",
+    "emptyTitle": "موردی نیست",
+    "emptyDesc": "هیچ پرونده‌ای با این فیلترها مطابقت ندارد.",
+    "table": {
+      "case": "پرونده",
+      "customer": "مشتری",
+      "stage": "مرحله",
+      "waiting": "در انتظار",
+      "next": "قدم بعدی"
+    },
+    "stage": {
+      "AwaitingReview": "گزارش در انتظار بررسی",
+      "PartsToApprove": "قطعات در انتظار تایید",
+      "PartsInTransit": "قطعات در راه",
+      "PartsToReturn": "قطعات قدیمی در انتظار ارسال",
+      "ParcelInTransit": "مرسوله در راه",
+      "AwaitingInvoice": "در انتظار فاکتور",
+      "AwaitingPayment": "در انتظار پرداخت",
+      "Complete": "تکمیل شده",
+      "Closed": "بسته شده"
+    },
+    "blocker": {
+      "awaitingReview": "هنوز کسی گزارش را نخوانده است",
+      "partsToApprove": "{{count}} درخواست بدون تصمیم",
+      "partsInTransit": "{{count}} درخواست تحویل نشده",
+      "partsToReturn": "{{count}} قطعه تعویض‌شده ارسال نشده",
+      "parcelInTransit": "{{count}} مرسوله نرسیده",
+      "awaitingInvoice": "{{count}} مرسوله قیمت‌گذاری نشده",
+      "awaitingPayment": "{{count}} فاکتور پرداخت نشده"
+    },
+    "action": {
+      "AwaitingReview": "بررسی",
+      "PartsToApprove": "تصمیم",
+      "PartsInTransit": "پیگیری",
+      "ParcelInTransit": "دریافت",
+      "AwaitingInvoice": "صدور فاکتور",
+      "AwaitingPayment": "پرداخت"
+    }
   }
 }

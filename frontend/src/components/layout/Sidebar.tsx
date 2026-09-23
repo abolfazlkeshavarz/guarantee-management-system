@@ -18,6 +18,7 @@ import {
   Truck,
   MessageSquare,
   Wallet,
+  Workflow,
   X,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
@@ -26,6 +27,7 @@ const topNav = [
   { key: 'dashboard', href: '/dashboard', icon: LayoutDashboard },
   { key: 'guarantees', href: '/guarantees', icon: ShieldCheck },
   { key: 'customers', href: '/customers', icon: Users },
+  { key: 'pipeline', href: '/pipeline', icon: Workflow },
 ]
 
 const catalogNav = [
