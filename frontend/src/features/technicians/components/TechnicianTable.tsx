@@ -15,8 +15,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Edit, Trash2, Power } from 'lucide-react'
-import { Technician } from '../types'
+import { MoreHorizontal, Edit, Trash2, Power, ClipboardCheck } from 'lucide-react'
+import { Technician, TECHNICIAN_STATUS_COLORS } from '../types'
 import { FormattedDate } from '@/components/common/FormattedDate'
 
 interface TechnicianTableProps {
@@ -24,6 +24,8 @@ interface TechnicianTableProps {
   onEdit: (technician: Technician) => void
   onToggleStatus: (technician: Technician) => void
   onDelete?: (technician: Technician) => void
+  /** Open the approve/reject dialog for a pending application. */
+  onReview?: (technician: Technician) => void
   isLoading?: boolean
 }
 
@@ -32,6 +34,7 @@ export function TechnicianTable({
   onEdit,
   onToggleStatus,
   onDelete,
+  onReview,
   isLoading,
 }: TechnicianTableProps) {
   const { t } = useTranslation()
@@ -61,6 +64,7 @@ export function TechnicianTable({
             <TableHead>{t('customers.table.fullName')}</TableHead>
             <TableHead>{t('technicians.table.username')}</TableHead>
             <TableHead>{t('common.phone')}</TableHead>
+            <TableHead>{t('technicians.table.registration')}</TableHead>
             <TableHead>{t('common.status')}</TableHead>
             <TableHead>{t('common.created')}</TableHead>
             <TableHead className="text-end">{t('common.actions')}</TableHead>
@@ -73,6 +77,14 @@ export function TechnicianTable({
               <TableCell>{tech.full_name}</TableCell>
               <TableCell>{tech.username}</TableCell>
               <TableCell>{tech.phone || '-'}</TableCell>
+              <TableCell>
+                <Badge
+                  variant="outline"
+                  className={TECHNICIAN_STATUS_COLORS[tech.status] || ''}
+                >
+                  {t(`technicians.status.${tech.status}`, { defaultValue: tech.status })}
+                </Badge>
+              </TableCell>
               <TableCell>
                 <Badge variant={tech.is_active ? 'default' : 'secondary'}>
                   {tech.is_active ? t('forms.active') : t('forms.inactive')}
@@ -90,6 +102,15 @@ export function TechnicianTable({
                     <MoreHorizontal className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {onReview && tech.status === 'Pending' && (
+                      <DropdownMenuItem
+                        onClick={() => onReview(tech)}
+                        className="text-blue-600"
+                      >
+                        <ClipboardCheck className="me-2 h-4 w-4" />
+                        {t('technicians.review.action')}
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={() => onEdit(tech)}>
                       <Edit className="me-2 h-4 w-4" />
                       {t('common.edit')}

@@ -17,6 +17,25 @@
       "allSkipped": "Every row was skipped — those usernames already exist",
       "summary": "{{created}} created, {{skipped}} skipped (already exist), {{failed}} failed",
       "rowError": "Row {{row}}: {{message}}"
+    },
+    "table": {
+      "registration": "Registration"
+    },
+    "status": {
+      "Pending": "Awaiting review",
+      "Approved": "Approved",
+      "Rejected": "Rejected"
+    },
+    "review": {
+      "action": "Review application",
+      "title": "Review technician application",
+      "description": "Approve to let them sign in, or reject with a reason.",
+      "appliedOn": "Applied on",
+      "about": "About the applicant",
+      "notes": "Note",
+      "notesPlaceholder": "Why this decision? A rejection reason is required.",
+      "approved": "Technician approved",
+      "rejected": "Registration rejected"
     }
   },
   "settings": {
@@ -333,6 +352,35 @@
       "confirm": "Send",
       "sending": "Sending...",
       "success": "Test SMS sent"
+    }
+  },
+  "technicianPortal": {
+    "register": {
+      "cta": "New technician? Apply for an account",
+      "title": "Technician registration",
+      "subtitle": "Apply for an account. Our team reviews every application.",
+      "formTitle": "Your details",
+      "formDesc": "We use these to verify who you are, so please fill them in carefully.",
+      "fields": {
+        "full_name": "Full name",
+        "username": "Username",
+        "password": "Password",
+        "phone": "Mobile number",
+        "national_id": "National ID",
+        "province": "Province",
+        "city": "City",
+        "address": "Address",
+        "about": "About you"
+      },
+      "aboutPlaceholder": "Your experience, the appliances you work on, your workshop...",
+      "passwordHint": "The password must be at least 6 characters.",
+      "submit": "Submit application",
+      "submitting": "Submitting...",
+      "failed": "Could not submit the registration",
+      "haveAccount": "I already have an account",
+      "successTitle": "Application received",
+      "successDesc": "Our team will review your details. You will be able to sign in once your account is approved.",
+      "goToLogin": "Go to sign in"
     }
   }
 }

@@ -31,6 +31,8 @@ const (
 	KeyPartRequest       = "part_request"
 	KeyRepairReport      = "repair_report"
 	KeyTest              = "test"
+	KeyTechnicianApplied = "technician_registered"
+	KeyTechnicianOK      = "technician_approved"
 )
 
 // Resolver answers "which bodyId is this template key, and is it switched on?"
@@ -325,6 +327,28 @@ func NotifyGuaranteeRenewed(customerPhone, customerName, guaranteeCode string, n
 	text := fmt.Sprintf("%s عزیز، گارانتی %s تمدید شد. تاریخ انقضای جدید %s",
 		sanitize(customerName), sanitize(guaranteeCode), jalaliDate(newExpiryDate))
 	sendAsync(KeyGuaranteeRenewed, text, customerPhone)
+}
+
+// NotifyTechnicianRegistered tells staff a technician applied for an account.
+// One sentence: name, city, date applied.
+func NotifyTechnicianRegistered(recipients []string, technicianName, city string, appliedAt time.Time) {
+	where := sanitize(city)
+	if where != "" {
+		where = " از " + where
+	}
+	text := fmt.Sprintf("درخواست عضویت تعمیرکار %s%s در تاریخ %s ثبت شد و در انتظار بررسی است.",
+		sanitize(technicianName), where, jalaliDate(appliedAt))
+	broadcast(KeyTechnicianApplied, text, recipients)
+}
+
+// NotifyTechnicianApproved tells the applicant their account is live.
+func NotifyTechnicianApproved(technicianPhone, technicianName string) {
+	if technicianPhone == "" {
+		return
+	}
+	text := fmt.Sprintf("%s عزیز، درخواست عضویت شما تایید شد. اکنون می‌توانید وارد سامانه شوید.",
+		sanitize(technicianName))
+	sendAsync(KeyTechnicianOK, text, technicianPhone)
 }
 
 // broadcast fans one message out to several recipients, skipping blanks and

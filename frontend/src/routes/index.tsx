@@ -28,6 +28,7 @@ import { MainLayout } from '@/layouts/MainLayout'
 import { TechnicianProtectedRoute } from '@/features/technicianPortal/components/TechnicianProtectedRoute'
 import { TechnicianLayout } from '@/features/technicianPortal/components/TechnicianLayout'
 import { TechnicianLoginPage } from '@/features/technicianPortal/pages/TechnicianLoginPage'
+import { TechnicianRegisterPage } from '@/features/technicianPortal/pages/TechnicianRegisterPage'
 import { TechnicianDashboardPage } from '@/features/technicianPortal/pages/TechnicianDashboardPage'
 import { TechnicianPartRequestsPage } from '@/features/technicianPortal/pages/TechnicianPartRequestsPage'
 import { TechnicianPartShipmentsPage } from '@/features/technicianPortal/pages/TechnicianPartShipmentsPage'
@@ -52,6 +53,7 @@ export function AppRoutes() {
 
       {/* Technician Login */}
       <Route path="/technician/login" element={<TechnicianLoginPage />} />
+      <Route path="/technician/register" element={<TechnicianRegisterPage />} />
 
       {/* Admin Routes */}
       <Route

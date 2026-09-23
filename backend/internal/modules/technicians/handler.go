@@ -64,8 +64,9 @@ func (h *TechnicianHandler) List(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	search := c.DefaultQuery("search", "")
+	status := c.DefaultQuery("status", "")
 
-	result, err := h.service.List(page, limit, search)
+	result, err := h.service.List(page, limit, search, status)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -114,6 +115,57 @@ func (h *TechnicianHandler) Delete(c *gin.Context) {
 	}
 
 	responses.SuccessWithMessage(c, "Technician deleted successfully", nil)
+}
+
+// Register is the public application form. The account it creates cannot sign
+// in until staff approve it.
+func (h *TechnicianHandler) Register(c *gin.Context) {
+	req, err := h.validator.ValidateRegisterRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	tech, err := h.service.Register(req)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Registration submitted", tech)
+}
+
+// Review approves or rejects a pending application.
+func (h *TechnicianHandler) Review(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		responses.Error(c, http.StatusBadRequest, "Invalid technician ID")
+		return
+	}
+
+	req, err := h.validator.ValidateReviewRequest(c)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	tech, err := h.service.Review(uint(id), req, c.GetUint("admin_id"))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	responses.SuccessWithMessage(c, "Technician "+req.Status, tech)
+}
+
+// StatusCounts feeds the review tabs.
+func (h *TechnicianHandler) StatusCounts(c *gin.Context) {
+	counts, err := h.service.StatusCounts()
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	responses.Success(c, counts)
 }
 
 // Login handles technician login

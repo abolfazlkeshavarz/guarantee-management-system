@@ -5,11 +5,19 @@ import {
   TechnicianUpdateData,
   TechnicianListResponse,
   TechnicianImportResult,
+  TechnicianReviewData,
 } from '../types'
 
 export const technicianService = {
-  async list(page: number = 1, limit: number = 10, search: string = ''): Promise<TechnicianListResponse> {
-    const response = await api.get('/technicians', { params: { page, limit, search } })
+  async list(
+    page: number = 1,
+    limit: number = 10,
+    search: string = '',
+    status: string = ''
+  ): Promise<TechnicianListResponse> {
+    const response = await api.get('/technicians', {
+      params: { page, limit, search, status: status && status !== 'all' ? status : undefined },
+    })
     return {
       technicians: response.data.data,
       total: response.data.meta.total,
@@ -36,6 +44,18 @@ export const technicianService = {
 
   async delete(id: number): Promise<void> {
     await api.delete(`/technicians/${id}`)
+  },
+
+  /** Counts per registration status, for the review tabs. */
+  async statusCounts(): Promise<Record<string, number>> {
+    const response = await api.get('/technicians/status-counts')
+    return response.data.data ?? {}
+  },
+
+  /** Approve or reject a pending application. */
+  async review(id: number, data: TechnicianReviewData): Promise<Technician> {
+    const response = await api.post(`/technicians/${id}/review`, data)
+    return response.data.data
   },
 
   async import(file: File): Promise<TechnicianImportResult> {

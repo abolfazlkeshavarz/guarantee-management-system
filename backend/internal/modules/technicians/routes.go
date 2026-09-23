@@ -22,8 +22,9 @@ func NewTechnicianModule(db *gorm.DB, cfg *config.Config) *TechnicianModule {
 }
 
 func (m *TechnicianModule) RegisterRoutes(router *gin.RouterGroup) {
-	// Public technician login
+	// Public technician login, and the public application form.
 	router.POST("/technician/login", m.handler.Login)
+	router.POST("/technician/register", m.handler.Register)
 
 	// Admin-only technician management
 	technicians := router.Group("/technicians")
@@ -32,9 +33,11 @@ func (m *TechnicianModule) RegisterRoutes(router *gin.RouterGroup) {
 		technicians.POST("", m.handler.Create)
 		technicians.GET("", m.handler.List)
 		// Static segments before the ":id" wildcard so the router tree accepts them.
+		technicians.GET("/status-counts", m.handler.StatusCounts)
 		technicians.GET("/import/template", m.handler.ImportTemplate)
 		technicians.POST("/import", m.handler.ImportFile)
 		technicians.GET("/:id", m.handler.Get)
+		technicians.POST("/:id/review", m.handler.Review)
 		technicians.PUT("/:id", m.handler.Update)
 		technicians.DELETE("/:id", m.handler.Delete)
 	}

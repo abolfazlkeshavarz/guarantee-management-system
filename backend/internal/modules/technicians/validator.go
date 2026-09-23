@@ -1,39 +1,61 @@
 package technicians
 
 import (
-    "guarantee-management-system/internal/shared/errors"
-    "guarantee-management-system/internal/shared/validator"
-    "github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
+	"guarantee-management-system/internal/shared/errors"
+	"guarantee-management-system/internal/shared/validator"
 )
 
 type TechnicianValidator struct{}
 
 func NewTechnicianValidator() *TechnicianValidator {
-    return &TechnicianValidator{}
+	return &TechnicianValidator{}
 }
 
 func (v *TechnicianValidator) ValidateCreateRequest(c *gin.Context) (*CreateTechnicianRequest, error) {
-    var req CreateTechnicianRequest
-    if err := c.ShouldBindJSON(&req); err != nil {
-        return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
-    }
+	var req CreateTechnicianRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
 
-    if err := validator.ValidateStruct(&req); err != nil {
-        return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
-    }
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
 
-    return &req, nil
+	return &req, nil
+}
+
+func (v *TechnicianValidator) ValidateRegisterRequest(c *gin.Context) (*RegisterTechnicianRequest, error) {
+	var req RegisterTechnicianRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+	return &req, nil
+}
+
+func (v *TechnicianValidator) ValidateReviewRequest(c *gin.Context) (*ReviewTechnicianRequest, error) {
+	var req ReviewTechnicianRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
+	return &req, nil
 }
 
 func (v *TechnicianValidator) ValidateUpdateRequest(c *gin.Context) (*UpdateTechnicianRequest, error) {
-    var req UpdateTechnicianRequest
-    if err := c.ShouldBindJSON(&req); err != nil {
-        return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
-    }
+	var req UpdateTechnicianRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, err.Error(), 400)
+	}
 
-    if err := validator.ValidateStruct(&req); err != nil {
-        return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
-    }
+	if err := validator.ValidateStruct(&req); err != nil {
+		return nil, errors.NewAppError(errors.ErrValidation, "Validation failed", 400)
+	}
 
-    return &req, nil
+	return &req, nil
 }

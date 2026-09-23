@@ -240,6 +240,8 @@ func (s *TechnicianService) Import(rows []map[string]string) (*ImportResult, err
 		}
 
 		if err := s.repo.Create(&Technician{
+			// Imported by staff, so vetted like any account they type in.
+			Status:     StatusApproved,
 			FullName:   req.FullName,
 			Username:   req.Username,
 			Password:   string(hashed),

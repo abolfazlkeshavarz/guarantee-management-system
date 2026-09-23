@@ -108,6 +108,12 @@ export function TechnicianLoginPage() {
             </form>
 
             <div className="mt-4 text-center">
+              <Link
+                to="/technician/register"
+                className="block text-sm font-medium text-primary hover:underline mb-3"
+              >
+                {t('technicianPortal.register.cta')}
+              </Link>
               <Link to="/login" className={`text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <ArrowLeft className={`h-3 w-3 ${isRTL ? 'rotate-180' : ''}`} />
                 {t('technicianPortal.backToStaffLogin')}

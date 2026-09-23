@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/features/auth/hooks/usePermissions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -18,8 +20,9 @@ import { TechnicianForm } from '../components/TechnicianForm'
 import { TechnicianDeleteDialog } from '../components/TechnicianDeleteDialog'
 import { TechnicianImportDialog } from '../components/TechnicianImportDialog'
 import { TechnicianExportDialog } from '../components/TechnicianExportDialog'
+import { TechnicianReviewDialog } from '../components/TechnicianReviewDialog'
 import { technicianService } from '../api/technicians'
-import { Technician } from '../types'
+import { Technician, TECHNICIAN_STATUSES } from '../types'
 import { TechnicianFormValues } from '../schemas/technicianSchema'
 import { invalidateDashboard } from '@/lib/query-client'
 
@@ -36,6 +39,8 @@ export function TechniciansPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isExportOpen, setIsExportOpen] = useState(false)
+  const [reviewing, setReviewing] = useState<Technician | null>(null)
+  const [statusFilter, setStatusFilter] = useState('all')
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -46,8 +51,34 @@ export function TechniciansPage() {
   }, [search])
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['technicians', page, limit, debouncedSearch],
-    queryFn: () => technicianService.list(page, limit, debouncedSearch),
+    queryKey: ['technicians', page, limit, debouncedSearch, statusFilter],
+    queryFn: () => technicianService.list(page, limit, debouncedSearch, statusFilter),
+  })
+
+  // Counts for the review tabs, so a waiting application is visible without
+  // clicking through every filter.
+  const { data: statusCounts } = useQuery({
+    queryKey: ['technicians-status-counts'],
+    queryFn: () => technicianService.statusCounts(),
+  })
+
+  const reviewMutation = useMutation({
+    mutationFn: ({ id, status, notes }: { id: number; status: 'Approved' | 'Rejected'; notes: string }) =>
+      technicianService.review(id, { status, notes: notes || undefined }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] })
+      queryClient.invalidateQueries({ queryKey: ['technicians-status-counts'] })
+      invalidateDashboard()
+      toast.success(
+        variables.status === 'Approved'
+          ? t('technicians.review.approved')
+          : t('technicians.review.rejected')
+      )
+      setReviewing(null)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || t('common.error'))
+    },
   })
 
   const createMutation = useMutation({
@@ -166,6 +197,28 @@ export function TechniciansPage() {
         </div>
       </div>
 
+      <Tabs
+        value={statusFilter}
+        onValueChange={(value: string) => {
+          setStatusFilter(value || 'all')
+          setPage(1)
+        }}
+      >
+        <TabsList>
+          <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
+          {TECHNICIAN_STATUSES.map((status) => (
+            <TabsTrigger key={status} value={status} className="gap-1.5">
+              {t(`technicians.status.${status}`)}
+              {!!statusCounts && statusCounts[status] > 0 && (
+                <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                  {statusCounts[status]}
+                </Badge>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
       <div className="flex flex-wrap items-center gap-3 sm:gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -202,6 +255,7 @@ export function TechniciansPage() {
         onEdit={handleEdit}
         onToggleStatus={handleToggleStatus}
         onDelete={canDelete ? handleDeleteClick : undefined}
+        onReview={(technician) => setReviewing(technician)}
         isLoading={isLoading}
       />
 
@@ -260,6 +314,16 @@ export function TechniciansPage() {
       />
 
       <TechnicianExportDialog open={isExportOpen} onOpenChange={setIsExportOpen} />
+
+      <TechnicianReviewDialog
+        open={!!reviewing}
+        onOpenChange={(open) => !open && setReviewing(null)}
+        technician={reviewing}
+        onConfirm={async (status, notes) => {
+          await reviewMutation.mutateAsync({ id: reviewing!.id, status, notes }).catch(() => undefined)
+        }}
+        isLoading={reviewMutation.isPending}
+      />
     </div>
   )
 }
