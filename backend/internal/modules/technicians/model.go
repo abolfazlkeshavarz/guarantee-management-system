@@ -13,7 +13,10 @@ type Technician struct {
 	Phone      string `gorm:"size:20" json:"phone"`
 	NationalID string `gorm:"size:20;index" json:"national_id"`
 	Address    string `gorm:"type:text" json:"address"`
-	IsActive   bool   `gorm:"default:true" json:"is_active"`
+	// No `default` tag: GORM skips a zero value when one is present, which
+	// would quietly turn a deliberately disabled account back on. The column
+	// still defaults to true in the schema.
+	IsActive bool `json:"is_active"`
 
 	// Review state. A self-registered technician starts Pending and cannot
 	// sign in until staff approve them; accounts staff created themselves are

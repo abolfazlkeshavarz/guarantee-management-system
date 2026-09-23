@@ -1,7 +1,9 @@
 {
   "common": {
     "close": "بستن",
-    "openMenu": "باز کردن منو"
+    "openMenu": "باز کردن منو",
+    "sending": "در حال ارسال...",
+    "unknown": "نامشخص"
   },
   "technicians": {
     "import": {
@@ -182,7 +184,8 @@
     "partShipments": "ارسال قطعه",
     "smsPatterns": "الگوهای پیامک",
     "finance": "امور مالی",
-    "pipeline": "روند خدمات"
+    "pipeline": "روند خدمات",
+    "polls": "نظرسنجی‌ها"
   },
   "partShipments": {
     "navLabel": "ارسال قطعه",
@@ -457,5 +460,140 @@
       "AwaitingInvoice": "صدور فاکتور",
       "AwaitingPayment": "پرداخت"
     }
+  },
+  "polls": {
+    "title": "نظرسنجی‌ها",
+    "subtitle": "از مشتریان درباره گارانتی نظر بخواهید، پاسخ‌ها را ببینید و پیشنهاد بفرستید.",
+    "entity": "نظرسنجی",
+    "add": "نظرسنجی جدید",
+    "open": "مشاهده",
+    "openLink": "پیش‌نمایش",
+    "backToList": "همه نظرسنجی‌ها",
+    "searchPlaceholder": "جستجو بر اساس عنوان...",
+    "emptyTitle": "هنوز نظرسنجی‌ای ثبت نشده",
+    "emptyDesc": "برای دریافت نظر مشتریان یک نظرسنجی بسازید.",
+    "createSuccess": "نظرسنجی ساخته شد",
+    "updateSuccess": "نظرسنجی به‌روزرسانی شد",
+    "deleteSuccess": "نظرسنجی حذف شد",
+    "deleteDesc": "«{{name}}» حذف می‌شود. فقط پیش‌نویس‌ها قابل حذف هستند.",
+    "close": "بستن نظرسنجی",
+    "closeSuccess": "نظرسنجی بسته شد",
+    "buildAudience": "ساخت فهرست مخاطبان",
+    "rebuildAudience": "بازسازی فهرست مخاطبان",
+    "audienceBuilt": "{{total}} مشتری یافت شد، {{reachable}} نفر شماره تماس دارند.",
+    "noAudienceYet": "ابتدا فهرست مخاطبان را بسازید. فیلترهای این نظرسنجی تعیین می‌کنند چه کسانی پیامک بگیرند و برای هر نفر یک لینک اختصاصی ساخته می‌شود.",
+    "sendTo": "ارسال به {{count}} نفر",
+    "sendSuccess": "{{count}} پیامک ارسال شد",
+    "sendPartial": "{{sent}} ارسال شد، {{failed}} ناموفق",
+    "sendRemaining": "{{count}} پیامک باقی مانده است - دوباره ارسال کنید.",
+    "linkCopied": "لینک کپی شد",
+    "results": "نتایج",
+    "responseCount": "{{count}} پاسخ",
+    "average": "میانگین {{value}}",
+    "noAnswersYet": "هنوز پاسخی ثبت نشده است.",
+    "recipients": "مخاطبان",
+    "noRecipients": "مخاطبی با این فیلتر یافت نشد.",
+    "noResponse": "بدون پاسخ",
+    "respondedOnly": "فقط پاسخ‌داده‌ها",
+    "offerSent": "پیشنهاد ارسال شد",
+    "status": {
+      "Draft": "پیش‌نویس",
+      "Sending": "در حال ارسال",
+      "Sent": "ارسال شده",
+      "Closed": "بسته شده"
+    },
+    "smsStatus": {
+      "Pending": "در انتظار",
+      "Sent": "ارسال شده",
+      "Failed": "ناموفق",
+      "Skipped": "رد شده"
+    },
+    "kind": {
+      "rating": "امتیاز (۱ تا ۵)",
+      "yes_no": "بله / خیر",
+      "choice": "چندگزینه‌ای",
+      "text": "پاسخ متنی"
+    },
+    "linkMode": {
+      "url": "ارسال لینک کامل",
+      "token": "فقط کد (لینک داخل پترن است)"
+    },
+    "stats": {
+      "recipients": "مخاطبان",
+      "sent": "ارسال شده",
+      "responded": "پاسخ‌ها",
+      "offersSent": "پیشنهادهای ارسالی",
+      "failedHint": "{{count}} ناموفق"
+    },
+    "table": {
+      "poll": "نظرسنجی",
+      "audience": "مخاطبان",
+      "responses": "پاسخ‌ها",
+      "customer": "مشتری",
+      "guarantee": "گارانتی",
+      "delivery": "وضعیت ارسال",
+      "answer": "پاسخ",
+      "questionCount": "{{count}} سؤال",
+      "pending": "{{count}} ارسال‌نشده",
+      "failed": "{{count}} ناموفق",
+      "responseRate": "{{rate}}٪ نرخ پاسخ"
+    },
+    "form": {
+      "createTitle": "نظرسنجی جدید",
+      "editTitle": "ویرایش نظرسنجی",
+      "title": "عنوان",
+      "description": "متنی که مشتری می‌بیند",
+      "intro": "مقدمه",
+      "introHint": "یک جمله کوتاه بالای سؤال‌ها.",
+      "introPlaceholder": "نظر شما درباره تعمیر انجام‌شده چیست؟",
+      "audienceTitle": "مخاطبان",
+      "audienceHint": "هر فیلد را خالی بگذارید تا نادیده گرفته شود. تاریخ‌ها گارانتی‌های قبل از آن روز را انتخاب می‌کنند.",
+      "purchasedBefore": "تاریخ خرید پیش از",
+      "expiryBefore": "تاریخ انقضا پیش از",
+      "preview": "پیش‌نمایش مخاطبان",
+      "previewResult": "{{total}} مشتری، {{reachable}} نفر قابل پیامک",
+      "questionsTitle": "سؤال‌ها",
+      "addQuestion": "افزودن سؤال",
+      "questionPlaceholder": "چقدر راضی بودید؟",
+      "questionsLocked": "سؤال‌ها فقط در حالت پیش‌نویس قابل تغییر هستند.",
+      "required": "اجباری",
+      "options": "گزینه‌ها",
+      "optionsHint": "هر گزینه در یک خط، حداقل دو گزینه.",
+      "optionsPlaceholder": "خیلی خوب\nخوب\nضعیف",
+      "smsTitle": "پیامک‌ها",
+      "choosePattern": "انتخاب پترن",
+      "invitePattern": "پترن دعوت",
+      "offerPattern": "پترن پیشنهاد",
+      "linkMode": "محتوای پیامک",
+      "linkModeHint": "پترن‌های ملی‌پیامک فقط یک مقدار می‌گیرند. اگر آدرس داخل خود پترن نوشته شده، «فقط کد» را انتخاب کنید."
+    },
+    "offers": {
+      "title": "ارسال پیشنهاد",
+      "desc": "{{count}} مخاطب دارای شماره تماس یک پیامک دریافت می‌کنند.",
+      "noneReachable": "هیچ‌کدام از مخاطبان انتخاب‌شده شماره تماس ندارند.",
+      "andMore": "و {{count}} نفر دیگر",
+      "message": "متن پیام",
+      "messagePlaceholder": "۲۰٪ تخفیف سرویس بعدی تا پایان ماه",
+      "messageHint": "این متن در تنها جایگاه پترن پیشنهاد قرار می‌گیرد.",
+      "send": "ارسال پیشنهاد",
+      "sendTo": "پیشنهاد ({{count}})"
+    }
+  },
+  "publicPoll": {
+    "greeting": "سلام {{name}}",
+    "product": "محصول",
+    "guarantee": "کد گارانتی",
+    "submit": "ثبت پاسخ",
+    "submitFailed": "ثبت پاسخ‌ها انجام نشد.",
+    "requiredHint": "لطفاً به سؤال‌های ستاره‌دار پاسخ دهید.",
+    "textPlaceholder": "پاسخ خود را بنویسید",
+    "yes": "بله",
+    "no": "خیر",
+    "thanksTitle": "سپاسگزاریم",
+    "thanksDesc": "پاسخ‌های شما ثبت شد.",
+    "closedTitle": "این نظرسنجی بسته شده است",
+    "closedDesc": "دیگر پاسخی دریافت نمی‌شود.",
+    "invalidTitle": "لینک معتبر نیست",
+    "invalidDesc": "ممکن است این لینک منقضی شده یا اشتباه وارد شده باشد."
   }
 }

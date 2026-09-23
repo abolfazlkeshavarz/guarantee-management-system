@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Wallet,
   Workflow,
+  MessageSquareQuote,
   X,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
@@ -42,6 +43,7 @@ const bottomNav = [
   { key: 'partRequests', href: '/part-requests', icon: PackagePlus },
   { key: 'partShipments', href: '/part-shipments', icon: Truck },
   { key: 'finance', href: '/finance', icon: Wallet },
+  { key: 'polls', href: '/polls', icon: MessageSquareQuote },
   { key: 'smsPatterns', href: '/sms-patterns', icon: MessageSquare },
   { key: 'auditLog', href: '/audit-log', icon: ScrollText },
   { key: 'settings', href: '/settings', icon: Settings },

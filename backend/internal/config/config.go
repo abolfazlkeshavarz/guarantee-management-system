@@ -39,6 +39,10 @@ type Config struct {
 	MaxUploadSize int64
 
 	CORSAllowedOrigins []string
+	// Public address used to build links sent to customers (poll invitations).
+	// Defaults to the first CORS origin, which on a normal deployment is
+	// already the site's public address, so it rarely needs setting.
+	PublicBaseURL string
 
 	// TrustedProxies is the set of proxy IPs/CIDRs Gin will trust for
 	// X-Forwarded-For. Empty means "trust nothing", which is the correct
@@ -93,6 +97,7 @@ func Load() *Config {
 		MaxUploadSize: maxUploadSize,
 
 		CORSAllowedOrigins: getEnvAsSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:5173"}),
+		PublicBaseURL:      getEnv("PUBLIC_BASE_URL", ""),
 		TrustedProxies:     getEnvAsSlice("TRUSTED_PROXIES", nil),
 
 		SMSEnabled:            getEnv("SMS_ENABLED", "false") == "true",

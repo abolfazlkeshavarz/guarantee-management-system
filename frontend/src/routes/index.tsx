@@ -15,6 +15,9 @@ import { PartShipmentsPage } from '@/features/partShipments/pages/PartShipmentsP
 import { SmsTemplatesPage } from '@/features/smsTemplates/pages/SmsTemplatesPage'
 import { FinancePage } from '@/features/finance/pages/FinancePage'
 import { PipelinePage } from '@/features/pipeline/pages/PipelinePage'
+import { PollsPage } from '@/features/polls/pages/PollsPage'
+import { PollDetailPage } from '@/features/polls/pages/PollDetailPage'
+import { PublicPollPage } from '@/features/polls/pages/PublicPollPage'
 // Pages
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -42,6 +45,8 @@ export function AppRoutes() {
       {/* Public routes */}
       <Route path="/register-guarantee" element={<PublicRegisterPage />} />
       <Route path="/check-guarantee" element={<CheckGuaranteePage />} />
+      {/* A customer's personal poll link: the token is the credential. */}
+      <Route path="/p/:token" element={<PublicPollPage />} />
 
       {/* Admin Login */}
       <Route
@@ -79,6 +84,8 @@ export function AppRoutes() {
         <Route path="part-requests" element={<PartRequestsPage />} />
         <Route path="part-shipments" element={<PartShipmentsPage />} />
         <Route path="finance" element={<FinancePage />} />
+        <Route path="polls" element={<PollsPage />} />
+        <Route path="polls/:id" element={<PollDetailPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="sms-patterns" element={<SmsTemplatesPage />} />
         <Route path="audit-log" element={<AuditLogPage />} />

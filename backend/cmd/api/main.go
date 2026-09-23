@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,6 +21,8 @@ import (
 	"guarantee-management-system/internal/modules/guarantees"
 	"guarantee-management-system/internal/modules/partrequests"
 	"guarantee-management-system/internal/modules/partshipments"
+	"guarantee-management-system/internal/modules/pipeline"
+	"guarantee-management-system/internal/modules/polls"
 	"guarantee-management-system/internal/modules/products"
 	"guarantee-management-system/internal/modules/repaircatalog"
 	"guarantee-management-system/internal/modules/repairs"
@@ -155,6 +158,14 @@ func main() {
 		partShipmentsModule := partshipments.NewPartShipmentModule(database.GetDB())
 		partShipmentsModule.RegisterRoutes(v1)
 
+		// Cross-cutting view of every service case and what it is waiting on.
+		pipelineModule := pipeline.NewModule(database.GetDB())
+		pipelineModule.RegisterRoutes(v1)
+
+		// Customer polls: personal links by SMS, answers, follow-up offers.
+		pollsModule := polls.NewModule(database.GetDB(), publicBaseURL(cfg))
+		pollsModule.RegisterRoutes(v1)
+
 		// SMS patterns (Melli Payamak body ids). Registered before anything that
 		// sends, so the resolver is installed by the time a notification fires.
 		smsTemplatesModule := smstemplates.NewModule(database.GetDB())
@@ -231,4 +242,20 @@ func main() {
 	} else {
 		log.Println("✅ Server exited cleanly")
 	}
+}
+
+// publicBaseURL is the address customers reach this system at, used to build
+// the links texted to them. PUBLIC_BASE_URL wins; otherwise the first CORS
+// origin is used, which on a real deployment is already the public site.
+func publicBaseURL(cfg *config.Config) string {
+	if v := strings.TrimSpace(cfg.PublicBaseURL); v != "" {
+		return v
+	}
+	for _, origin := range cfg.CORSAllowedOrigins {
+		origin = strings.TrimSpace(origin)
+		if origin != "" && origin != "*" {
+			return origin
+		}
+	}
+	return ""
 }

@@ -1,7 +1,9 @@
 {
   "common": {
     "close": "Close",
-    "openMenu": "Open menu"
+    "openMenu": "Open menu",
+    "sending": "Sending...",
+    "unknown": "Unknown"
   },
   "technicians": {
     "import": {
@@ -182,7 +184,8 @@
     "partShipments": "Part Shipments",
     "smsPatterns": "SMS Patterns",
     "finance": "Finance",
-    "pipeline": "Service Pipeline"
+    "pipeline": "Service Pipeline",
+    "polls": "Polls"
   },
   "partShipments": {
     "navLabel": "Send Parts",
@@ -457,5 +460,140 @@
       "AwaitingInvoice": "Invoice",
       "AwaitingPayment": "Pay"
     }
+  },
+  "polls": {
+    "title": "Polls",
+    "subtitle": "Ask customers about a guarantee, read the answers, follow up with an offer.",
+    "entity": "polls",
+    "add": "New poll",
+    "open": "Open",
+    "openLink": "Preview",
+    "backToList": "All polls",
+    "searchPlaceholder": "Search by title...",
+    "emptyTitle": "No polls yet",
+    "emptyDesc": "Create one to start collecting customer feedback.",
+    "createSuccess": "Poll created",
+    "updateSuccess": "Poll updated",
+    "deleteSuccess": "Poll deleted",
+    "deleteDesc": "\"{{name}}\" will be removed. Only drafts can be deleted.",
+    "close": "Close poll",
+    "closeSuccess": "Poll closed",
+    "buildAudience": "Build audience",
+    "rebuildAudience": "Rebuild audience",
+    "audienceBuilt": "{{total}} customers matched, {{reachable}} have a phone number.",
+    "noAudienceYet": "Build the audience first. The filters on this poll decide who gets it, and each recipient gets their own link.",
+    "sendTo": "Send to {{count}}",
+    "sendSuccess": "{{count}} messages sent",
+    "sendPartial": "{{sent}} sent, {{failed}} failed",
+    "sendRemaining": "{{count}} still queued - send again to continue.",
+    "linkCopied": "Link copied",
+    "results": "Results",
+    "responseCount": "{{count}} responses",
+    "average": "average {{value}}",
+    "noAnswersYet": "No answers yet.",
+    "recipients": "Recipients",
+    "noRecipients": "No recipients match this filter.",
+    "noResponse": "No response yet",
+    "respondedOnly": "Responded only",
+    "offerSent": "Offer sent",
+    "status": {
+      "Draft": "Draft",
+      "Sending": "Sending",
+      "Sent": "Sent",
+      "Closed": "Closed"
+    },
+    "smsStatus": {
+      "Pending": "Pending",
+      "Sent": "Sent",
+      "Failed": "Failed",
+      "Skipped": "Skipped"
+    },
+    "kind": {
+      "rating": "Rating (1-5)",
+      "yes_no": "Yes / No",
+      "choice": "Multiple choice",
+      "text": "Free text"
+    },
+    "linkMode": {
+      "url": "Full link in the message",
+      "token": "Code only (link is in the pattern)"
+    },
+    "stats": {
+      "recipients": "Recipients",
+      "sent": "Delivered",
+      "responded": "Responses",
+      "offersSent": "Offers sent",
+      "failedHint": "{{count}} failed"
+    },
+    "table": {
+      "poll": "Poll",
+      "audience": "Audience",
+      "responses": "Responses",
+      "customer": "Customer",
+      "guarantee": "Guarantee",
+      "delivery": "Delivery",
+      "answer": "Answer",
+      "questionCount": "{{count}} questions",
+      "pending": "{{count}} not sent",
+      "failed": "{{count}} failed",
+      "responseRate": "{{rate}}% response rate"
+    },
+    "form": {
+      "createTitle": "New poll",
+      "editTitle": "Edit poll",
+      "title": "Title",
+      "description": "Shown to the customer",
+      "intro": "Intro",
+      "introHint": "A short line above the questions.",
+      "introPlaceholder": "Tell us how your repair went...",
+      "audienceTitle": "Audience",
+      "audienceHint": "Leave a field empty to ignore it. Dates match guarantees before that day.",
+      "purchasedBefore": "Purchased before",
+      "expiryBefore": "Expires before",
+      "preview": "Preview audience",
+      "previewResult": "{{total}} customers, {{reachable}} reachable by SMS",
+      "questionsTitle": "Questions",
+      "addQuestion": "Add question",
+      "questionPlaceholder": "How satisfied were you?",
+      "questionsLocked": "Questions can only be changed while the poll is a draft.",
+      "required": "Required",
+      "options": "Options",
+      "optionsHint": "One per line, at least two.",
+      "optionsPlaceholder": "Very good\nGood\nPoor",
+      "smsTitle": "Messages",
+      "choosePattern": "Choose a pattern",
+      "invitePattern": "Invitation pattern",
+      "offerPattern": "Offer pattern",
+      "linkMode": "What the message carries",
+      "linkModeHint": "Melli Payamak patterns take one value. Pick 'code only' when the address is already written into the pattern."
+    },
+    "offers": {
+      "title": "Send an offer",
+      "desc": "{{count}} recipients with a phone number will get one message.",
+      "noneReachable": "None of the selected recipients has a phone number.",
+      "andMore": "and {{count}} more",
+      "message": "Message",
+      "messagePlaceholder": "20% off your next service until the end of the month",
+      "messageHint": "This text fills the single slot in the offer pattern.",
+      "send": "Send offers",
+      "sendTo": "Offer ({{count}})"
+    }
+  },
+  "publicPoll": {
+    "greeting": "Hello {{name}}",
+    "product": "Product",
+    "guarantee": "Guarantee code",
+    "submit": "Submit",
+    "submitFailed": "Could not submit your answers.",
+    "requiredHint": "Please answer the questions marked with *.",
+    "textPlaceholder": "Write your answer here",
+    "yes": "Yes",
+    "no": "No",
+    "thanksTitle": "Thank you",
+    "thanksDesc": "Your answers have been recorded.",
+    "closedTitle": "This poll is closed",
+    "closedDesc": "We are no longer collecting answers.",
+    "invalidTitle": "Link not valid",
+    "invalidDesc": "This link may have expired or been mistyped."
   }
 }
