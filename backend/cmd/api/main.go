@@ -247,14 +247,17 @@ func main() {
 // publicBaseURL is the address customers reach this system at, used to build
 // the links texted to them. PUBLIC_BASE_URL wins; otherwise the first CORS
 // origin is used, which on a real deployment is already the public site.
+// publicBaseURL is the origin poll links are built from. A trailing slash is
+// dropped here because the link is assembled by concatenation, and "//p/..."
+// would be a different path on some proxies.
 func publicBaseURL(cfg *config.Config) string {
 	if v := strings.TrimSpace(cfg.PublicBaseURL); v != "" {
-		return v
+		return strings.TrimRight(v, "/")
 	}
 	for _, origin := range cfg.CORSAllowedOrigins {
 		origin = strings.TrimSpace(origin)
 		if origin != "" && origin != "*" {
-			return origin
+			return strings.TrimRight(origin, "/")
 		}
 	}
 	return ""
