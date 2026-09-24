@@ -577,7 +577,10 @@
       "messageHint": "This text fills the single slot in the offer pattern.",
       "send": "Send offers",
       "sendTo": "Offer ({{count}})"
-    }
+    },
+    "sendSelected": "Send to selected ({{count}})",
+    "ended": "This poll has ended. Links no longer accept answers. Closed on",
+    "linkEnded": "Poll ended"
   },
   "publicPoll": {
     "greeting": "Hello {{name}}",

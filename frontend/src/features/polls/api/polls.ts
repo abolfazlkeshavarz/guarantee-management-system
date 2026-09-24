@@ -71,8 +71,9 @@ export const pollService = {
     return response.data.data
   },
 
-  async send(id: number): Promise<SendResult> {
-    const response = await api.post(`/polls/${id}/send`)
+  /** Empty recipientIds means everyone still pending. */
+  async send(id: number, recipientIds: number[] = []): Promise<SendResult> {
+    const response = await api.post(`/polls/${id}/send`, { recipient_ids: recipientIds })
     return response.data.data
   },
 

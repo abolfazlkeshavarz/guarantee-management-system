@@ -271,10 +271,13 @@ func (s *Service) PublicLink(token string) string {
 	return s.publicBaseURL + "/p/" + token
 }
 
-// Send texts the invitation to everyone still pending, one at a time, and
-// records the outcome per recipient so a failure is attributable rather than
-// lost in a count.
-func (s *Service) Send(pollID uint) (*SendResult, error) {
+// Send texts the invitation one recipient at a time and records the outcome
+// per recipient so a failure is attributable rather than lost in a count.
+//
+// With no ids it goes to everyone still pending. With ids it goes only to
+// those that are still pending: the operator chose them, so anyone left out
+// stays queued and the poll counts as sent rather than waiting on them.
+func (s *Service) Send(pollID uint, recipientIDs []uint) (*SendResult, error) {
 	poll, err := s.find(pollID)
 	if err != nil {
 		return nil, err
@@ -293,8 +296,11 @@ func (s *Service) Send(pollID uint) (*SendResult, error) {
 	}
 
 	var pending []Recipient
-	if err := s.db.Where("poll_id = ? AND sms_status = ?", pollID, SMSPending).
-		Order("id").Limit(maxSendBatch).Find(&pending).Error; err != nil {
+	q := s.db.Where("poll_id = ? AND sms_status = ?", pollID, SMSPending)
+	if len(recipientIDs) > 0 {
+		q = q.Where("id IN ?", recipientIDs)
+	}
+	if err := q.Order("id").Limit(maxSendBatch).Find(&pending).Error; err != nil {
 		return nil, internalErr("Failed to load the recipients")
 	}
 
@@ -338,7 +344,7 @@ func (s *Service) Send(pollID uint) (*SendResult, error) {
 
 	// Sending is finished only when nothing is left queued.
 	next := StatusSending
-	if remaining == 0 {
+	if remaining == 0 || len(recipientIDs) > 0 {
 		next = StatusSent
 	}
 	s.db.Model(&Poll{}).Where("id = ?", pollID).Update("status", next)

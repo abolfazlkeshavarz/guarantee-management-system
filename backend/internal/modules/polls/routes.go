@@ -168,7 +168,12 @@ func (m *Module) RegisterRoutes(router *gin.RouterGroup) {
 			if !ok {
 				return
 			}
-			result, err := m.service.Send(id)
+			var req SendRequest
+			// An empty body is fine: it means "everyone pending".
+			if c.Request.ContentLength != 0 && !bind(c, &req) {
+				return
+			}
+			result, err := m.service.Send(id, req.RecipientIDs)
 			if err != nil {
 				handleError(c, err)
 				return

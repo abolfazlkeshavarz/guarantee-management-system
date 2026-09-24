@@ -513,7 +513,7 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 	var existingCustomer Customer
 	var customerID uint
 	err := tx.Table("customers").
-		Where("national_id = ? OR phone = ?", req.NationalID, req.Phone).
+		Where("(national_id = ? OR phone = ?) AND deleted_at IS NULL", req.NationalID, req.Phone).
 		First(&existingCustomer).Error
 
 	if err == nil {
@@ -532,7 +532,7 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
 		}
 		var newCustomer Customer
-		if err := tx.Table("customers").Where("national_id = ?", req.NationalID).First(&newCustomer).Error; err != nil {
+		if err := tx.Table("customers").Where("national_id = ? AND deleted_at IS NULL", req.NationalID).Order("id DESC").First(&newCustomer).Error; err != nil {
 			tx.Rollback()
 			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created customer", 500)
 		}
@@ -673,7 +673,7 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 		}
 		var existingCustomer Customer
 		err := tx.Table("customers").
-			Where("national_id = ? OR phone = ?", req.CustomerNationalID, req.CustomerPhone).
+			Where("(national_id = ? OR phone = ?) AND deleted_at IS NULL", req.CustomerNationalID, req.CustomerPhone).
 			First(&existingCustomer).Error
 		if err == nil {
 			customerID = existingCustomer.ID
@@ -691,7 +691,7 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
 			}
 			var newCustomer Customer
-			if err := tx.Table("customers").Where("national_id = ?", req.CustomerNationalID).First(&newCustomer).Error; err != nil {
+			if err := tx.Table("customers").Where("national_id = ? AND deleted_at IS NULL", req.CustomerNationalID).Order("id DESC").First(&newCustomer).Error; err != nil {
 				tx.Rollback()
 				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created customer", 500)
 			}

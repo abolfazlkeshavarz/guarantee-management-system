@@ -216,6 +216,12 @@ type SubmitRequest struct {
 	Answers []SubmitAnswerInput `json:"answers" binding:"required,min=1,dive"`
 }
 
+// SendRequest optionally narrows an invitation send to chosen recipients.
+// Empty means everyone still pending.
+type SendRequest struct {
+	RecipientIDs []uint `json:"recipient_ids" binding:"omitempty,max=500"`
+}
+
 // SendOffersRequest texts an offer to specific respondents.
 type SendOffersRequest struct {
 	RecipientIDs []uint `json:"recipient_ids" binding:"required,min=1,max=500"`

@@ -110,10 +110,11 @@ export function PollDetailPage() {
   })
 
   const sendMutation = useMutation({
-    mutationFn: () => pollService.send(pollId),
+    mutationFn: (ids: number[]) => pollService.send(pollId, ids),
     onSuccess: (result) => {
       invalidate()
       reportSend(result)
+      setSelected([])
     },
     onError,
   })
@@ -163,7 +164,10 @@ export function PollDetailPage() {
 
   const hasAudience = stats.recipients > 0
   const canBuildAudience = poll.status === 'Draft'
-  const canSend = hasAudience && stats.pending > 0 && poll.status !== 'Closed'
+  const isClosed = poll.status === 'Closed'
+  const canSend = hasAudience && stats.pending > 0 && !isClosed
+  // Only recipients still waiting for the invitation can be picked for it.
+  const selectedPending = selectedRecipients.filter((r) => r.sms_status === 'Pending')
   const canClose = poll.status !== 'Closed' && poll.status !== 'Draft'
 
   const toggle = (rid: number) =>
@@ -210,12 +214,22 @@ export function PollDetailPage() {
             </Button>
           )}
           {canSend && (
-            <Button onClick={() => sendMutation.mutate()} disabled={sendMutation.isPending}>
-              <Send className="me-2 h-4 w-4" />
-              {sendMutation.isPending
-                ? t('common.sending')
-                : t('polls.sendTo', { count: stats.pending })}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => sendMutation.mutate(selectedPending.map((r) => r.id))}
+                disabled={sendMutation.isPending || selectedPending.length === 0}
+              >
+                <Send className="me-2 h-4 w-4" />
+                {t('polls.sendSelected', { count: selectedPending.length })}
+              </Button>
+              <Button onClick={() => sendMutation.mutate([])} disabled={sendMutation.isPending}>
+                <Send className="me-2 h-4 w-4" />
+                {sendMutation.isPending
+                  ? t('common.sending')
+                  : t('polls.sendTo', { count: stats.pending })}
+              </Button>
+            </>
           )}
           {canClose && (
             <Button
@@ -243,7 +257,24 @@ export function PollDetailPage() {
         <StatCard label={t('polls.stats.offersSent')} value={stats.offers_sent} />
       </div>
 
-      {!hasAudience && (
+      {isClosed && (
+        <Card className="border-slate-300 bg-slate-100">
+          <CardContent className="flex items-center gap-2 py-4 text-sm text-slate-800">
+            <Lock className="h-4 w-4 shrink-0" />
+            <span>
+              {t('polls.ended')}
+              {poll.closed_at && (
+                <>
+                  {' '}
+                  <FormattedDate date={poll.closed_at} format="YYYY/MM/DD" />
+                </>
+              )}
+            </span>
+          </CardContent>
+        </Card>
+      )}
+
+      {!hasAudience && !isClosed && (
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="py-4 text-sm text-blue-900">
             {t('polls.noAudienceYet')}
@@ -438,16 +469,20 @@ export function PollDetailPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-end">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => copyLink(r)}>
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Link to={`/p/${r.token}`} target="_blank" rel="noopener noreferrer">
-                            <Button variant="ghost" size="sm">
-                              {t('polls.openLink')}
+                        {isClosed ? (
+                          <span className="text-xs text-muted-foreground">{t('polls.linkEnded')}</span>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => copyLink(r)}>
+                              <Copy className="h-4 w-4" />
                             </Button>
-                          </Link>
-                        </div>
+                            <Link to={`/p/${r.token}`} target="_blank" rel="noopener noreferrer">
+                              <Button variant="ghost" size="sm">
+                                {t('polls.openLink')}
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
