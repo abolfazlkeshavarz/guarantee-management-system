@@ -11,4 +11,5 @@ var (
     ErrGuaranteeNotFound = errors.NewAppError(errors.ErrNotFound, "Guarantee not found", 404)
     ErrGuaranteeNotValid = errors.NewAppError(errors.ErrValidation, "This guarantee is not currently valid (not approved or expired)", 400)
     ErrNoItemsProvided   = errors.NewAppError(errors.ErrValidation, "At least one component or service is required", 400)
+    ErrHasShippedParts   = errors.NewAppError(errors.ErrValidation, "This repair has a replaced part already sent back and cannot be deleted", 400)
 )

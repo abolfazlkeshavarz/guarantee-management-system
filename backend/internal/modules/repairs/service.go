@@ -424,6 +424,22 @@ func (s *RepairService) Delete(id uint) error {
 		return errors.NewAppError(errors.ErrInternalServer, "Failed to find repair", 500)
 	}
 
+	// A replaced part already sent back references this repair's component
+	// items (part_shipment_items -> repair_component_items, RESTRICT) and
+	// carries its own financial trail (invoice, payment). Deleting the repair
+	// would either fail with a raw FK violation or, if nulled away, silently
+	// orphan that trail -- so block it with a clear reason instead.
+	var shippedCount int64
+	if err := s.db.Table("part_shipment_items psi").
+		Joins("JOIN repair_component_items rci ON rci.id = psi.repair_component_item_id").
+		Where("rci.repair_id = ?", id).
+		Count(&shippedCount).Error; err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to check for shipped parts", 500)
+	}
+	if shippedCount > 0 {
+		return ErrHasShippedParts
+	}
+
 	// The repair itself is soft-deleted, but its component/service line items
 	// have no soft-delete of their own and pin repair_components /
 	// repair_services through RESTRICT foreign keys. GORM's soft delete does
