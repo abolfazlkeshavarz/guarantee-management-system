@@ -607,5 +607,8 @@
       "needAdmin": "Only a full admin account can delete this.",
       "confirm": "Delete anyway"
     }
+  },
+  "login": {
+    "technicianRegisterCta": "New technician? Apply for an account"
   }
 }

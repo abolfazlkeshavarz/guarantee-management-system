@@ -163,7 +163,7 @@ export function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-4 text-center">
+            <div className="mt-4 text-center space-y-3">
               <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-green-500" />
@@ -174,6 +174,14 @@ export function LoginPage() {
                   <span className="w-2 h-2 rounded-full bg-blue-500" />
                   {t('login.technician')}
                 </span>
+              </div>
+              <div>
+                <Link
+                  to="/technician/register"
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  {t('login.technicianRegisterCta')}
+                </Link>
               </div>
             </div>
           </CardContent>
