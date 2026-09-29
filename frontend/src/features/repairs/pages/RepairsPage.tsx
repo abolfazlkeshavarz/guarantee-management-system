@@ -22,6 +22,7 @@ import { RepairExportDialog } from '../components/RepairExportDialog'
 import { repairService } from '../api/repairs'
 import { Repair, REPAIR_STATUSES } from '../types'
 import { invalidateDashboard } from '@/lib/query-client'
+import { usePermissions } from '@/features/auth/hooks/usePermissions'
 
 
 interface RepairsPageProps {
@@ -35,6 +36,7 @@ interface RepairsPageProps {
 export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const { isAdmin } = usePermissions()
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
   const [statusFilter, setStatusFilter] = useState<string>('')
@@ -43,6 +45,9 @@ export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
   const [selectedRepair, setSelectedRepair] = useState<Repair | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  // Set once a plain delete comes back 409 (a shipped part is attached), so
+  // the dialog can switch to the force-delete step instead of just failing.
+  const [deleteBlocked, setDeleteBlocked] = useState(false)
   const [isViewOpen, setIsViewOpen] = useState(false)
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null)
   const [isCancelOpen, setIsCancelOpen] = useState(false)
@@ -102,14 +107,23 @@ export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: repairService.delete,
+    mutationFn: (force: boolean) => repairService.delete(selectedRepair!.id, force),
     onSuccess: () => {
       invalidateAll()
       toast.success(t('toasts.repairDeleted'))
       setIsDeleteOpen(false)
+      setDeleteBlocked(false)
       setSelectedRepair(null)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || t('toasts.repairDeleteFailed')),
+    onError: (error: any) => {
+      if (error.response?.status === 409) {
+        // The repair has a shipped part. Keep the dialog open and switch it
+        // to the force-delete step instead of treating this as a failure.
+        setDeleteBlocked(true)
+        return
+      }
+      toast.error(error.response?.data?.message || t('toasts.repairDeleteFailed'))
+    },
   })
 
   const handleCreate = async (data: any) => {
@@ -130,7 +144,13 @@ export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
 
   const handleDelete = async () => {
     if (selectedRepair) {
-      await deleteMutation.mutateAsync(selectedRepair.id)
+      await deleteMutation.mutateAsync(false)
+    }
+  }
+
+  const handleForceDelete = async () => {
+    if (selectedRepair) {
+      await deleteMutation.mutateAsync(true)
     }
   }
 
@@ -156,6 +176,7 @@ export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
 
   const handleDeleteClick = (repair: Repair) => {
     setSelectedRepair(repair)
+    setDeleteBlocked(false)
     setIsDeleteOpen(true)
   }
 
@@ -299,9 +320,15 @@ export function RepairsPage({ canManage = true }: RepairsPageProps = {}) {
 
       <RepairDeleteDialog
         open={isDeleteOpen}
-        onOpenChange={setIsDeleteOpen}
+        onOpenChange={(open) => {
+          setIsDeleteOpen(open)
+          if (!open) setDeleteBlocked(false)
+        }}
         repair={selectedRepair}
+        blocked={deleteBlocked}
+        canForce={isAdmin}
         onConfirm={handleDelete}
+        onForceConfirm={handleForceDelete}
         isLoading={deleteMutation.isPending}
       />
 

@@ -416,7 +416,9 @@ func (s *RepairService) Cancel(id uint, adminID, technicianID uint) (*RepairDTO,
 	return s.mapToDTO(repair), nil
 }
 
-func (s *RepairService) Delete(id uint) error {
+// Delete removes a repair. force must be true to remove one that already has
+// a shipped part attached (see below) - callers gate that to full admins.
+func (s *RepairService) Delete(id uint, force bool) error {
 	if _, err := s.repo.FindByID(id); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return ErrRepairNotFound
@@ -428,15 +430,16 @@ func (s *RepairService) Delete(id uint) error {
 	// items (part_shipment_items -> repair_component_items, RESTRICT) and
 	// carries its own financial trail (invoice, payment). Deleting the repair
 	// would either fail with a raw FK violation or, if nulled away, silently
-	// orphan that trail -- so block it with a clear reason instead.
-	var shippedCount int64
+	// orphan that trail - so it is blocked by default, and only removed too
+	// when the caller explicitly forces it, knowing that trail goes with it.
+	var shippedItemIDs []uint
 	if err := s.db.Table("part_shipment_items psi").
 		Joins("JOIN repair_component_items rci ON rci.id = psi.repair_component_item_id").
 		Where("rci.repair_id = ?", id).
-		Count(&shippedCount).Error; err != nil {
+		Pluck("psi.id", &shippedItemIDs).Error; err != nil {
 		return errors.NewAppError(errors.ErrInternalServer, "Failed to check for shipped parts", 500)
 	}
-	if shippedCount > 0 {
+	if len(shippedItemIDs) > 0 && !force {
 		return ErrHasShippedParts
 	}
 
@@ -447,6 +450,15 @@ func (s *RepairService) Delete(id uint) error {
 	// explicitly -- otherwise they stay orphaned and lock the referenced
 	// component/service rows forever.
 	if err := s.db.Transaction(func(tx *gorm.DB) error {
+		if len(shippedItemIDs) > 0 {
+			// Forced: the shipment line(s) for this repair's parts are
+			// removed along with it. Only the lines, never the parent
+			// shipment - a shipment with other parts in it, or its own
+			// invoice/payment history, is left exactly as it was.
+			if err := tx.Exec("DELETE FROM part_shipment_items WHERE id IN ?", shippedItemIDs).Error; err != nil {
+				return err
+			}
+		}
 		if err := tx.Where("repair_id = ?", id).Delete(&RepairComponentItem{}).Error; err != nil {
 			return err
 		}

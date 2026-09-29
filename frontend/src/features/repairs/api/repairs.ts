@@ -39,7 +39,7 @@ export const repairService = {
     return response.data.data
   },
 
-  async delete(id: number): Promise<void> {
-    await api.delete(`/repairs/${id}`)
+  async delete(id: number, force: boolean = false): Promise<void> {
+    await api.delete(`/repairs/${id}`, { params: force ? { force: 'true' } : undefined })
   },
 }

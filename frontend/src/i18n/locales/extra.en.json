@@ -598,5 +598,14 @@
     "closedDesc": "We are no longer collecting answers.",
     "invalidTitle": "Link not valid",
     "invalidDesc": "This link may have expired or been mistyped."
+  },
+  "repairs": {
+    "forceDelete": {
+      "title": "This repair has a shipped part",
+      "desc": "A part from this repair was already sent back to the company and has its own invoice/payment history.",
+      "warning": "Deleting it anyway also removes that shipment line, including its price. This cannot be undone.",
+      "needAdmin": "Only a full admin account can delete this.",
+      "confirm": "Delete anyway"
+    }
   }
 }

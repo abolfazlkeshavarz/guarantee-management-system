@@ -144,7 +144,19 @@ func (h *RepairHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.Delete(uint(id)); err != nil {
+	force := c.Query("force") == "true"
+	if force {
+		// Force-deleting drops the linked shipment's financial trail
+		// (invoice, payment) along with it - reserved for a full admin, not
+		// a technical-role staff account.
+		role, _ := c.Get("role")
+		if role != "admin" {
+			handleError(c, ErrForceRequiresAdmin)
+			return
+		}
+	}
+
+	if err := h.service.Delete(uint(id), force); err != nil {
 		handleError(c, err)
 		return
 	}
