@@ -453,7 +453,9 @@ export function PollDetailPage() {
                             {r.answers?.map((a) => (
                               <div key={a.question_id} className="text-xs">
                                 <span className="text-muted-foreground">{a.question_text}: </span>
-                                {a.answer_text || a.answer_number}
+                                {a.kind === 'yes_no'
+                                  ? t(`publicPoll.${a.answer_number === 1 ? 'yes' : 'no'}`)
+                                  : a.answer_text || a.answer_number}
                               </div>
                             ))}
                           </div>

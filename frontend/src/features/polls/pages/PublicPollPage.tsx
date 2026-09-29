@@ -226,12 +226,14 @@ function QuestionField({
 
       {question.kind === 'yes_no' && (
         <div className="flex gap-2">
-          {['yes', 'no'].map((opt) => (
+          {(['yes', 'no'] as const).map((opt) => (
             <Button
               key={opt}
               type="button"
               variant={value?.text === opt ? 'default' : 'outline'}
-              onClick={() => onChange({ text: opt })}
+              // The backend stores yes/no as a number (1/0), not text - text
+              // is kept alongside it only to drive which button looks selected.
+              onClick={() => onChange({ text: opt, number: opt === 'yes' ? 1 : 0 })}
             >
               {t(`publicPoll.${opt}`)}
             </Button>
