@@ -6,6 +6,7 @@ import (
 
 	"guarantee-management-system/internal/shared/errors"
 	"guarantee-management-system/internal/shared/sms"
+	"guarantee-management-system/internal/shared/validator"
 
 	"gorm.io/gorm"
 )
@@ -39,6 +40,9 @@ func (s *PartRequestService) resolveGuarantee(code string) (*uint, string, error
 	code = strings.TrimSpace(code)
 	if code == "" {
 		return nil, "", nil
+	}
+	if !validator.IsValidGuaranteeCode(code) {
+		return nil, "", errors.NewAppError(errors.ErrValidation, validator.GuaranteeCodeMessage, 400)
 	}
 
 	var g struct {

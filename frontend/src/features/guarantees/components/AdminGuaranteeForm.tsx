@@ -1,3 +1,4 @@
+import { GuaranteeCodeInput } from '@/components/common/GuaranteeCodeInput'
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -26,6 +27,7 @@ import { Customer } from '@/features/customers/types'
 import { Loader2, Upload, X, FileText, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useDebounce } from '@/hooks/useDebounce'
+import { isValidGuaranteeCode } from '@/lib/guaranteeCode'
 
 // Define the schema with status as required
 const adminGuaranteeSchema = z.object({
@@ -38,10 +40,12 @@ const adminGuaranteeSchema = z.object({
   customer_city: z.string().optional(),
   customer_address: z.string().optional(),
 
-  // Guarantee - all required
-  guarantee_code: z.string().min(3, 'Guarantee code is required').max(50),
-  purchase_date: z.string().min(1, 'Purchase date is required'),
-  expiry_date: z.string().min(1, 'Expiry date is required'),
+  // Only the code is required here (plus the customer's name and phone).
+  // Dates default on the server: purchase to today, expiry from the product.
+  guarantee_code: z.string().min(3, 'Guarantee code is required').max(50)
+    .refine(isValidGuaranteeCode, 'Only English letters and numbers are allowed'),
+  purchase_date: z.string().optional(),
+  expiry_date: z.string().optional(),
   invoice_image: z.string().optional(),
   guarantee_card_image: z.string().optional(),
   notes: z.string().optional(),
@@ -283,8 +287,8 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
     // Build the submit data
     const submitData: any = {
       guarantee_code: data.guarantee_code,
-      purchase_date: data.purchase_date,
-      expiry_date: data.expiry_date,
+      purchase_date: data.purchase_date || undefined,
+      expiry_date: data.expiry_date || undefined,
       invoice_image: data.invoice_image || undefined,
       guarantee_card_image: data.guarantee_card_image || undefined,
       notes: data.notes || undefined,
@@ -296,7 +300,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
       submitData.customer_id = Number(data.customer_id)
     } else {
       // New customer - validate required fields
-      if (!data.customer_full_name || !data.customer_phone || !data.customer_national_id) {
+      if (!data.customer_full_name || !data.customer_phone) {
         form.setError('customer_full_name', {
           type: 'manual',
           message: t('guarantees.adminForm.newCustomerRequired')
@@ -305,7 +309,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
       }
       submitData.customer_full_name = data.customer_full_name
       submitData.customer_phone = data.customer_phone
-      submitData.customer_national_id = data.customer_national_id
+      submitData.customer_national_id = data.customer_national_id || undefined
       submitData.customer_province = data.customer_province
       submitData.customer_city = data.customer_city
       submitData.customer_address = data.customer_address
@@ -422,7 +426,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       name="customer_national_id"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('customers.form.nationalId')} *</FormLabel>
+                          <FormLabel>{t('customers.form.nationalId')}</FormLabel>
                           <FormControl>
                             <Input placeholder={t('customers.form.nationalIdPlaceholder')} {...field} />
                           </FormControl>
@@ -492,12 +496,10 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                       <FormLabel>{t('guarantees.adminForm.codeLabel')} *</FormLabel>
                       <FormControl>
                         <div className="space-y-2">
-                          <Input
+                          <GuaranteeCodeInput
                             placeholder={t('guarantees.adminForm.codePlaceholder')}
                             {...field}
-                            onChange={(e) => {
-                              field.onChange(e.target.value.toUpperCase())
-                            }}
+                            onChange={(v) => field.onChange(v.toUpperCase())}
                           />
                           {isLookupLoading && (
                             <p className="text-xs text-muted-foreground flex items-center gap-2">
@@ -561,7 +563,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                     name="purchase_date"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>{t('guarantees.table.purchaseDate')} *</FormLabel>
+                        <FormLabel>{t('guarantees.table.purchaseDate')}</FormLabel>
                         <FormControl>
                           <DatePicker
                             value={field.value}
@@ -580,7 +582,7 @@ export function AdminGuaranteeForm({ open, onOpenChange, onSubmit, isLoading }: 
                     name="expiry_date"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>{t('guarantees.table.expiryDate')} *</FormLabel>
+                        <FormLabel>{t('guarantees.table.expiryDate')}</FormLabel>
                         <FormControl>
                           <DatePicker
                             value={field.value}

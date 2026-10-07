@@ -138,13 +138,8 @@ func (s *RepairComponentService) Delete(id uint) error {
 		return errors.NewAppError(errors.ErrInternalServer, "Failed to find component", 500)
 	}
 
-	// Drop items that belonged to repairs which have since been deleted, so
-	// they no longer pin this row. Only items owned by still-active repairs
-	// should block deletion.
-	if err := s.repo.DeleteOrphanedItems(id); err != nil {
-		return errors.NewAppError(errors.ErrInternalServer, "Failed to clean up orphaned items", 500)
-	}
-
+	// Only lines of repairs that still exist block deletion; a deleted repair's
+	// lines are kept so it can be restored.
 	count, err := s.repo.CountItemsUsing(id)
 	if err != nil {
 		return errors.NewAppError(errors.ErrInternalServer, "Failed to check component usage", 500)
@@ -299,13 +294,8 @@ func (s *RepairServiceService) Delete(id uint) error {
 		return errors.NewAppError(errors.ErrInternalServer, "Failed to find service", 500)
 	}
 
-	// Drop items that belonged to repairs which have since been deleted, so
-	// they no longer pin this row. Only items owned by still-active repairs
-	// should block deletion.
-	if err := s.repo.DeleteOrphanedItems(id); err != nil {
-		return errors.NewAppError(errors.ErrInternalServer, "Failed to clean up orphaned items", 500)
-	}
-
+	// Only lines of repairs that still exist block deletion; a deleted repair's
+	// lines are kept so it can be restored.
 	count, err := s.repo.CountItemsUsing(id)
 	if err != nil {
 		return errors.NewAppError(errors.ErrInternalServer, "Failed to check service usage", 500)

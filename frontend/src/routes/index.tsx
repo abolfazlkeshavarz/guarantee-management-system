@@ -16,6 +16,7 @@ import { SmsTemplatesPage } from '@/features/smsTemplates/pages/SmsTemplatesPage
 import { FinancePage } from '@/features/finance/pages/FinancePage'
 import { PipelinePage } from '@/features/pipeline/pages/PipelinePage'
 import { PollsPage } from '@/features/polls/pages/PollsPage'
+import { TrashPage } from '@/features/trash/pages/TrashPage'
 import { PollDetailPage } from '@/features/polls/pages/PollDetailPage'
 import { PublicPollPage } from '@/features/polls/pages/PublicPollPage'
 // Pages
@@ -86,6 +87,7 @@ export function AppRoutes() {
         <Route path="finance" element={<FinancePage />} />
         <Route path="polls" element={<PollsPage />} />
         <Route path="polls/:id" element={<PollDetailPage />} />
+        <Route path="trash" element={<TrashPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="sms-patterns" element={<SmsTemplatesPage />} />
         <Route path="audit-log" element={<AuditLogPage />} />

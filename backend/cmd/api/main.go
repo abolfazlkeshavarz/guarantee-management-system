@@ -28,6 +28,7 @@ import (
 	"guarantee-management-system/internal/modules/repairs"
 	"guarantee-management-system/internal/modules/settings"
 	"guarantee-management-system/internal/modules/smstemplates"
+	"guarantee-management-system/internal/modules/trash"
 	"guarantee-management-system/internal/modules/technicians"
 	"guarantee-management-system/internal/shared/sms"
 	"guarantee-management-system/internal/shared/storage"
@@ -170,6 +171,10 @@ func main() {
 		// sends, so the resolver is installed by the time a notification fires.
 		smsTemplatesModule := smstemplates.NewModule(database.GetDB())
 		smsTemplatesModule.RegisterRoutes(v1)
+
+		// Recycle bin: everything soft-deleted anywhere, with restore.
+		trashModule := trash.NewModule(database.GetDB())
+		trashModule.RegisterRoutes(v1)
 
 		// Global display settings (language/calendar) -- admin writes, everyone reads
 		settingsModule := settings.NewSettingsModule(database.GetDB())

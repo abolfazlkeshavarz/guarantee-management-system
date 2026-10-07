@@ -20,9 +20,11 @@ import {
   Wallet,
   Workflow,
   MessageSquareQuote,
+  ArchiveRestore,
   X,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/contexts/AuthContext'
+import { usePermissions } from '@/features/auth/hooks/usePermissions'
 
 const topNav = [
   { key: 'dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -46,6 +48,8 @@ const bottomNav = [
   { key: 'polls', href: '/polls', icon: MessageSquareQuote },
   { key: 'smsPatterns', href: '/sms-patterns', icon: MessageSquare },
   { key: 'auditLog', href: '/audit-log', icon: ScrollText },
+  // Restoring undoes a deletion, so it is a full admin's page, like deleting.
+  { key: 'trash', href: '/trash', icon: ArchiveRestore, adminOnly: true },
   { key: 'settings', href: '/settings', icon: Settings },
 ]
 
@@ -58,6 +62,7 @@ interface SidebarProps {
 export function Sidebar({ open = false, onNavigate }: SidebarProps) {
   const location = useLocation()
   const { logout } = useAuth()
+  const { canDelete } = usePermissions()
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'fa'
 
@@ -114,7 +119,7 @@ export function Sidebar({ open = false, onNavigate }: SidebarProps) {
         </div>
         {catalogNav.map(renderLink)}
 
-        {bottomNav.map(renderLink)}
+        {bottomNav.filter((item) => !('adminOnly' in item && item.adminOnly) || canDelete).map(renderLink)}
       </nav>
       <div className="p-4 border-t border-gray-800">
         <button

@@ -6,6 +6,7 @@ import (
 
 	"guarantee-management-system/internal/shared/errors"
 	"guarantee-management-system/internal/shared/responses"
+	"guarantee-management-system/internal/shared/validator"
 
 	"github.com/gin-gonic/gin"
 )
@@ -67,9 +68,13 @@ func (h *ProductHandler) List(c *gin.Context) {
 }
 
 func (h *ProductHandler) LookupByCode(c *gin.Context) {
-	code := c.Query("code")
+	code := validator.NormalizeGuaranteeCode(c.Query("code"))
 	if code == "" {
 		responses.Error(c, http.StatusBadRequest, "code query param is required")
+		return
+	}
+	if !validator.IsValidGuaranteeCode(code) {
+		responses.Error(c, http.StatusBadRequest, validator.GuaranteeCodeMessage)
 		return
 	}
 	product, err := h.service.LookupByCode(code)

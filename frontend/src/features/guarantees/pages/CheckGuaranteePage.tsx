@@ -1,9 +1,9 @@
+import { GuaranteeCodeInput } from '@/components/common/GuaranteeCodeInput'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { publicGuaranteeService } from '../api/publicGuarantee'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Card,
   CardContent,
@@ -86,12 +86,13 @@ export function CheckGuaranteePage() {
           </CardHeader>
           <CardContent className="p-6">
             <form onSubmit={handleSearch} className="flex gap-2">
-              <Input
-                placeholder={t('public.checkStatus.placeholder')}
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                className="flex-1"
-              />
+              <div className="flex-1">
+                <GuaranteeCodeInput
+                  placeholder={t('public.checkStatus.placeholder')}
+                  value={code}
+                  onChange={(v) => setCode(v.toUpperCase())}
+                />
+              </div>
               <Button type="submit" disabled={isLoading}>
                 {isLoading ? t('public.checkStatus.checking') : t('public.checkStatus.check')}
               </Button>

@@ -37,8 +37,10 @@ type AdminCreateGuaranteeRequest struct {
 	CustomerCity       string `json:"customer_city"`
 	CustomerAddress    string `json:"customer_address"`
 
+	// Only the code is required here (with the customer's name and phone);
+	// everything else an admin may leave out.
 	GuaranteeCode      string `json:"guarantee_code" binding:"required,min=3,max=50"`
-	PurchaseDate       string `json:"purchase_date" binding:"required"`
+	PurchaseDate       string `json:"purchase_date" binding:"omitempty"`
 	ExpiryDate         string `json:"expiry_date" binding:"omitempty"`
 	InvoiceImage       string `json:"invoice_image"`
 	GuaranteeCardImage string `json:"guarantee_card_image"`
@@ -56,14 +58,33 @@ type CreateGuaranteeRequest struct {
 	Notes              string `json:"notes"`
 }
 
+// UpdateGuaranteeRequest edits a pending guarantee. Fields sent as pointers
+// distinguish "leave it" (absent) from "set it to this" (present, even empty),
+// which is what lets an image or the notes be cleared as well as replaced.
 type UpdateGuaranteeRequest struct {
-	CustomerID         uint   `json:"customer_id" binding:"omitempty"`
-	ProductID          uint   `json:"product_id" binding:"omitempty"`
-	PurchaseDate       string `json:"purchase_date" binding:"omitempty"`
-	ExpiryDate         string `json:"expiry_date" binding:"omitempty"`
-	InvoiceImage       string `json:"invoice_image"`
-	GuaranteeCardImage string `json:"guarantee_card_image"`
-	Notes              string `json:"notes"`
+	CustomerID    uint    `json:"customer_id" binding:"omitempty"`
+	ProductID     uint    `json:"product_id" binding:"omitempty"`
+	GuaranteeCode *string `json:"guarantee_code" binding:"omitempty,min=3,max=50"`
+	PurchaseDate  string  `json:"purchase_date" binding:"omitempty"`
+	ExpiryDate    string  `json:"expiry_date" binding:"omitempty"`
+
+	InvoiceImage       *string `json:"invoice_image"`
+	GuaranteeCardImage *string `json:"guarantee_card_image"`
+	Notes              *string `json:"notes"`
+
+	// The customer's own details. These edit the customer record, so they show
+	// on all of that customer's guarantees.
+	CustomerFullName   *string `json:"customer_full_name" binding:"omitempty,max=100"`
+	CustomerPhone      *string `json:"customer_phone" binding:"omitempty,max=20"`
+	CustomerNationalID *string `json:"customer_national_id" binding:"omitempty,max=20"`
+	CustomerProvince   *string `json:"customer_province" binding:"omitempty,max=50"`
+	CustomerCity       *string `json:"customer_city" binding:"omitempty,max=50"`
+	CustomerAddress    *string `json:"customer_address"`
+}
+
+func (r *UpdateGuaranteeRequest) hasCustomerDetails() bool {
+	return r.CustomerFullName != nil || r.CustomerPhone != nil || r.CustomerNationalID != nil ||
+		r.CustomerProvince != nil || r.CustomerCity != nil || r.CustomerAddress != nil
 }
 
 type ApproveGuaranteeRequest struct {
@@ -114,7 +135,10 @@ type PublicRegisterResponse struct {
 	CustomerName  string `json:"customer_name"`
 	ExpiryDate    string `json:"expiry_date"`
 	Status        string `json:"status"`
-	Message       string `json:"message"`
+	// True when this resubmitted a guarantee that had been rejected, rather
+	// than registering a new one.
+	Reapplied bool   `json:"reapplied"`
+	Message   string `json:"message"`
 }
 
 type GuaranteePeriodOption struct {

@@ -443,12 +443,11 @@ func (s *RepairService) Delete(id uint, force bool) error {
 		return ErrHasShippedParts
 	}
 
-	// The repair itself is soft-deleted, but its component/service line items
-	// have no soft-delete of their own and pin repair_components /
-	// repair_services through RESTRICT foreign keys. GORM's soft delete does
-	// NOT fire the ON DELETE CASCADE on repair_id, so we must remove the items
-	// explicitly -- otherwise they stay orphaned and lock the referenced
-	// component/service rows forever.
+	// The repair is only soft-deleted, and its parts/services stay with it so
+	// that restoring it from the deleted items brings the whole report back.
+	// Nothing else is bothered by them: the queries that list work to do
+	// already skip deleted repairs, and the catalog no longer counts their
+	// lines as "in use" (see CountItemsUsing).
 	if err := s.db.Transaction(func(tx *gorm.DB) error {
 		if len(shippedItemIDs) > 0 {
 			// Forced: the shipment line(s) for this repair's parts are
@@ -458,12 +457,6 @@ func (s *RepairService) Delete(id uint, force bool) error {
 			if err := tx.Exec("DELETE FROM part_shipment_items WHERE id IN ?", shippedItemIDs).Error; err != nil {
 				return err
 			}
-		}
-		if err := tx.Where("repair_id = ?", id).Delete(&RepairComponentItem{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Where("repair_id = ?", id).Delete(&RepairServiceItem{}).Error; err != nil {
-			return err
 		}
 		return tx.Delete(&Repair{}, id).Error // soft delete of the repair row
 	}); err != nil {

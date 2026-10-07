@@ -65,23 +65,16 @@ func (r *RepairComponentRepository) Delete(id uint) error {
 	return r.db.Delete(&RepairComponent{}, id).Error
 }
 
+// CountItemsUsing counts the lines of repairs that still exist. Lines that
+// belong to a deleted repair are left in place (so the repair can be restored)
+// and must not stop the catalog entry from being removed.
 func (r *RepairComponentRepository) CountItemsUsing(componentID uint) (int64, error) {
 	var count int64
-	err := r.db.Table("repair_component_items").Where("repair_component_id = ?", componentID).Count(&count).Error
+	err := r.db.Table("repair_component_items rci").
+		Joins("JOIN repairs rep ON rep.id = rci.repair_id AND rep.deleted_at IS NULL").
+		Where("rci.repair_component_id = ?", componentID).
+		Count(&count).Error
 	return count, err
-}
-
-// DeleteOrphanedItems hard-deletes the line items whose parent repair no longer
-// exists or has been soft-deleted. Those orphans would otherwise keep this row
-// locked behind the RESTRICT FK on repair_component_items.repair_component_id.
-func (r *RepairComponentRepository) DeleteOrphanedItems(componentID uint) error {
-	return r.db.Exec(
-		`DELETE FROM repair_component_items rci
-		 WHERE rci.repair_component_id = ?
-		   AND NOT EXISTS (
-			   SELECT 1 FROM repairs rep
-			   WHERE rep.id = rci.repair_id AND rep.deleted_at IS NULL
-		   )`, componentID).Error
 }
 
 type RepairServiceRepository struct {
@@ -147,21 +140,13 @@ func (r *RepairServiceRepository) Delete(id uint) error {
 	return r.db.Delete(&RepairServiceCatalog{}, id).Error
 }
 
+// CountItemsUsing counts the lines of repairs that still exist; see the
+// component version for why deleted repairs are ignored.
 func (r *RepairServiceRepository) CountItemsUsing(serviceID uint) (int64, error) {
 	var count int64
-	err := r.db.Table("repair_service_items").Where("repair_service_id = ?", serviceID).Count(&count).Error
+	err := r.db.Table("repair_service_items rsi").
+		Joins("JOIN repairs rep ON rep.id = rsi.repair_id AND rep.deleted_at IS NULL").
+		Where("rsi.repair_service_id = ?", serviceID).
+		Count(&count).Error
 	return count, err
-}
-
-// DeleteOrphanedItems hard-deletes the line items whose parent repair no longer
-// exists or has been soft-deleted. Those orphans would otherwise keep this row
-// locked behind the RESTRICT FK on repair_service_items.repair_service_id.
-func (r *RepairServiceRepository) DeleteOrphanedItems(serviceID uint) error {
-	return r.db.Exec(
-		`DELETE FROM repair_service_items rsi
-		 WHERE rsi.repair_service_id = ?
-		   AND NOT EXISTS (
-			   SELECT 1 FROM repairs rep
-			   WHERE rep.id = rsi.repair_id AND rep.deleted_at IS NULL
-		   )`, serviceID).Error
 }

@@ -4,12 +4,15 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 
 	"guarantee-management-system/internal/shared/errors"
 	"guarantee-management-system/internal/shared/sms"
+	"guarantee-management-system/internal/shared/validator"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type GuaranteeService struct {
@@ -188,12 +191,65 @@ func (s *GuaranteeService) Update(id uint, req *UpdateGuaranteeRequest) (*Guaran
 		}
 		guarantee.ProductID = req.ProductID
 	}
+
+	// The code decides the product, so changing it re-resolves the product the
+	// same way registration does - the two can never disagree.
+	codeChanged := false
+	if req.GuaranteeCode != nil {
+		code := validator.NormalizeGuaranteeCode(*req.GuaranteeCode)
+		if !validator.IsValidGuaranteeCode(code) {
+			return nil, errors.NewAppError(errors.ErrValidation, validator.GuaranteeCodeMessage, 400)
+		}
+		if code != guarantee.Code {
+			var taken int64
+			if err := s.db.Model(&Guarantee{}).Where("code = ? AND id <> ?", code, id).Count(&taken).Error; err != nil {
+				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check guarantee code", 500)
+			}
+			if taken > 0 {
+				return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Guarantee code already registered", 409)
+			}
+			var product struct{ ID uint }
+			err := s.db.Table("products").
+				Select("id").
+				Where("code_pattern IS NOT NULL AND code_pattern <> '' AND ? ~ code_pattern", code).
+				Where("is_active = ? AND deleted_at IS NULL", true).
+				First(&product).Error
+			if err == gorm.ErrRecordNotFound {
+				return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code does not match any known product", 400)
+			} else if err != nil {
+				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to resolve product", 500)
+			}
+			guarantee.Code = code
+			guarantee.ProductID = product.ID
+			codeChanged = true
+		}
+	}
+
+	purchaseChanged := false
 	if req.PurchaseDate != "" {
 		purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
 		if err != nil {
 			return nil, ErrInvalidDate
 		}
+		if !purchaseDate.Equal(guarantee.PurchaseDate) {
+			purchaseChanged = true
+		}
 		guarantee.PurchaseDate = purchaseDate
+	}
+
+	// A new purchase date or product moves the cover period with it, from the
+	// product's own length. An expiry date sent explicitly still wins below.
+	if codeChanged || purchaseChanged || req.ProductID > 0 {
+		var months struct {
+			DefaultGuaranteeMonths int
+			GoldenGuaranteeMonths  int
+		}
+		if err := s.db.Table("products").
+			Select("default_guarantee_months, golden_guarantee_months").
+			Where("id = ?", guarantee.ProductID).Scan(&months).Error; err != nil {
+			return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load product", 500)
+		}
+		applyPeriods(guarantee, guarantee.PurchaseDate, months.DefaultGuaranteeMonths, months.GoldenGuaranteeMonths)
 	}
 	if req.ExpiryDate != "" {
 		expiryDate, err := time.Parse("2006-01-02", req.ExpiryDate)
@@ -205,16 +261,30 @@ func (s *GuaranteeService) Update(id uint, req *UpdateGuaranteeRequest) (*Guaran
 	if err := s.validateDates(guarantee.PurchaseDate, guarantee.ExpiryDate); err != nil {
 		return nil, err
 	}
-	if req.InvoiceImage != "" {
-		guarantee.InvoiceImage = req.InvoiceImage
+
+	// Pointers, so an empty string clears a field and an absent one leaves it.
+	if req.InvoiceImage != nil {
+		guarantee.InvoiceImage = *req.InvoiceImage
 	}
-	if req.GuaranteeCardImage != "" {
-		guarantee.GuaranteeCardImage = req.GuaranteeCardImage
+	if req.GuaranteeCardImage != nil {
+		guarantee.GuaranteeCardImage = *req.GuaranteeCardImage
 	}
-	if req.Notes != "" {
-		guarantee.Notes = req.Notes
+	if req.Notes != nil {
+		guarantee.Notes = *req.Notes
 	}
-	if err := s.repo.Update(guarantee); err != nil {
+
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		if req.hasCustomerDetails() {
+			if err := updateCustomerDetails(tx, guarantee.CustomerID, req); err != nil {
+				return err
+			}
+		}
+		return tx.Omit(clause.Associations).Save(guarantee).Error
+	})
+	if err != nil {
+		if appErr, ok := err.(*errors.AppError); ok {
+			return nil, appErr
+		}
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to update guarantee", 500)
 	}
 	updated, err := s.repo.FindByID(id)
@@ -222,6 +292,102 @@ func (s *GuaranteeService) Update(id uint, req *UpdateGuaranteeRequest) (*Guaran
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to load updated guarantee", 500)
 	}
 	return s.mapToDTO(updated), nil
+}
+
+// updateCustomerDetails applies the customer fields of an edit to the
+// customer row, under the same uniqueness rules the customers page enforces.
+// It edits the customer record itself, so the change shows on every guarantee
+// that customer holds.
+func updateCustomerDetails(tx *gorm.DB, customerID uint, req *UpdateGuaranteeRequest) error {
+	var cur struct {
+		FullName   string
+		Phone      string
+		NationalID string
+	}
+	if err := tx.Table("customers").
+		Select("full_name, phone, national_id").
+		Where("id = ? AND deleted_at IS NULL", customerID).
+		Take(&cur).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ErrCustomerNotFound
+		}
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to load customer", 500)
+	}
+
+	updates := map[string]interface{}{}
+
+	// required trims a supplied value and refuses to blank it out.
+	required := func(v *string, label string) (string, bool, error) {
+		if v == nil {
+			return "", false, nil
+		}
+		t := strings.TrimSpace(*v)
+		if t == "" {
+			return "", false, errors.NewAppError(errors.ErrValidation, label+" cannot be empty", 400)
+		}
+		return t, true, nil
+	}
+
+	if v, ok, err := required(req.CustomerFullName, "Customer name"); err != nil {
+		return err
+	} else if ok && v != cur.FullName {
+		updates["full_name"] = v
+	}
+
+	if v, ok, err := required(req.CustomerPhone, "Phone number"); err != nil {
+		return err
+	} else if ok && v != cur.Phone {
+		var clash int64
+		if err := tx.Table("customers").
+			Where("phone = ? AND id <> ? AND deleted_at IS NULL", v, customerID).
+			Count(&clash).Error; err != nil {
+			return errors.NewAppError(errors.ErrInternalServer, "Failed to check phone", 500)
+		}
+		if clash > 0 {
+			return errors.NewAppError(errors.ErrDuplicateEntry, "Phone number already in use", 409)
+		}
+		updates["phone"] = v
+	}
+
+	// The national id may be blank (admins can register without one), so
+	// unlike name and phone it can be set to empty - but only a real id is
+	// checked for clashes.
+	if req.CustomerNationalID != nil {
+		v := strings.TrimSpace(*req.CustomerNationalID)
+		if v != cur.NationalID {
+			if v != "" {
+				var clash int64
+				if err := tx.Table("customers").
+					Where("national_id = ? AND id <> ? AND deleted_at IS NULL", v, customerID).
+					Count(&clash).Error; err != nil {
+					return errors.NewAppError(errors.ErrInternalServer, "Failed to check national ID", 500)
+				}
+				if clash > 0 {
+					return errors.NewAppError(errors.ErrDuplicateEntry, "National ID already in use", 409)
+				}
+			}
+			updates["national_id"] = v
+		}
+	}
+
+	if req.CustomerProvince != nil {
+		updates["province"] = strings.TrimSpace(*req.CustomerProvince)
+	}
+	if req.CustomerCity != nil {
+		updates["city"] = strings.TrimSpace(*req.CustomerCity)
+	}
+	if req.CustomerAddress != nil {
+		updates["address"] = strings.TrimSpace(*req.CustomerAddress)
+	}
+
+	if len(updates) == 0 {
+		return nil
+	}
+	updates["updated_at"] = time.Now()
+	if err := tx.Table("customers").Where("id = ?", customerID).Updates(updates).Error; err != nil {
+		return errors.NewAppError(errors.ErrInternalServer, "Failed to update customer", 500)
+	}
+	return nil
 }
 
 func (s *GuaranteeService) Approve(id uint, req *ApproveGuaranteeRequest, adminID uint) (*GuaranteeDTO, error) {
@@ -503,6 +669,11 @@ func (s *GuaranteeService) mapToDTO(guarantee *Guarantee) *GuaranteeDTO {
 // ─── Public registration ─────────────────────────────────────────────
 
 func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRegisterResponse, error) {
+	req.GuaranteeCode = validator.NormalizeGuaranteeCode(req.GuaranteeCode)
+	if !validator.IsValidGuaranteeCode(req.GuaranteeCode) {
+		return nil, errors.NewAppError(errors.ErrValidation, validator.GuaranteeCodeMessage, 400)
+	}
+
 	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -512,8 +683,13 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 
 	var existingCustomer Customer
 	var customerID uint
+	// The national id is the customer's identity, so it alone decides whether
+	// this is someone we already know. Matching on the phone as well used to
+	// attach a new person to whoever last used the same number, and gave the
+	// wrong customer the guarantee and its SMS.
 	err := tx.Table("customers").
-		Where("(national_id = ? OR phone = ?) AND deleted_at IS NULL", req.NationalID, req.Phone).
+		Where("national_id = ? AND deleted_at IS NULL", req.NationalID).
+		Order("id ASC").
 		First(&existingCustomer).Error
 
 	if err == nil {
@@ -572,8 +748,17 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 	var existingGuarantee Guarantee
 	err = tx.Where("code = ?", req.GuaranteeCode).First(&existingGuarantee).Error
 	if err == nil {
-		tx.Rollback()
-		return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Guarantee code already registered", 409)
+		// A code is taken while its guarantee stands. The one exception is a
+		// rejected application from the same customer: that is someone trying
+		// again after fixing what the office objected to, and it must not hit
+		// the duplicate wall. Anyone else - a different national id, or a
+		// guarantee in any other state - still gets the conflict.
+		if existingGuarantee.Status != StatusRejected || existingGuarantee.CustomerID != customerID {
+			tx.Rollback()
+			return nil, errors.NewAppError(errors.ErrDuplicateEntry, "Guarantee code already registered", 409)
+		}
+		return s.reapplyRejected(tx, &existingGuarantee, req, purchaseDate,
+			product.ID, product.DefaultGuaranteeMonths, product.GoldenGuaranteeMonths)
 	} else if err != gorm.ErrRecordNotFound {
 		tx.Rollback()
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to check guarantee code", 500)
@@ -612,6 +797,67 @@ func (s *GuaranteeService) PublicRegister(req *PublicRegisterRequest) (*PublicRe
 		ExpiryDate:    guarantee.ExpiryDate.Format("2006-01-02"),
 		Status:        StatusPending,
 		Message:       "Guarantee registered successfully. Waiting for admin approval.",
+	}, nil
+}
+
+// reapplyRejected puts a rejected guarantee back in the review queue with the
+// details the customer has just submitted. The same row is reused rather than
+// a new one inserted: the code is unique among live guarantees, and the row's
+// history stays attached to the one application the customer is pursuing.
+//
+// It commits (or rolls back) tx itself, as PublicRegister's own tail would.
+func (s *GuaranteeService) reapplyRejected(
+	tx *gorm.DB, g *Guarantee, req *PublicRegisterRequest, purchaseDate time.Time,
+	productID uint, defaultMonths, goldenMonths int,
+) (*PublicRegisterResponse, error) {
+	applyPeriods(g, purchaseDate, defaultMonths, goldenMonths)
+	if err := s.validateDates(purchaseDate, g.ExpiryDate); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// New documents replace the old ones; leaving a field empty keeps what was
+	// uploaded before rather than wiping it.
+	invoice, card := g.InvoiceImage, g.GuaranteeCardImage
+	if req.InvoiceImage != "" {
+		invoice = req.InvoiceImage
+	}
+	if req.GuaranteeCardImage != "" {
+		card = req.GuaranteeCardImage
+	}
+
+	// The reviewer's rejection reason lives in notes; the new application
+	// brings its own.
+	updates := map[string]interface{}{
+		"product_id":           productID,
+		"purchase_date":        g.PurchaseDate,
+		"expiry_date":          g.ExpiryDate,
+		"golden_start_date":    g.GoldenStartDate,
+		"golden_expiry_date":   g.GoldenExpiryDate,
+		"status":               StatusPending,
+		"invoice_image":        invoice,
+		"guarantee_card_image": card,
+		"notes":                req.Notes,
+		"approved_by":          nil,
+		"approved_at":          nil,
+	}
+	if err := tx.Model(&Guarantee{}).Where("id = ?", g.ID).Updates(updates).Error; err != nil {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to resubmit the application", 500)
+	}
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to commit transaction", 500)
+	}
+
+	return &PublicRegisterResponse{
+		GuaranteeID:   g.ID,
+		GuaranteeCode: g.Code,
+		CustomerID:    g.CustomerID,
+		CustomerName:  req.FullName,
+		ExpiryDate:    g.ExpiryDate.Format("2006-01-02"),
+		Status:        StatusPending,
+		Reapplied:     true,
+		Message:       "Your application was submitted again. Waiting for admin approval.",
 	}, nil
 }
 
@@ -667,14 +913,26 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 		}
 		customerID = *req.CustomerID
 	} else {
-		if req.CustomerFullName == "" || req.CustomerPhone == "" || req.CustomerNationalID == "" {
+		req.CustomerFullName = strings.TrimSpace(req.CustomerFullName)
+		req.CustomerPhone = strings.TrimSpace(req.CustomerPhone)
+		req.CustomerNationalID = strings.TrimSpace(req.CustomerNationalID)
+		// An admin may register someone from just a name and a phone number;
+		// the national id and address can be filled in later.
+		if req.CustomerFullName == "" || req.CustomerPhone == "" {
 			tx.Rollback()
-			return nil, errors.NewAppError(errors.ErrValidation, "Customer information is required when not selecting existing customer", 400)
+			return nil, errors.NewAppError(errors.ErrValidation, "Customer name and phone are required when not selecting an existing customer", 400)
+		}
+		// Without a national id the phone is all there is to recognise a
+		// returning customer by. Two customers who both left the id blank must
+		// never be treated as the same person, so an empty id is never matched.
+		existingQuery := tx.Table("customers").Where("deleted_at IS NULL").Order("id ASC")
+		if req.CustomerNationalID != "" {
+			existingQuery = existingQuery.Where("(national_id = ? OR phone = ?)", req.CustomerNationalID, req.CustomerPhone)
+		} else {
+			existingQuery = existingQuery.Where("phone = ?", req.CustomerPhone)
 		}
 		var existingCustomer Customer
-		err := tx.Table("customers").
-			Where("(national_id = ? OR phone = ?) AND deleted_at IS NULL", req.CustomerNationalID, req.CustomerPhone).
-			First(&existingCustomer).Error
+		err := existingQuery.First(&existingCustomer).Error
 		if err == nil {
 			customerID = existingCustomer.ID
 		} else if err == gorm.ErrRecordNotFound {
@@ -691,7 +949,9 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to create customer", 500)
 			}
 			var newCustomer Customer
-			if err := tx.Table("customers").Where("national_id = ? AND deleted_at IS NULL", req.CustomerNationalID).Order("id DESC").First(&newCustomer).Error; err != nil {
+			if err := tx.Table("customers").
+				Where("phone = ? AND national_id = ? AND deleted_at IS NULL", req.CustomerPhone, req.CustomerNationalID).
+				Order("id DESC").First(&newCustomer).Error; err != nil {
 				tx.Rollback()
 				return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to retrieve created customer", 500)
 			}
@@ -702,9 +962,14 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 		}
 	}
 
+	req.GuaranteeCode = validator.NormalizeGuaranteeCode(req.GuaranteeCode)
 	if req.GuaranteeCode == "" {
 		tx.Rollback()
 		return nil, errors.NewAppError(errors.ErrValidation, "Guarantee code is required to resolve product", 400)
+	}
+	if !validator.IsValidGuaranteeCode(req.GuaranteeCode) {
+		tx.Rollback()
+		return nil, errors.NewAppError(errors.ErrValidation, validator.GuaranteeCodeMessage, 400)
 	}
 
 	var product struct {
@@ -726,10 +991,16 @@ func (s *GuaranteeService) CreateByAdmin(req *AdminCreateGuaranteeRequest, admin
 		return nil, errors.NewAppError(errors.ErrInternalServer, "Failed to resolve product", 500)
 	}
 
-	purchaseDate, err := time.Parse("2006-01-02", req.PurchaseDate)
-	if err != nil {
-		tx.Rollback()
-		return nil, ErrInvalidDate
+	// The purchase date is optional for an admin; without one the guarantee
+	// starts today.
+	purchaseDate := time.Now().Truncate(24 * time.Hour)
+	if req.PurchaseDate != "" {
+		parsed, err := time.Parse("2006-01-02", req.PurchaseDate)
+		if err != nil {
+			tx.Rollback()
+			return nil, ErrInvalidDate
+		}
+		purchaseDate = parsed
 	}
 
 	code := req.GuaranteeCode

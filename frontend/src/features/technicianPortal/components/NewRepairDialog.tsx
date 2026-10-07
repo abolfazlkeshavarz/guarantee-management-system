@@ -1,3 +1,4 @@
+import { GuaranteeCodeInput } from '@/components/common/GuaranteeCodeInput'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -13,7 +14,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Form, FormField, FormItem, FormControl, FormMessage } from '@/components/ui/form'
@@ -190,13 +190,14 @@ export function NewRepairDialog() {
         <div className="space-y-2">
           <Label className={isRTL ? 'text-right block' : ''}>{t('technicianPortal.guaranteeCodeLabel')}</Label>
           <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <Input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder={t('technicianPortal.guaranteeCodePlaceholder')}
-              disabled={!!guarantee}
-              className={isRTL ? 'text-right' : ''}
-            />
+            <div className="flex-1">
+              <GuaranteeCodeInput
+                value={code}
+                onChange={(v) => setCode(v.toUpperCase())}
+                placeholder={t('technicianPortal.guaranteeCodePlaceholder')}
+                disabled={!!guarantee}
+              />
+            </div>
             {guarantee ? (
               <Button type="button" variant="outline" onClick={() => { setGuarantee(null); setCheckError(null); form.setValue('guarantee_id', 0) }}>
                 {t('technicianPortal.change')}

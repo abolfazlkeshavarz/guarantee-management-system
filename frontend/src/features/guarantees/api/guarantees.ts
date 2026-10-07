@@ -18,6 +18,22 @@ export interface AdminCreateGuaranteeData {
   status?: 'Pending' | 'Approved'
 }
 
+/** What the edit dialog sends. Absent leaves a field; present (even empty) sets it. */
+export interface UpdateGuaranteeData {
+  guarantee_code?: string
+  purchase_date?: string
+  expiry_date?: string
+  notes?: string
+  invoice_image?: string
+  guarantee_card_image?: string
+  customer_full_name?: string
+  customer_phone?: string
+  customer_national_id?: string
+  customer_province?: string
+  customer_city?: string
+  customer_address?: string
+}
+
 export const guaranteeService = {
   async list(
     page: number = 1,
@@ -65,7 +81,7 @@ export const guaranteeService = {
     return response.data.data
   },
 
-  async update(id: number, data: Partial<GuaranteeFormData>): Promise<Guarantee> {
+  async update(id: number, data: UpdateGuaranteeData): Promise<Guarantee> {
     const response = await api.put(`/guarantees/${id}`, data)
     return response.data.data
   },

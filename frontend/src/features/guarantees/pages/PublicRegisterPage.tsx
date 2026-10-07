@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { GuaranteeCodeInput } from '@/components/common/GuaranteeCodeInput'
+import { isValidGuaranteeCode } from '@/lib/guaranteeCode'
 import { publicGuaranteeService } from '../api/publicGuarantee'
 import { useGuaranteePeriodLabel } from '../hooks/useGuaranteePeriodLabel'
 import { FormattedDate } from '@/components/common/FormattedDate'
@@ -135,7 +137,8 @@ export function PublicRegisterPage() {
         guarantee_code: z
           .string()
           .min(3, t('validation.required', { defaultValue: 'This field is required' }))
-          .max(50),
+          .max(50)
+          .refine(isValidGuaranteeCode, t('guaranteeCode.englishOnly')),
         purchase_date: z.string().min(1, t('validation.required', { defaultValue: 'This field is required' })),
         guarantee_period: z.number().min(1, t('validation.selectPeriod', { defaultValue: 'Select a guarantee period' })),
         invoice_image: z.string().optional(),
@@ -355,8 +358,16 @@ export function PublicRegisterPage() {
                 <CheckCircle2 className="h-10 w-10 text-green-600" />
               </div>
             </div>
-            <CardTitle className="text-2xl">{t('public.register.successTitle')}</CardTitle>
-            <CardDescription>{t('public.register.successDesc')}</CardDescription>
+            <CardTitle className="text-2xl">
+              {registrationResult.data?.reapplied
+                ? t('public.register.reappliedTitle')
+                : t('public.register.successTitle')}
+            </CardTitle>
+            <CardDescription>
+              {registrationResult.data?.reapplied
+                ? t('public.register.reappliedDesc')
+                : t('public.register.successDesc')}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-muted p-4 rounded-lg space-y-2">
@@ -586,13 +597,12 @@ export function PublicRegisterPage() {
                           <FormLabel>{t('public.register.guaranteeCode')} *</FormLabel>
                           <FormControl>
                             <div className="space-y-2">
-                              <Input
-                                dir="ltr"
+                              <GuaranteeCodeInput
                                 placeholder={t('public.register.codePlaceholder', {
                                   defaultValue: 'Enter the code printed on your product',
                                 })}
                                 {...field}
-                                onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                                onChange={(v) => field.onChange(v.toUpperCase())}
                               />
                               {isLookupLoading && (
                                 <p className="text-xs text-muted-foreground flex items-center gap-2">

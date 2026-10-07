@@ -90,7 +90,9 @@
       "notesPlaceholder": "Anything else we should know about the product",
       "pendingNotice": "An administrator reviews every registration. Check your details before you submit.",
       "successNotice": "An administrator will review your guarantee. Keep your guarantee code — you can check the status with it at any time.",
-      "registerFailed": "Could not register the guarantee"
+      "registerFailed": "Could not register the guarantee",
+      "reappliedTitle": "Application resubmitted",
+      "reappliedDesc": "Your earlier application was rejected. This new one is now waiting for review."
     }
   },
   "validation": {
@@ -159,7 +161,7 @@
       "newCustomer": "New Customer",
       "selectCustomer": "Select Customer",
       "selectCustomerPlaceholder": "Select a customer",
-      "newCustomerRequired": "Full name, phone and national ID are required to register a new customer.",
+      "newCustomerRequired": "Full name and phone are required to register a new customer.",
       "fullNamePlaceholder": "Ali Rezaei",
       "addressPlaceholder": "Street, building, unit…",
       "guaranteeInfo": "Guarantee Information",
@@ -178,6 +180,34 @@
       "notesPlaceholder": "Additional notes about this guarantee",
       "creating": "Creating…",
       "submit": "Create Guarantee"
+    },
+    "edit": {
+      "title": "Edit guarantee",
+      "description": "Correct this guarantee while it is still waiting for review.",
+      "sectionGuarantee": "Guarantee",
+      "sectionCustomer": "Customer",
+      "customerNote": "These are the customer's own details. Changing them updates the customer everywhere, including their other guarantees.",
+      "code": "Guarantee code",
+      "product": "Product",
+      "checking": "Checking the code...",
+      "codeNoProduct": "This code does not match any product.",
+      "purchaseDate": "Purchase date",
+      "expiryDate": "Expiry date",
+      "notes": "Notes",
+      "invoice": "Invoice",
+      "card": "Guarantee card",
+      "upload": "Click to upload",
+      "replace": "Replace",
+      "remove": "Remove",
+      "openFile": "Open file",
+      "fullName": "Full name",
+      "phone": "Phone",
+      "nationalId": "National ID",
+      "province": "Province",
+      "city": "City",
+      "address": "Address",
+      "saved": "Guarantee updated",
+      "failed": "Could not update the guarantee"
     }
   },
   "nav": {
@@ -185,7 +215,8 @@
     "smsPatterns": "SMS Patterns",
     "finance": "Finance",
     "pipeline": "Service Pipeline",
-    "polls": "Polls"
+    "polls": "Polls",
+    "trash": "Deleted items"
   },
   "partShipments": {
     "navLabel": "Send Parts",
@@ -610,5 +641,41 @@
   },
   "login": {
     "technicianRegisterCta": "New technician? Apply for an account"
+  },
+  "guaranteeCode": {
+    "englishOnly": "Only English letters and numbers are allowed in a guarantee code."
+  },
+  "trash": {
+    "title": "Deleted items",
+    "subtitle": "Everything deleted in the panel is kept here. Restoring puts it back exactly as it was.",
+    "searchPlaceholder": "Search deleted items...",
+    "emptyAll": "Nothing has been deleted",
+    "emptyKind": "No deleted items of this type",
+    "table": {
+      "item": "Item",
+      "details": "Details",
+      "deletedAt": "Deleted on"
+    },
+    "restore": "Restore",
+    "restoring": "Restoring...",
+    "restored": "Restored",
+    "restoreFailed": "Could not restore this item",
+    "restoreTitle": "Restore this item?",
+    "restoreDesc": "\"{{name}}\" will be put back and appear in its list again.",
+    "kinds": {
+      "guarantees": "Guarantees",
+      "customers": "Customers",
+      "products": "Products",
+      "categories": "Categories",
+      "technicians": "Technicians",
+      "repairs": "Repairs",
+      "part_requests": "Part requests",
+      "part_shipments": "Part shipments",
+      "repair_components": "Catalog parts",
+      "repair_services": "Catalog services",
+      "polls": "Polls",
+      "admins": "Staff accounts"
+    },
+    "entity": "deleted item"
   }
 }

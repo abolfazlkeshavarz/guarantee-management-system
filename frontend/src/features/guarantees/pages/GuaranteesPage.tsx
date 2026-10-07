@@ -16,10 +16,11 @@ import { ApproveDialog } from '../components/ApproveDialog'
 import { RenewDialog } from '../components/RenewDialog'
 import { GuaranteeViewDialog } from '../components/GuaranteeViewDialog'
 import { AdminGuaranteeForm } from '../components/AdminGuaranteeForm'
+import { GuaranteeEditDialog } from '../components/GuaranteeEditDialog'
 import { SetGoldenDialog } from '../components/SetGoldenDialog'
 import { RemoveGoldenDialog } from '../components/RemoveGoldenDialog'
 import { GuaranteeExportDialog } from '../components/GuaranteeExportDialog'
-import { guaranteeService } from '../api/guarantees'
+import { guaranteeService, UpdateGuaranteeData } from '../api/guarantees'
 import { Guarantee, GUARANTEE_STATUSES, SetGoldenData, EXPIRING_WINDOWS } from '../types'
 import { customerService } from '@/features/customers/api/customers'
 import { productService } from '@/features/products/api/products'
@@ -43,6 +44,7 @@ export function GuaranteesPage() {
 
   const [selectedGuarantee, setSelectedGuarantee] = useState<Guarantee | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isApproveOpen, setIsApproveOpen] = useState(false)
   const [isRenewOpen, setIsRenewOpen] = useState(false)
@@ -91,6 +93,18 @@ export function GuaranteesPage() {
     onError: (e: any) => toast.error(e.response?.data?.message || t('toasts.guaranteeCreateFailed')),
   })
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateGuaranteeData }) => guaranteeService.update(id, data),
+    onSuccess: () => {
+      invalidateAll()
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      toast.success(t('guarantees.edit.saved'))
+      setIsEditOpen(false)
+      setSelectedGuarantee(null)
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || t('guarantees.edit.failed')),
+  })
+
   const approveMutation = useMutation({
     mutationFn: ({ id, status, notes }: { id: number; status: 'Approved' | 'Rejected'; notes?: string }) =>
       guaranteeService.approve(id, status, notes),
@@ -135,6 +149,9 @@ export function GuaranteesPage() {
   })
 
   const handleCreate = async (data: any) => { await adminCreateMutation.mutateAsync(data) }
+  const handleUpdate = async (data: UpdateGuaranteeData) => {
+    if (selectedGuarantee) await updateMutation.mutateAsync({ id: selectedGuarantee.id, data }).catch(() => undefined)
+  }
   const handleApprove = async (data: any) => { if (selectedGuarantee) await approveMutation.mutateAsync({ id: selectedGuarantee.id, status: data.status, notes: data.notes }) }
   const handleRenew = async (data: any) => { if (selectedGuarantee) await renewMutation.mutateAsync({ id: selectedGuarantee.id, newExpiryDate: data.new_expiry_date, notes: data.notes }) }
   const handleCancel = async () => { if (selectedGuarantee) await cancelMutation.mutateAsync(selectedGuarantee.id) }
@@ -262,7 +279,7 @@ export function GuaranteesPage() {
       <GuaranteeTable
         guarantees={data?.guarantees || []}
         onView={(g) => { setSelectedGuarantee(g); setIsViewOpen(true) }}
-        onEdit={(g) => { setSelectedGuarantee(g); setIsFormOpen(true) }}
+        onEdit={(g) => { setSelectedGuarantee(g); setIsEditOpen(true) }}
         onApprove={(g) => openApproveDialog(g, 'approve')}
         onReject={(g) => openApproveDialog(g, 'reject')}
         onRenew={(g) => { setSelectedGuarantee(g); setIsRenewOpen(true) }}
@@ -295,6 +312,7 @@ export function GuaranteesPage() {
 
       {/* Dialogs */}
       <AdminGuaranteeForm open={isFormOpen} onOpenChange={setIsFormOpen} onSubmit={handleCreate} isLoading={adminCreateMutation.isPending} />
+      <GuaranteeEditDialog open={isEditOpen} onOpenChange={setIsEditOpen} guarantee={selectedGuarantee} onSubmit={handleUpdate} isLoading={updateMutation.isPending} />
       <GuaranteeDeleteDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen} guarantee={selectedGuarantee} onConfirm={handleDelete} isLoading={deleteMutation.isPending} />
       <ApproveDialog open={isApproveOpen} onOpenChange={setIsApproveOpen} guarantee={selectedGuarantee} action={approveAction} onConfirm={handleApprove} isLoading={approveMutation.isPending} />
       <RenewDialog open={isRenewOpen} onOpenChange={setIsRenewOpen} guarantee={selectedGuarantee} onConfirm={handleRenew} isLoading={renewMutation.isPending} />
