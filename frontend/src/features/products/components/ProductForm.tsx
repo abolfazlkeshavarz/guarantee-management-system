@@ -220,6 +220,8 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
                     <FormLabel>{t('products.codeFormat.patternLabel')}</FormLabel>
                     <FormControl>
                       <Input
+                        dir="ltr"
+                        className="text-left"
                         placeholder={t('products.codeFormat.patternPlaceholder')}
                         {...field}
                         value={field.value ?? ''}
