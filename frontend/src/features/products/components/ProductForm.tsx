@@ -176,7 +176,7 @@ export function ProductForm({ open, onOpenChange, product, onSubmit, isLoading }
                   <FormItem>
                     <FormLabel>{t('products.form.codePrefix')}{prefixApplies ? ' *' : ''}</FormLabel>
                     <FormControl>
-                      <Input placeholder={prefixApplies ? 'e.g. EVC' : t('products.codeFormat.noPrefixNeeded')} disabled={!prefixApplies} {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value.toUpperCase())} />
+                      <Input placeholder={prefixApplies ? 'e.g. EVC' : t('products.codeFormat.noPrefixNeeded')} disabled={!prefixApplies} {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value)} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -12,7 +12,7 @@ export const productSchema = z.object({
   is_active: z.boolean(),
   // Optional here because the catch-all format has no prefix to speak of; the
   // refinement below still demands one for every format that builds a pattern.
-  code_prefix: z.string().max(20).regex(/^[A-Z0-9]*$/, 'Letters and digits only').optional(),
+  code_prefix: z.string().max(20).regex(/^[A-Za-z0-9]*$/, 'Letters and digits only').optional(),
   code_format: z.enum(['simple', 'jalali_encoded', 'evinki_vacuum', 'any']),
   // Only the simple format builds its pattern from this; the others derive
   // theirs from the prefix, and the API ignores whatever is sent.
