@@ -23,5 +23,6 @@ func (m *DashboardModule) RegisterRoutes(router *gin.RouterGroup) {
 	dashboard.Use(middleware.AuthMiddleware())
 	{
 		dashboard.GET("/stats", m.handler.GetStats)
+		dashboard.GET("/notifications", middleware.AdminOnly(), m.handler.GetNotifications)
 	}
 }
