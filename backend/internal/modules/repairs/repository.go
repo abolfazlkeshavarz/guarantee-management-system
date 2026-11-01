@@ -24,6 +24,7 @@ func (r *RepairRepository) CreateWithItems(repair *Repair, components []RepairCo
 				RepairComponentID:      c.ComponentID,
 				Report:                 c.Report,
 				ComponentRequestItemID: c.ComponentRequestItemID,
+				FromOwnStock:           c.FromOwnStock,
 			}
 			if err := tx.Create(&item).Error; err != nil {
 				return err

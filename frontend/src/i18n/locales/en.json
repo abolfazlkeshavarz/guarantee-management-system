@@ -403,7 +403,11 @@
     "invalidCredentials": "Invalid username or password",
     "backToStaffLogin": "Back to Staff Login",
     "footer": "© {{year}} Evinki System. All rights reserved.",
-    "dashboardNav": "Dashboard",
+    "dashboardNav": "Repairs",
+    "deliveredPartsTitle": "Received parts — ready for a repair report",
+    "deliveredPartsHint": "Parts delivered to you that are not on a repair report yet. Tick the ones you replaced and write a report for them.",
+    "writeReportForSelected": "Write repair report ({{count}} selected)",
+    "fromRequestNo": "Request #{{id}}",
     "profileNav": "Profile",
     "logout": "Logout",
     "welcome": "Welcome, {{name}}!",
@@ -437,6 +441,10 @@
     "expiredBillingNote": "The work can still be recorded, but it is billed as out-of-warranty."
   },
   "repairItems": {
+    "addOwnPart": "Part from my own stock",
+    "selectOwnPart": "Choose the part",
+    "ownStockBadge": "Technician's own part (no part request)",
+    "ownStockNote": "Fitted from the technician's own stock; no part request",
     "componentsReplaced": "Components Replaced",
     "servicesPerformed": "Services Performed",
     "addComponent": "Add Component",

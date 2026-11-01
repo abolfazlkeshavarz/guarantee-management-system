@@ -42,8 +42,11 @@ type RepairComponentItem struct {
 	Report            string `gorm:"type:text" json:"report"`
 	// The delivered part-request line this component came out of. Nullable:
 	// repairs filed before the link existed have nothing to point at.
-	ComponentRequestItemID *uint     `json:"component_request_item_id,omitempty"`
-	CreatedAt              time.Time `json:"created_at"`
+	ComponentRequestItemID *uint `json:"component_request_item_id,omitempty"`
+	// True when the technician fitted a part they already had, instead of one
+	// issued through a part request.
+	FromOwnStock bool      `gorm:"not null;default:false" json:"from_own_stock"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 func (RepairComponentItem) TableName() string {

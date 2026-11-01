@@ -50,6 +50,7 @@ export function RepairItemsFields({
       <div className="space-y-2">
         <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
           <Label>{t('repairItems.componentsReplaced')}</Label>
+          <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <Button
             type="button"
             variant="outline"
@@ -60,6 +61,19 @@ export function RepairItemsFields({
             <Plus className={`h-3 w-3 ${isRTL ? 'ml-1' : 'me-1'}`} />
             {t('repairItems.addComponent')}
           </Button>
+          {fromDelivery && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => componentsArray.append({ component_id: 0, report: '', from_own_stock: true })}
+              className={isRTL ? 'flex-row-reverse' : ''}
+            >
+              <Plus className={`h-3 w-3 ${isRTL ? 'ml-1' : 'me-1'}`} />
+              {t('repairItems.addOwnPart')}
+            </Button>
+          )}
+          </div>
         </div>
         {componentsArray.fields.length === 0 && (
           <p className="text-sm text-muted-foreground">{t('repairItems.noComponents')}</p>
@@ -68,7 +82,19 @@ export function RepairItemsFields({
           {componentsArray.fields.map((field, index) => (
             <div key={field.id} className={`flex gap-2 items-start border rounded-md p-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <div className="w-64">
-                {fromDelivery ? (
+                {fromDelivery && (field as { from_own_stock?: boolean }).from_own_stock ? (
+                  <div className="space-y-1">
+                    <FieldSelect
+                      control={control}
+                      name={`components.${index}.component_id`}
+                      options={components}
+                      placeholder={t('repairItems.selectOwnPart')}
+                    />
+                    <p className={`text-xs text-blue-700 ${isRTL ? 'text-right' : ''}`}>
+                      {t('repairItems.ownStockBadge')}
+                    </p>
+                  </div>
+                ) : fromDelivery ? (
                   <DeliveredSelect
                     control={control}
                     idName={`components.${index}.component_id`}

@@ -7,6 +7,7 @@ const repairItemSchema = z.object({
   component_id: z.number().min(1),
   report: z.string().optional().default(''),
   component_request_item_id: z.number().optional(),
+  from_own_stock: z.boolean().optional(),
 })
 
 const serviceItemSchema = z.object({

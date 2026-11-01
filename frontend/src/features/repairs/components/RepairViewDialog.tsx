@@ -102,7 +102,7 @@ export function RepairViewDialog({
                     <div key={item.id} className="bg-muted p-2 rounded-md text-sm">
                       <p className="font-medium">{item.component_name}</p>
                       {item.report && <p className="text-muted-foreground">{item.report}</p>}
-                      <PartOrigin item={item} requireSource />
+                      <PartOrigin item={item} fromOwnStock={item.from_own_stock} requireSource />
                     </div>
                   ))}
                 </div>
@@ -167,8 +167,11 @@ export function RepairViewDialog({
 function PartOrigin({
   item,
   requireSource = false,
+  fromOwnStock = false,
 }: {
   item: { part_request_id?: number; part_request_delivered_at?: string }
+  /** The technician fitted a part of their own, so there is no request to show. */
+  fromOwnStock?: boolean
   /**
    * Only components must come from a delivered request. A service without one
    * is the ordinary case, so flagging it would cry wolf and teach the reader
@@ -179,6 +182,14 @@ function PartOrigin({
   const { t, i18n } = useTranslation()
   const { formatDate } = useCalendar()
   const isRTL = i18n.language === 'fa'
+
+  if (fromOwnStock) {
+    return (
+      <p className={`text-xs text-blue-700 mt-1 ${isRTL ? 'text-right' : ''}`}>
+        {t('repairItems.ownStockNote')}
+      </p>
+    )
+  }
 
   if (!item.part_request_id) {
     if (!requireSource) return null

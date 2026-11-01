@@ -10,6 +10,8 @@ export interface RepairComponentItem extends PartOriginFields {
   component_id: number
   component_name: string
   report: string
+  /** A part the technician already had, fitted without a part request. */
+  from_own_stock?: boolean
 }
 
 export interface RepairServiceItem extends PartOriginFields {

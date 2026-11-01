@@ -125,16 +125,16 @@ func saveSeen(current []notification) {
 
 func onReady() {
 	systray.SetIcon(makeIcon(colorOK))
-	systray.SetTitle("Guarantees")
-	systray.SetTooltip("Guarantee notifier")
+	systray.SetTitle("سامانه گارانتی")
+	systray.SetTooltip("اعلان‌های سامانه گارانتی")
 
-	status := systray.AddMenuItem("Starting...", "")
+	status := systray.AddMenuItem("در حال شروع...", "")
 	status.Disable()
 	systray.AddSeparator()
-	open := systray.AddMenuItem("Open dashboard", "")
-	check := systray.AddMenuItem("Check now", "")
+	open := systray.AddMenuItem("باز کردن سامانه", "")
+	check := systray.AddMenuItem("بررسی همین حالا", "")
 	systray.AddSeparator()
-	quit := systray.AddMenuItem("Quit", "")
+	quit := systray.AddMenuItem("خروج", "")
 
 	go func() {
 		t := time.NewTicker(time.Duration(cfg.IntervalSeconds) * time.Second)
@@ -170,7 +170,7 @@ func poll(status *systray.MenuItem) {
 	items, err := fetch()
 	if err != nil {
 		log.Println("poll:", err)
-		status.SetTitle("Offline: " + err.Error())
+		status.SetTitle("قطع ارتباط: " + err.Error())
 		systray.SetIcon(makeIcon(colorDown))
 		return
 	}
@@ -184,12 +184,12 @@ func poll(status *systray.MenuItem) {
 	saveSeen(items)
 
 	if len(items) == 0 {
-		status.SetTitle("Nothing needs attention")
-		systray.SetTooltip("Guarantee notifier: all clear")
+		status.SetTitle("مورد جدیدی وجود ندارد")
+		systray.SetTooltip("اعلان‌های سامانه گارانتی: همه چیز مرتب است")
 		systray.SetIcon(makeIcon(colorOK))
 	} else {
-		status.SetTitle(fmt.Sprintf("%d item(s) need attention", len(items)))
-		systray.SetTooltip(fmt.Sprintf("Guarantee notifier: %d need attention", len(items)))
+		status.SetTitle(fmt.Sprintf("%s مورد نیاز به بررسی دارد", fa(len(items))))
+		systray.SetTooltip(fmt.Sprintf("اعلان‌های سامانه گارانتی: %s مورد", fa(len(items))))
 		systray.SetIcon(makeIcon(colorAlert))
 	}
 
@@ -197,7 +197,7 @@ func poll(status *systray.MenuItem) {
 	case len(fresh) == 0:
 	case first || len(fresh) > 3:
 		// First run, or a burst: one summary instead of a toast storm.
-		toastMsg("Guarantee system", fmt.Sprintf("%d item(s) need attention", len(fresh)), cfg.WebURL)
+		toastMsg("سامانه گارانتی", fmt.Sprintf("%s مورد جدید نیاز به بررسی دارد", fa(len(fresh))), cfg.WebURL)
 	default:
 		for _, n := range fresh {
 			toastMsg(n.Title, n.Body, cfg.WebURL)
@@ -215,11 +215,11 @@ func fetch() ([]notification, error) {
 				return nil, err
 			}
 		}
-		req, _ := http.NewRequest("GET", cfg.APIURL+"/dashboard/notifications", nil)
+		req, _ := http.NewRequest("GET", cfg.APIURL+"/dashboard/notifications?lang=fa", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp, err := client.Do(req)
 		if err != nil {
-			return nil, fmt.Errorf("server unreachable")
+			return nil, fmt.Errorf("سرور در دسترس نیست")
 		}
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
@@ -228,7 +228,7 @@ func fetch() ([]notification, error) {
 			continue
 		}
 		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("server returned %d", resp.StatusCode)
+			return nil, fmt.Errorf("پاسخ سرور: %d", resp.StatusCode)
 		}
 		var out struct {
 			Data struct {
@@ -240,18 +240,18 @@ func fetch() ([]notification, error) {
 		}
 		return out.Data.Items, nil
 	}
-	return nil, fmt.Errorf("login rejected")
+	return nil, fmt.Errorf("ورود رد شد")
 }
 
 func login() error {
 	b, _ := json.Marshal(map[string]string{"username": cfg.Username, "password": cfg.Password})
 	resp, err := client.Post(cfg.APIURL+"/auth/login", "application/json", bytes.NewReader(b))
 	if err != nil {
-		return fmt.Errorf("server unreachable")
+		return fmt.Errorf("سرور در دسترس نیست")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("login failed (%d)", resp.StatusCode)
+		return fmt.Errorf("ورود ناموفق (%d)", resp.StatusCode)
 	}
 	var out struct {
 		Data struct {
@@ -273,7 +273,7 @@ func login() error {
 }
 
 func toastMsg(title, msg, url string) {
-	n := toast.Notification{AppID: "Guarantee System", Title: title, Message: msg}
+	n := toast.Notification{AppID: "سامانه گارانتی", Title: title, Message: msg}
 	if url != "" {
 		n.ActivationType = "protocol"
 		n.ActivationArguments = url
@@ -312,4 +312,10 @@ func makeIcon(c color.RGBA) []byte {
 	_ = binary.Write(&ico, binary.LittleEndian, uint32(22))
 	ico.Write(p.Bytes())
 	return ico.Bytes()
+}
+
+// fa renders a number with Persian digits.
+func fa(n int) string {
+	return strings.NewReplacer("0", "۰", "1", "۱", "2", "۲", "3", "۳", "4", "۴",
+		"5", "۵", "6", "۶", "7", "۷", "8", "۸", "9", "۹").Replace(fmt.Sprint(n))
 }

@@ -403,7 +403,11 @@
     "invalidCredentials": "نام کاربری یا رمز عبور نامعتبر است",
     "backToStaffLogin": "بازگشت به ورود کارکنان",
     "footer": "© {{year}} سامانه اوینکی. تمامی حقوق محفوظ است.",
-    "dashboardNav": "داشبورد",
+    "dashboardNav": "تعمیرات",
+    "deliveredPartsTitle": "قطعات تحویل‌گرفته‌شده — آماده گزارش تعمیر",
+    "deliveredPartsHint": "قطعاتی که برایتان تحویل شده و هنوز در گزارش تعمیر نیامده‌اند. هر کدام را که تعویض کرده‌اید انتخاب کنید و برای آن‌ها گزارش بنویسید.",
+    "writeReportForSelected": "نوشتن گزارش تعمیر ({{count}} مورد)",
+    "fromRequestNo": "درخواست شماره {{id}}",
     "profileNav": "پروفایل",
     "logout": "خروج",
     "welcome": "خوش آمدی {{name}}!",
@@ -437,6 +441,10 @@
     "expiredBillingNote": "کار همچنان ثبت می‌شود، اما به‌صورت خارج از گارانتی محاسبه می‌گردد."
   },
   "repairItems": {
+    "addOwnPart": "قطعه از موجودی خودم",
+    "selectOwnPart": "قطعه را از فهرست انتخاب کنید",
+    "ownStockBadge": "قطعه شخصی تکنسین (بدون درخواست قطعه)",
+    "ownStockNote": "این قطعه از موجودی شخصی تکنسین بوده و درخواست قطعه‌ای ندارد",
     "componentsReplaced": "قطعات تعویض‌شده",
     "servicesPerformed": "خدمات انجام‌شده",
     "addComponent": "افزودن قطعه",

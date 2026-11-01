@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { technicianAuthService } from '../api/technicianAuth'
 import { useTechnicianAuth } from '../contexts/TechnicianAuthContext'
-import { NewRepairDialog } from '../components/NewRepairDialog'
+import { NewRepairDialog, type RepairPrefill } from '../components/NewRepairDialog'
+import { DeliveredPartsCard } from '../components/DeliveredPartsCard'
 import { REPAIR_STATUSES } from '../types'
 import { RepairStatusBadge } from '@/features/repairs/components/RepairStatusBadge'
 import { RepairViewDialog } from '@/features/repairs/components/RepairViewDialog'
@@ -24,6 +25,7 @@ export function TechnicianDashboardPage() {
   const [limit] = useState(10)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [viewRepair, setViewRepair] = useState<Repair | null>(null)
+  const [prefill, setPrefill] = useState<RepairPrefill | null>(null)
 
   // Fetch repairs filed by this technician
   const { data, isLoading, refetch } = useQuery({
@@ -55,8 +57,10 @@ export function TechnicianDashboardPage() {
             {t('technicianPortal.welcomeSubtitle')}
           </p>
         </div>
-        <NewRepairDialog />
+        <NewRepairDialog prefill={prefill} onPrefillConsumed={() => setPrefill(null)} />
       </div>
+
+      <DeliveredPartsCard onWriteReport={(guaranteeCode, itemIds) => setPrefill({ guaranteeCode, itemIds })} />
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">

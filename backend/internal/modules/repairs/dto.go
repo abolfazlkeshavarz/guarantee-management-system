@@ -7,6 +7,9 @@ type RepairComponentItemInput struct {
 	// The delivered part-request line this part came from. Required when a
 	// technician files the repair; optional on the admin path.
 	ComponentRequestItemID *uint `json:"component_request_item_id"`
+	// A technician's own part, fitted without a part request. Mutually
+	// exclusive with ComponentRequestItemID.
+	FromOwnStock bool `json:"from_own_stock"`
 }
 
 type RepairServiceItemInput struct {
@@ -20,6 +23,7 @@ type RepairComponentItemDTO struct {
 	ComponentID   uint   `json:"component_id"`
 	ComponentName string `json:"component_name"`
 	Report        string `json:"report"`
+	FromOwnStock  bool   `json:"from_own_stock"`
 	// Where the part came from, so the office can trace a replaced part back
 	// to the request that issued it.
 	ComponentRequestItemID *uint  `json:"component_request_item_id,omitempty"`

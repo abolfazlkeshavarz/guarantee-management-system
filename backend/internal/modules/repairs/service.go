@@ -115,9 +115,19 @@ type deliveredPartLine struct {
 func (s *RepairService) requireDeliveredParts(techID uint, components []RepairComponentItemInput, services []RepairServiceItemInput) error {
 	ids := make([]uint, 0, len(components)+len(services))
 	for i, c := range components {
-		if c.ComponentRequestItemID == nil || *c.ComponentRequestItemID == 0 {
+		hasLink := c.ComponentRequestItemID != nil && *c.ComponentRequestItemID != 0
+		if c.FromOwnStock {
+			// The technician's own part: nothing was issued, so there is no
+			// delivery to verify. Claiming both is contradictory.
+			if hasLink {
+				return errors.NewAppError(errors.ErrValidation,
+					fmt.Sprintf("Component %d: a part from your own stock cannot also come from a part request", i+1), 400)
+			}
+			continue
+		}
+		if !hasLink {
 			return errors.NewAppError(errors.ErrValidation,
-				fmt.Sprintf("Component %d: choose the delivered part request this part came from", i+1), 400)
+				fmt.Sprintf("Component %d: choose the delivered part request this part came from, or mark it as your own part", i+1), 400)
 		}
 		ids = append(ids, *c.ComponentRequestItemID)
 	}
@@ -211,6 +221,9 @@ func (s *RepairService) requireDeliveredParts(techID uint, components []RepairCo
 	}
 
 	for i, c := range components {
+		if c.FromOwnStock {
+			continue
+		}
 		componentID := c.ComponentID
 		if err := check(*c.ComponentRequestItemID, &componentID, nil, fmt.Sprintf("Component %d", i+1)); err != nil {
 			return err
@@ -568,6 +581,7 @@ func (s *RepairService) mapToDTO(repair *Repair) *RepairDTO {
 			ComponentID:            item.RepairComponentID,
 			ComponentName:          name,
 			Report:                 item.Report,
+			FromOwnStock:           item.FromOwnStock,
 			ComponentRequestItemID: item.ComponentRequestItemID,
 			PartRequestID:          requestID,
 			PartRequestDeliveredAt: deliveredAt,

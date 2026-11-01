@@ -1,5 +1,5 @@
 import { GuaranteeCodeInput } from '@/components/common/GuaranteeCodeInput'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -34,7 +34,20 @@ import { toast } from 'sonner'
 import { GuaranteeStatePanel } from './GuaranteeStatePanel'
 import { Plus, Search, XCircle, Loader2 } from 'lucide-react'
 
-export function NewRepairDialog() {
+/** Opens the dialog already pointed at one guarantee, with parts ticked. */
+export interface RepairPrefill {
+  guaranteeCode: string
+  /** Delivered part-request line ids the technician ticked on the repairs page. */
+  itemIds: number[]
+}
+
+interface NewRepairDialogProps {
+  prefill?: RepairPrefill | null
+  /** Called once the prefill has been handed to the form, or the dialog closed. */
+  onPrefillConsumed?: () => void
+}
+
+export function NewRepairDialog({ prefill, onPrefillConsumed }: NewRepairDialogProps = {}) {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'fa'
   const [open, setOpen] = useState(false)
@@ -137,13 +150,14 @@ export function NewRepairDialog() {
     onError: (err: any) => toast.error(err.response?.data?.message || t('technicianPortal.submitError')),
   })
 
-  const handleCheck = async () => {
-    if (!code.trim()) return
+  const handleCheck = async (override?: string) => {
+    const wanted = (override ?? code).trim()
+    if (!wanted) return
     setChecking(true)
     setCheckError(null)
     setGuarantee(null)
     try {
-      const result = await technicianGuaranteeService.checkByCode(code.trim().toUpperCase())
+      const result = await technicianGuaranteeService.checkByCode(wanted.toUpperCase())
       if (!isGuaranteeAcceptable(result)) {
         const statusLabel = t(`repairs.status.${result.status}`, { defaultValue: result.status })
         setCheckError(t('technicianPortal.guaranteeInvalidStatus', { status: statusLabel }))
@@ -158,12 +172,44 @@ export function NewRepairDialog() {
     }
   }
 
+  // Opened from the repairs page with parts ticked: look the guarantee up for
+  // them, then (below) tick the same parts once the delivered list is loaded.
+  const pendingItemIds = useRef<number[] | null>(null)
+  useEffect(() => {
+    if (!prefill) return
+    pendingItemIds.current = prefill.itemIds
+    setOpen(true)
+    setCode(prefill.guaranteeCode)
+    void handleCheck(prefill.guaranteeCode)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill])
+
+  useEffect(() => {
+    const wanted = pendingItemIds.current
+    if (!wanted || !guarantee || deliveredLines.length === 0) return
+    const pick = (type: string) =>
+      deliveredLines.filter((l) => wanted.includes(l.itemId) && l.itemType === type && l.catalogId > 0)
+    form.setValue(
+      'components',
+      pick('component').map((l) => ({ component_id: l.catalogId, component_request_item_id: l.itemId, report: '' }))
+    )
+    form.setValue(
+      'services',
+      pick('service').map((l) => ({ service_id: l.catalogId, component_request_item_id: l.itemId, report: '' }))
+    )
+    pendingItemIds.current = null
+    onPrefillConsumed?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guarantee, deliveredRequests])
+
   const handleSubmit = async (data: RepairFormValues) => {
     await createMutation.mutateAsync(data)
   }
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
+      pendingItemIds.current = null
+      onPrefillConsumed?.()
       setCode('')
       setGuarantee(null)
       setCheckError(null)
@@ -203,7 +249,7 @@ export function NewRepairDialog() {
                 {t('technicianPortal.change')}
               </Button>
             ) : (
-              <Button type="button" onClick={handleCheck} disabled={checking || !code.trim()} className={isRTL ? 'flex-row-reverse' : ''}>
+              <Button type="button" onClick={() => handleCheck()} disabled={checking || !code.trim()} className={isRTL ? 'flex-row-reverse' : ''}>
                 {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 {t('technicianPortal.check')}
               </Button>
